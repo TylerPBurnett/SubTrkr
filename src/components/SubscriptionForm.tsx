@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, AlertCircle } from 'lucide-react';
 import type { Category, SubscriptionWithCategory, BillingCycle, SubscriptionFormData } from '../types';
 
 interface SubscriptionFormProps {
@@ -52,6 +52,8 @@ export default function SubscriptionForm({
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof SubscriptionFormData, string>>>({});
+  const [shake, setShake] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (subscription) {
@@ -110,7 +112,19 @@ export default function SubscriptionForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validate()) return;
+    if (!validate()) {
+      // Shake animation
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      
+      // Focus first error field
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField && formRef.current) {
+        const input = formRef.current.querySelector(`[name="${firstErrorField}"]`) as HTMLInputElement;
+        input?.focus();
+      }
+      return;
+    }
 
     onSave({
       name: formData.name.trim(),
@@ -145,7 +159,7 @@ export default function SubscriptionForm({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-surface-800 rounded-2xl shadow-xl max-h-[90vh] overflow-hidden">
+      <div className={`relative w-full max-w-lg bg-white dark:bg-surface-800 rounded-2xl shadow-xl max-h-[90vh] overflow-hidden ${shake ? 'animate-shake' : ''}`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
           <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
@@ -160,7 +174,21 @@ export default function SubscriptionForm({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <form ref={formRef} onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          {/* Error summary */}
+          {Object.keys(errors).length > 0 && (
+            <div className="mb-5 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">Please fix the following errors:</p>
+                <ul className="mt-1 text-sm text-red-600 dark:text-red-400 list-disc list-inside">
+                  {Object.values(errors).filter(Boolean).map((error, i) => (
+                    <li key={i}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
           <div className="space-y-5">
             {/* Name */}
             <div>

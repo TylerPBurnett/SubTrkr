@@ -7,9 +7,12 @@ import {
   Trash2,
   Pause,
   Play,
-  ExternalLink
+  ExternalLink,
+  CreditCard
 } from 'lucide-react';
 import type { SubscriptionWithCategory, Category, BillingCycle } from '../types';
+import ConfirmDialog from './ui/ConfirmDialog';
+import EmptyState from './ui/EmptyState';
 
 interface SubscriptionListProps {
   subscriptions: SubscriptionWithCategory[];
@@ -17,6 +20,7 @@ interface SubscriptionListProps {
   onEdit: (subscription: SubscriptionWithCategory) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string) => void;
+  onAddNew?: () => void;
 }
 
 function formatCurrency(amount: number, currency: string = 'USD'): string {
@@ -48,11 +52,13 @@ export default function SubscriptionList({
   onEdit,
   onDelete,
   onToggleActive,
+  onAddNew,
 }: SubscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showInactive, setShowInactive] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const filteredSubscriptions = useMemo(() => {
     return subscriptions.filter(sub => {
@@ -79,6 +85,18 @@ export default function SubscriptionList({
   const handleAction = (action: () => void) => {
     action();
     setOpenMenuId(null);
+  };
+
+  const handleDeleteClick = (sub: SubscriptionWithCategory) => {
+    setOpenMenuId(null);
+    setDeleteConfirm({ id: sub.id, name: sub.name });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirm) {
+      onDelete(deleteConfirm.id);
+      setDeleteConfirm(null);
+    }
   };
 
   return (
@@ -122,19 +140,22 @@ export default function SubscriptionList({
       </div>
 
       {/* Subscription List */}
-      {filteredSubscriptions.length === 0 ? (
-        <div className="card text-center py-12">
-          <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center mx-auto mb-4">
-            <Search className="w-8 h-8 text-neutral-400" />
-          </div>
-          <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
-            No subscriptions found
-          </h3>
-          <p className="text-neutral-500 dark:text-neutral-400">
-            {subscriptions.length === 0
-              ? "Add your first subscription to get started"
-              : "Try adjusting your filters"}
-          </p>
+      {subscriptions.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={CreditCard}
+            title="No subscriptions yet"
+            description="Start tracking your recurring payments by adding your first subscription."
+            action={onAddNew ? { label: 'Add Subscription', onClick: onAddNew } : undefined}
+          />
+        </div>
+      ) : filteredSubscriptions.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={Search}
+            title="No matches found"
+            description="Try adjusting your search or filter criteria."
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -222,7 +243,7 @@ export default function SubscriptionList({
                         )}
                         <hr className="my-1 border-neutral-200 dark:border-neutral-700" />
                         <button
-                          onClick={() => handleAction(() => onDelete(sub.id))}
+                          onClick={() => handleDeleteClick(sub)}
                           className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -257,6 +278,18 @@ export default function SubscriptionList({
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        title="Delete Subscription"
+        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

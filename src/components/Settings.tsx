@@ -33,20 +33,34 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', color: '#3b82f6' });
   const [showNewForm, setShowNewForm] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateCategory = async () => {
-    if (!newCategory.name.trim()) return;
-    await createCategory(newCategory.name.trim(), newCategory.color);
-    setNewCategory({ name: '', color: '#3b82f6' });
-    setShowNewForm(false);
-    onCategoriesChange();
+    const trimmedName = newCategory.name.trim();
+    if (!trimmedName || isCreating) return;
+    
+    setIsCreating(true);
+    try {
+      await createCategory(trimmedName, newCategory.color);
+      setNewCategory({ name: '', color: '#3b82f6' });
+      setShowNewForm(false);
+      await onCategoriesChange();
+    } catch (error) {
+      console.error('Failed to create category:', error);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleUpdateCategory = async () => {
     if (!editingCategory || !editingCategory.name.trim()) return;
-    await updateCategory(editingCategory.id, editingCategory.name.trim(), editingCategory.color);
-    setEditingCategory(null);
-    onCategoriesChange();
+    try {
+      await updateCategory(editingCategory.id, editingCategory.name.trim(), editingCategory.color);
+      setEditingCategory(null);
+      await onCategoriesChange();
+    } catch (error) {
+      console.error('Failed to update category:', error);
+    }
   };
 
   const handleDeleteCategory = async (id: string) => {
@@ -88,16 +102,27 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                 type="text"
                 value={newCategory.name}
                 onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newCategory.name.trim()) {
+                    e.preventDefault();
+                    handleCreateCategory();
+                  }
+                }}
                 placeholder="Category name"
                 className="flex-1 px-3 py-2 bg-white dark:bg-surface-800 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 autoFocus
               />
               <button
+                type="button"
                 onClick={handleCreateCategory}
-                disabled={!newCategory.name.trim()}
-                className="p-2 bg-brand-500 hover:bg-brand-600 disabled:bg-neutral-300 text-white rounded-lg transition-colors"
+                disabled={!newCategory.name.trim() || isCreating}
+                className="p-2 bg-brand-500 hover:bg-brand-600 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
-                <Check className="w-5 h-5" />
+                {isCreating ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check className="w-5 h-5" />
+                )}
               </button>
               <button
                 onClick={() => {

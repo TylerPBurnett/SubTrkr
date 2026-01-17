@@ -192,6 +192,7 @@ function App() {
               onEdit={handleEdit}
               onDelete={handleDeleteSubscription}
               onToggleActive={handleToggleActive}
+              onAddNew={() => setShowForm(true)}
             />
           )}
           {view === 'analytics' && (
