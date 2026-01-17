@@ -1,6 +1,6 @@
-# Tauri + React + Typescript
+# SubTrkr
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+A simple, local-first subscription tracker built with Tauri, React, and SQLite.
 
 ## Recommended IDE Setup
 
