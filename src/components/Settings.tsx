@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Plus, Pencil, X, Check } from 'lucide-react';
 import type { Category } from '../types';
 import { createCategory, updateCategory, deleteCategory } from '../services/database';
 
@@ -64,10 +64,6 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (id.startsWith('cat-') && !id.includes('-')) {
-      // Don't allow deleting default categories
-      return;
-    }
     await deleteCategory(id);
     onCategoriesChange();
   };
@@ -163,79 +159,117 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
           </div>
         )}
 
-        {/* Category List */}
-        <div className="space-y-2">
+        {/* Editing Form (shown below grid when editing) */}
+        {editingCategory && (
+          <div 
+            className="mb-4 p-4 rounded-xl"
+            style={{ backgroundColor: 'var(--bg-hover)' }}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-6 h-6 rounded-lg shrink-0"
+                style={{ backgroundColor: editingCategory.color }}
+              />
+              <input
+                type="text"
+                value={editingCategory.name}
+                onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleUpdateCategory();
+                  } else if (e.key === 'Escape') {
+                    setEditingCategory(null);
+                  }
+                }}
+                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
+                autoFocus
+              />
+              <button
+                onClick={handleUpdateCategory}
+                className="p-2 rounded-lg transition-colors"
+                style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-inverse)' }}
+              >
+                <Check className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setEditingCategory(null)}
+                className="btn-secondary p-2 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Color picker for editing */}
+            <div className="flex flex-wrap gap-2">
+              {colorOptions.map(color => (
+                <button
+                  key={color}
+                  onClick={() => setEditingCategory(prev => prev ? { ...prev, color } : null)}
+                  className={`w-6 h-6 rounded-full transition-transform ${
+                    editingCategory.color === color ? 'ring-2 ring-offset-2 scale-110' : ''
+                  }`}
+                  style={{ 
+                    backgroundColor: color,
+                    '--tw-ring-color': 'var(--text-primary)',
+                    '--tw-ring-offset-color': 'var(--bg-hover)'
+                  } as React.CSSProperties}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Category Chip Grid */}
+        <div className="flex flex-wrap gap-2">
           {categories.map(category => (
             <div
               key={category.id}
-              className="flex items-center gap-3 p-3 rounded-xl transition-colors group"
-              style={{ backgroundColor: 'transparent' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              className="group flex items-center gap-2 px-3 py-1.5 rounded-full transition-all cursor-default"
+              style={{ 
+                backgroundColor: 'var(--bg-hover)',
+                border: '1px solid var(--border-default)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+                e.currentTarget.style.borderColor = 'var(--border-strong)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                e.currentTarget.style.borderColor = 'var(--border-default)';
+              }}
             >
-              {editingCategory?.id === category.id ? (
-                <>
-                  <div
-                    className="w-8 h-8 rounded-lg shrink-0"
-                    style={{ backgroundColor: editingCategory.color }}
-                  />
-                  <input
-                    type="text"
-                    value={editingCategory.name}
-                    onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-                    className="input flex-1 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2"
-                    style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
-                    autoFocus
-                  />
-                  <div className="flex gap-1">
-                    <button
-                      onClick={handleUpdateCategory}
-                      className="p-1.5 rounded-lg transition-colors"
-                      style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-inverse)' }}
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setEditingCategory(null)}
-                      className="btn-secondary p-1.5 rounded-lg transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div
-                    className="w-8 h-8 rounded-lg shrink-0"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span className="flex-1 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {category.name}
-                  </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setEditingCategory(category)}
-                      className="p-1.5 rounded-lg transition-colors"
-                      style={{ color: 'var(--text-muted)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-active)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    {!category.id.match(/^cat-[a-z]+$/) && (
-                      <button
-                        onClick={() => handleDeleteCategory(category.id)}
-                        className="p-1.5 rounded-lg transition-colors"
-                        style={{ color: 'var(--accent-red)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red-muted)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
+              {/* Small color dot */}
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: category.color }}
+              />
+              
+              {/* Category name */}
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {category.name}
+              </span>
+              
+              {/* Edit button (visible on hover) */}
+              <button
+                onClick={() => setEditingCategory(category)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+              
+              {/* Delete button */}
+              <button
+                onClick={() => handleDeleteCategory(category.id)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
+                style={{ color: 'var(--accent-red)' }}
+              >
+                <X className="w-3 h-3" />
+              </button>
             </div>
           ))}
         </div>
