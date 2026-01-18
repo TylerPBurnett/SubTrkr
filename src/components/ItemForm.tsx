@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { X, AlertCircle } from 'lucide-react';
-import type { Category, SubscriptionWithCategory, BillingCycle, SubscriptionFormData } from '../types';
+import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType } from '../types';
 
-interface SubscriptionFormProps {
-  subscription?: SubscriptionWithCategory | null;
+interface ItemFormProps {
+  item?: ItemWithCategory | null;
   categories: Category[];
+  itemType: ItemType;
   onSave: (data: {
     name: string;
     amount: number;
     currency: string;
     billing_cycle: BillingCycle;
+    item_type: ItemType;
     category_id?: string;
     next_billing_date: string;
     start_date: string;
@@ -29,16 +31,28 @@ const billingCycles: { value: BillingCycle; label: string }[] = [
 
 const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
 
-export default function SubscriptionForm({
-  subscription,
+export default function ItemForm({
+  item,
   categories,
+  itemType,
   onSave,
   onClose,
-}: SubscriptionFormProps) {
-  const isEditing = !!subscription;
+}: ItemFormProps) {
+  const isEditing = !!item;
   const today = new Date().toISOString().split('T')[0];
+  
+  // Get labels based on item type
+  const labels = {
+    singular: itemType === 'bill' ? 'Bill' : 'Subscription',
+    namePlaceholder: itemType === 'bill' ? 'e.g., Electric, Rent, Insurance' : 'e.g., Netflix, Spotify',
+  };
 
-  const [formData, setFormData] = useState<SubscriptionFormData>({
+  // Filter categories by type
+  const filteredCategories = useMemo(() => {
+    return categories.filter(cat => cat.category_type === itemType);
+  }, [categories, itemType]);
+
+  const [formData, setFormData] = useState<ItemFormData>({
     name: '',
     amount: '',
     currency: 'USD',
@@ -49,31 +63,33 @@ export default function SubscriptionForm({
     notes: '',
     url: '',
     reminder_days: 3,
+    item_type: itemType,
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof SubscriptionFormData, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof ItemFormData, string>>>({});
   const [shake, setShake] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (subscription) {
+    if (item) {
       setFormData({
-        name: subscription.name,
-        amount: subscription.amount.toString(),
-        currency: subscription.currency,
-        billing_cycle: subscription.billing_cycle,
-        category_id: subscription.category_id || '',
-        next_billing_date: subscription.next_billing_date.split('T')[0],
-        start_date: subscription.start_date.split('T')[0],
-        notes: subscription.notes || '',
-        url: subscription.url || '',
-        reminder_days: subscription.reminder_days,
+        name: item.name,
+        amount: item.amount.toString(),
+        currency: item.currency,
+        billing_cycle: item.billing_cycle,
+        category_id: item.category_id || '',
+        next_billing_date: item.next_billing_date.split('T')[0],
+        start_date: item.start_date.split('T')[0],
+        notes: item.notes || '',
+        url: item.url || '',
+        reminder_days: item.reminder_days,
+        item_type: item.item_type,
       });
     }
-  }, [subscription]);
+  }, [item]);
 
   const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof SubscriptionFormData, string>> = {};
+    const newErrors: Partial<Record<keyof ItemFormData, string>> = {};
 
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
@@ -131,6 +147,7 @@ export default function SubscriptionForm({
       amount: parseFloat(formData.amount),
       currency: formData.currency,
       billing_cycle: formData.billing_cycle,
+      item_type: itemType,
       category_id: formData.category_id || undefined,
       next_billing_date: formData.next_billing_date,
       start_date: formData.start_date,
@@ -145,7 +162,7 @@ export default function SubscriptionForm({
   ) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name as keyof SubscriptionFormData]) {
+    if (errors[name as keyof ItemFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
@@ -169,7 +186,7 @@ export default function SubscriptionForm({
           style={{ borderBottom: '1px solid var(--border-default)' }}
         >
           <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {isEditing ? 'Edit Subscription' : 'Add Subscription'}
+            {isEditing ? `Edit ${labels.singular}` : `Add ${labels.singular}`}
           </h2>
           <button
             onClick={onClose}
@@ -208,14 +225,14 @@ export default function SubscriptionForm({
             {/* Name */}
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Subscription Name *
+                {labels.singular} Name *
               </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="e.g., Netflix, Spotify"
+                placeholder={labels.namePlaceholder}
                 className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
                 style={{ 
                   borderColor: errors.name ? 'var(--accent-red)' : 'var(--border-default)',
@@ -301,7 +318,7 @@ export default function SubscriptionForm({
                   style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                 >
                   <option value="">Select category</option>
-                  {categories.map(cat => (
+                  {filteredCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
@@ -419,7 +436,7 @@ export default function SubscriptionForm({
               type="submit"
               className="btn-primary flex-1 px-4 py-2.5 rounded-xl font-medium transition-all"
             >
-              {isEditing ? 'Save Changes' : 'Add Subscription'}
+              {isEditing ? 'Save Changes' : `Add ${labels.singular}`}
             </button>
           </div>
         </form>

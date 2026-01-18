@@ -2,46 +2,48 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, 
   CreditCard, 
+  Receipt,
   BarChart3, 
   Settings as SettingsIcon,
   Plus,
   Moon,
   Sun
 } from 'lucide-react';
-import type { SubscriptionWithCategory, Category } from './types';
+import type { ItemWithCategory, Category, ItemType } from './types';
 import { 
-  getSubscriptions, 
+  getItems, 
   getCategories,
-  createSubscription,
-  updateSubscription,
-  deleteSubscription,
-  toggleSubscriptionActive
+  createItem,
+  updateItem,
+  deleteItem,
+  toggleItemActive
 } from './services/database';
 import Dashboard from './components/Dashboard';
-import SubscriptionList from './components/SubscriptionList';
-import SubscriptionForm from './components/SubscriptionForm';
+import ItemList from './components/ItemList';
+import ItemForm from './components/ItemForm';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 
-type View = 'dashboard' | 'subscriptions' | 'analytics' | 'settings';
+type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
 type Theme = 'light' | 'dark';
 
 function App() {
   const [view, setView] = useState<View>('dashboard');
-  const [subscriptions, setSubscriptions] = useState<SubscriptionWithCategory[]>([]);
+  const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingSubscription, setEditingSubscription] = useState<SubscriptionWithCategory | null>(null);
+  const [formItemType, setFormItemType] = useState<ItemType>('subscription');
+  const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
   const [theme, setTheme] = useState<Theme>('dark');
 
   const loadData = useCallback(async () => {
     try {
-      const [subs, cats] = await Promise.all([
-        getSubscriptions(),
+      const [itemsData, cats] = await Promise.all([
+        getItems(),
         getCategories()
       ]);
-      setSubscriptions(subs);
+      setItems(itemsData);
       setCategories(cats);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -63,41 +65,49 @@ function App() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  const handleCreateSubscription = async (data: Parameters<typeof createSubscription>[0]) => {
-    await createSubscription(data);
+  const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
+    await createItem(data);
     await loadData();
     setShowForm(false);
   };
 
-  const handleUpdateSubscription = async (id: string, data: Parameters<typeof updateSubscription>[1]) => {
-    await updateSubscription(id, data);
+  const handleUpdateItem = async (id: string, data: Parameters<typeof updateItem>[1]) => {
+    await updateItem(id, data);
     await loadData();
-    setEditingSubscription(null);
+    setEditingItem(null);
     setShowForm(false);
   };
 
-  const handleDeleteSubscription = async (id: string) => {
-    await deleteSubscription(id);
+  const handleDeleteItem = async (id: string) => {
+    await deleteItem(id);
     await loadData();
   };
 
   const handleToggleActive = async (id: string) => {
-    await toggleSubscriptionActive(id);
+    await toggleItemActive(id);
     await loadData();
   };
 
-  const handleEdit = (subscription: SubscriptionWithCategory) => {
-    setEditingSubscription(subscription);
+  const handleEdit = (item: ItemWithCategory) => {
+    setEditingItem(item);
+    setFormItemType(item.item_type);
+    setShowForm(true);
+  };
+
+  const handleAddNew = (itemType: ItemType) => {
+    setEditingItem(null);
+    setFormItemType(itemType);
     setShowForm(true);
   };
 
   const handleCloseForm = () => {
     setShowForm(false);
-    setEditingSubscription(null);
+    setEditingItem(null);
   };
 
   const navItems = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'bills' as const, label: 'Bills', icon: Receipt },
     { id: 'subscriptions' as const, label: 'Subscriptions', icon: CreditCard },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
     { id: 'settings' as const, label: 'Settings', icon: SettingsIcon },
@@ -159,21 +169,32 @@ function App() {
             <div>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {view === 'dashboard' && 'Dashboard'}
+                {view === 'bills' && 'Bills'}
                 {view === 'subscriptions' && 'Subscriptions'}
                 {view === 'analytics' && 'Analytics'}
                 {view === 'settings' && 'Settings'}
               </h2>
               <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-                {view === 'dashboard' && 'Your subscription overview at a glance'}
+                {view === 'dashboard' && 'Your spending overview at a glance'}
+                {view === 'bills' && 'Manage your recurring bills and utilities'}
                 {view === 'subscriptions' && 'Manage all your recurring subscriptions'}
                 {view === 'analytics' && 'Spending insights and trends'}
                 {view === 'settings' && 'Configure your preferences'}
               </p>
             </div>
 
-            {(view === 'dashboard' || view === 'subscriptions') && (
+            {view === 'bills' && (
               <button
-                onClick={() => setShowForm(true)}
+                onClick={() => handleAddNew('bill')}
+                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
+              >
+                <Plus className="w-5 h-5" />
+                Add Bill
+              </button>
+            )}
+            {view === 'subscriptions' && (
+              <button
+                onClick={() => handleAddNew('subscription')}
                 className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
@@ -185,22 +206,34 @@ function App() {
           {/* Content */}
           {view === 'dashboard' && (
             <Dashboard 
-              subscriptions={subscriptions} 
+              items={items} 
               onEdit={handleEdit}
+            />
+          )}
+          {view === 'bills' && (
+            <ItemList
+              items={items}
+              categories={categories}
+              itemType="bill"
+              onEdit={handleEdit}
+              onDelete={handleDeleteItem}
+              onToggleActive={handleToggleActive}
+              onAddNew={() => handleAddNew('bill')}
             />
           )}
           {view === 'subscriptions' && (
-            <SubscriptionList
-              subscriptions={subscriptions}
+            <ItemList
+              items={items}
               categories={categories}
+              itemType="subscription"
               onEdit={handleEdit}
-              onDelete={handleDeleteSubscription}
+              onDelete={handleDeleteItem}
               onToggleActive={handleToggleActive}
-              onAddNew={() => setShowForm(true)}
+              onAddNew={() => handleAddNew('subscription')}
             />
           )}
           {view === 'analytics' && (
-            <Analytics subscriptions={subscriptions} />
+            <Analytics items={items} />
           )}
           {view === 'settings' && (
             <Settings 
@@ -211,14 +244,15 @@ function App() {
         </div>
       </main>
 
-      {/* Subscription Form Modal */}
+      {/* Item Form Modal */}
       {showForm && (
-        <SubscriptionForm
-          subscription={editingSubscription}
+        <ItemForm
+          item={editingItem}
           categories={categories}
-          onSave={editingSubscription 
-            ? (data) => handleUpdateSubscription(editingSubscription.id, data)
-            : handleCreateSubscription
+          itemType={formItemType}
+          onSave={editingItem 
+            ? (data) => handleUpdateItem(editingItem.id, data)
+            : handleCreateItem
           }
           onClose={handleCloseForm}
         />

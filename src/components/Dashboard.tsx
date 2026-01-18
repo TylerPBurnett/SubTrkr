@@ -3,22 +3,25 @@ import {
   TrendingUp, 
   Calendar, 
   CreditCard,
+  Receipt,
   AlertCircle,
   ChevronRight
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import type { SubscriptionWithCategory, SpendingByCategory } from '../types';
+import type { ItemWithCategory, SpendingByCategory } from '../types';
 import { 
   calculateMonthlySpending, 
   calculateYearlySpending,
   getSpendingByCategory,
-  getUpcomingRenewals 
+  getUpcomingItems 
 } from '../services/database';
 
 interface DashboardProps {
-  subscriptions: SubscriptionWithCategory[];
-  onEdit: (subscription: SubscriptionWithCategory) => void;
+  items: ItemWithCategory[];
+  onEdit: (item: ItemWithCategory) => void;
 }
+
+type FilterTab = 'all' | 'bill' | 'subscription';
 
 function formatCurrency(amount: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
@@ -43,33 +46,40 @@ function getDaysUntil(dateStr: string): number {
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
+export default function Dashboard({ items, onEdit }: DashboardProps) {
+  const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  
+  // Get the type filter for database queries
+  const typeFilter = filterTab === 'all' ? undefined : filterTab;
+  
   const stats = useMemo(async () => {
     const [monthly, yearly, byCategory, upcoming] = await Promise.all([
-      calculateMonthlySpending(subscriptions),
-      calculateYearlySpending(subscriptions),
-      getSpendingByCategory(subscriptions),
-      getUpcomingRenewals(subscriptions, 7)
+      Promise.resolve(calculateMonthlySpending(items, typeFilter)),
+      Promise.resolve(calculateYearlySpending(items, typeFilter)),
+      getSpendingByCategory(items, typeFilter),
+      getUpcomingItems(items, 7, typeFilter)
     ]);
     return { monthly, yearly, byCategory, upcoming };
-  }, [subscriptions]);
+  }, [items, typeFilter]);
 
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
   const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
-  const [upcomingRenewals, setUpcomingRenewals] = useState<SubscriptionWithCategory[]>([]);
+  const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
 
   useEffect(() => {
     stats.then(data => {
       setMonthlySpending(data.monthly);
       setYearlySpending(data.yearly);
       setSpendingByCategory(data.byCategory);
-      setUpcomingRenewals(data.upcoming);
+      setUpcomingItems(data.upcoming);
     });
   }, [stats]);
 
-  const activeCount = subscriptions.filter(s => s.is_active === 1).length;
-  const totalCount = subscriptions.length;
+  // Filter items by type for counts
+  const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
+  const activeCount = filteredItems.filter(s => s.is_active === 1).length;
+  const totalCount = filteredItems.length;
 
   const chartData = spendingByCategory.map(item => ({
     name: item.category.name,
@@ -77,8 +87,44 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
     color: item.category.color
   }));
 
+  // Tab labels
+  const tabs: { id: FilterTab; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'bill', label: 'Bills' },
+    { id: 'subscription', label: 'Subscriptions' },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilterTab(tab.id)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              filterTab === tab.id ? '' : ''
+            }`}
+            style={{
+              backgroundColor: filterTab === tab.id ? 'var(--brand-primary)' : 'var(--bg-hover)',
+              color: filterTab === tab.id ? 'var(--text-inverse)' : 'var(--text-secondary)',
+            }}
+            onMouseEnter={(e) => {
+              if (filterTab !== tab.id) {
+                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (filterTab !== tab.id) {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              }
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
@@ -112,13 +158,15 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active Subscriptions</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {filterTab === 'bill' ? 'Active Bills' : filterTab === 'subscription' ? 'Active Subscriptions' : 'Active Items'}
+              </p>
               <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {activeCount} <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>/ {totalCount}</span>
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
-              <CreditCard className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} />
+              {filterTab === 'bill' ? <Receipt className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} /> : <CreditCard className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} />}
             </div>
           </div>
         </div>
@@ -128,7 +176,7 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
             <div>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Due This Week</p>
               <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                {upcomingRenewals.length}
+                {upcomingItems.length}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-amber-muted)' }}>
@@ -139,25 +187,25 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Renewals */}
+        {/* Upcoming Items */}
         <div className="card">
           <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Upcoming Renewals
+            {filterTab === 'bill' ? 'Upcoming Bills' : filterTab === 'subscription' ? 'Upcoming Renewals' : 'Upcoming Payments'}
           </h3>
           
-          {upcomingRenewals.length === 0 ? (
+          {upcomingItems.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>No renewals in the next 7 days</p>
+              <p style={{ color: 'var(--text-secondary)' }}>No payments due in the next 7 days</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingRenewals.slice(0, 5).map(sub => {
-                const daysUntil = getDaysUntil(sub.next_billing_date);
+              {upcomingItems.slice(0, 5).map(item => {
+                const daysUntil = getDaysUntil(item.next_billing_date);
                 return (
                   <button
-                    key={sub.id}
-                    onClick={() => onEdit(sub)}
+                    key={item.id}
+                    onClick={() => onEdit(item)}
                     className="w-full flex items-center gap-4 p-3 rounded-xl transition-colors group"
                     style={{ backgroundColor: 'transparent' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
@@ -165,14 +213,14 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
                   >
                     <div 
                       className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
-                      style={{ backgroundColor: sub.category?.color || '#6b7280' }}
+                      style={{ backgroundColor: item.category?.color || '#6b7280' }}
                     >
-                      {sub.name.charAt(0).toUpperCase()}
+                      {item.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{sub.name}</p>
+                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {formatCurrency(sub.amount, sub.currency)} · {sub.billing_cycle}
+                        {formatCurrency(item.amount, item.currency)} · {item.billing_cycle}
                       </p>
                     </div>
                     <div className="text-right">
@@ -182,7 +230,7 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDate(sub.next_billing_date)}
+                        {formatDate(item.next_billing_date)}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />

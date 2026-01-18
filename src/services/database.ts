@@ -2,11 +2,12 @@ import Database from '@tauri-apps/plugin-sql';
 import { v4 as uuidv4 } from 'uuid';
 import type { 
   Category, 
-  Subscription, 
+  Item, 
   Payment, 
-  SubscriptionWithCategory,
+  ItemWithCategory,
   SpendingByCategory,
-  BillingCycle 
+  BillingCycle,
+  ItemType
 } from '../types';
 
 let db: Database | null = null;
@@ -20,17 +21,28 @@ export async function getDatabase(): Promise<Database> {
 
 // ============ Categories ============
 
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories(type?: ItemType): Promise<Category[]> {
   const database = await getDatabase();
+  if (type) {
+    return database.select<Category[]>(
+      'SELECT * FROM categories WHERE category_type = $1 ORDER BY name',
+      [type]
+    );
+  }
   return database.select<Category[]>('SELECT * FROM categories ORDER BY name');
 }
 
-export async function createCategory(name: string, color: string, icon?: string): Promise<Category> {
+export async function createCategory(
+  name: string, 
+  color: string, 
+  categoryType: ItemType,
+  icon?: string
+): Promise<Category> {
   const database = await getDatabase();
   const id = `cat-${uuidv4()}`;
   await database.execute(
-    'INSERT INTO categories (id, name, color, icon) VALUES ($1, $2, $3, $4)',
-    [id, name, color, icon || null]
+    'INSERT INTO categories (id, name, color, icon, category_type) VALUES ($1, $2, $3, $4, $5)',
+    [id, name, color, icon || null, categoryType]
   );
   const [category] = await database.select<Category[]>(
     'SELECT * FROM categories WHERE id = $1',
@@ -39,7 +51,12 @@ export async function createCategory(name: string, color: string, icon?: string)
   return category;
 }
 
-export async function updateCategory(id: string, name: string, color: string, icon?: string): Promise<void> {
+export async function updateCategory(
+  id: string, 
+  name: string, 
+  color: string, 
+  icon?: string
+): Promise<void> {
   const database = await getDatabase();
   await database.execute(
     'UPDATE categories SET name = $1, color = $2, icon = $3 WHERE id = $4',
@@ -49,79 +66,91 @@ export async function updateCategory(id: string, name: string, color: string, ic
 
 export async function deleteCategory(id: string): Promise<void> {
   const database = await getDatabase();
-  // Set subscriptions with this category to null
+  // Set items with this category to null
   await database.execute(
-    'UPDATE subscriptions SET category_id = NULL WHERE category_id = $1',
+    'UPDATE items SET category_id = NULL WHERE category_id = $1',
     [id]
   );
   await database.execute('DELETE FROM categories WHERE id = $1', [id]);
 }
 
-// ============ Subscriptions ============
+// ============ Items (Bills & Subscriptions) ============
 
-export async function getSubscriptions(): Promise<SubscriptionWithCategory[]> {
+export async function getItems(type?: ItemType): Promise<ItemWithCategory[]> {
   const database = await getDatabase();
-  const subscriptions = await database.select<Subscription[]>(
-    'SELECT * FROM subscriptions ORDER BY next_billing_date ASC'
-  );
+  let items: Item[];
+  
+  if (type) {
+    items = await database.select<Item[]>(
+      'SELECT * FROM items WHERE item_type = $1 ORDER BY next_billing_date ASC',
+      [type]
+    );
+  } else {
+    items = await database.select<Item[]>(
+      'SELECT * FROM items ORDER BY next_billing_date ASC'
+    );
+  }
+  
   const categories = await getCategories();
   const categoryMap = new Map(categories.map(c => [c.id, c]));
   
-  return subscriptions.map(sub => ({
-    ...sub,
-    category: sub.category_id ? categoryMap.get(sub.category_id) : undefined
+  return items.map(item => ({
+    ...item,
+    category: item.category_id ? categoryMap.get(item.category_id) : undefined
   }));
 }
 
-export async function getActiveSubscriptions(): Promise<SubscriptionWithCategory[]> {
-  const subscriptions = await getSubscriptions();
-  return subscriptions.filter(s => s.is_active === 1);
+export async function getActiveItems(type?: ItemType): Promise<ItemWithCategory[]> {
+  const items = await getItems(type);
+  return items.filter(s => s.is_active === 1);
 }
 
-export async function getSubscriptionById(id: string): Promise<SubscriptionWithCategory | null> {
+export async function getItemById(id: string): Promise<ItemWithCategory | null> {
   const database = await getDatabase();
-  const [subscription] = await database.select<Subscription[]>(
-    'SELECT * FROM subscriptions WHERE id = $1',
+  const [item] = await database.select<Item[]>(
+    'SELECT * FROM items WHERE id = $1',
     [id]
   );
-  if (!subscription) return null;
+  if (!item) return null;
   
-  if (subscription.category_id) {
+  if (item.category_id) {
     const [category] = await database.select<Category[]>(
       'SELECT * FROM categories WHERE id = $1',
-      [subscription.category_id]
+      [item.category_id]
     );
-    return { ...subscription, category };
+    return { ...item, category };
   }
-  return subscription;
+  return item;
 }
 
-export async function createSubscription(data: {
+export async function createItem(data: {
   name: string;
   amount: number;
   currency: string;
   billing_cycle: BillingCycle;
+  item_type: ItemType;
   category_id?: string;
   next_billing_date: string;
   start_date: string;
   notes?: string;
   url?: string;
   reminder_days?: number;
-}): Promise<Subscription> {
+}): Promise<Item> {
   const database = await getDatabase();
-  const id = `sub-${uuidv4()}`;
+  const id = `item-${uuidv4()}`;
   const now = new Date().toISOString();
   
   await database.execute(
-    `INSERT INTO subscriptions 
-     (id, name, amount, currency, billing_cycle, category_id, next_billing_date, start_date, notes, url, reminder_days, created_at, updated_at) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    `INSERT INTO items 
+     (id, name, amount, currency, billing_cycle, item_type, category_id, next_billing_date, start_date, notes, url, reminder_days, created_at, updated_at) 
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
     [
       id,
       data.name,
       data.amount,
       data.currency,
       data.billing_cycle,
+      data.item_type,
       data.category_id || null,
       data.next_billing_date,
       data.start_date,
@@ -133,16 +162,16 @@ export async function createSubscription(data: {
     ]
   );
   
-  const [subscription] = await database.select<Subscription[]>(
-    'SELECT * FROM subscriptions WHERE id = $1',
+  const [item] = await database.select<Item[]>(
+    'SELECT * FROM items WHERE id = $1',
     [id]
   );
-  return subscription;
+  return item;
 }
 
-export async function updateSubscription(
+export async function updateItem(
   id: string,
-  data: Partial<Omit<Subscription, 'id' | 'created_at' | 'updated_at'>>
+  data: Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>>
 ): Promise<void> {
   const database = await getDatabase();
   const updates: string[] = [];
@@ -150,7 +179,7 @@ export async function updateSubscription(
   let paramIndex = 1;
 
   const fields = [
-    'name', 'amount', 'currency', 'billing_cycle', 'category_id',
+    'name', 'amount', 'currency', 'billing_cycle', 'item_type', 'category_id',
     'next_billing_date', 'start_date', 'notes', 'url', 'is_active', 'reminder_days'
   ] as const;
 
@@ -171,44 +200,44 @@ export async function updateSubscription(
   values.push(id);
   
   await database.execute(
-    `UPDATE subscriptions SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+    `UPDATE items SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
     values
   );
 }
 
-export async function deleteSubscription(id: string): Promise<void> {
+export async function deleteItem(id: string): Promise<void> {
   const database = await getDatabase();
-  await database.execute('DELETE FROM subscriptions WHERE id = $1', [id]);
+  await database.execute('DELETE FROM items WHERE id = $1', [id]);
 }
 
-export async function toggleSubscriptionActive(id: string): Promise<void> {
+export async function toggleItemActive(id: string): Promise<void> {
   const database = await getDatabase();
   await database.execute(
-    'UPDATE subscriptions SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = $1 WHERE id = $2',
+    'UPDATE items SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = $1 WHERE id = $2',
     [new Date().toISOString(), id]
   );
 }
 
 // ============ Payments ============
 
-export async function getPayments(subscriptionId?: string): Promise<Payment[]> {
+export async function getPayments(itemId?: string): Promise<Payment[]> {
   const database = await getDatabase();
-  if (subscriptionId) {
+  if (itemId) {
     return database.select<Payment[]>(
-      'SELECT * FROM payments WHERE subscription_id = $1 ORDER BY paid_at DESC',
-      [subscriptionId]
+      'SELECT * FROM payments WHERE item_id = $1 ORDER BY paid_at DESC',
+      [itemId]
     );
   }
   return database.select<Payment[]>('SELECT * FROM payments ORDER BY paid_at DESC');
 }
 
-export async function recordPayment(subscriptionId: string, amount: number, paidAt: string): Promise<Payment> {
+export async function recordPayment(itemId: string, amount: number, paidAt: string): Promise<Payment> {
   const database = await getDatabase();
   const id = `pay-${uuidv4()}`;
   
   await database.execute(
-    'INSERT INTO payments (id, subscription_id, amount, paid_at) VALUES ($1, $2, $3, $4)',
-    [id, subscriptionId, amount, paidAt]
+    'INSERT INTO payments (id, item_id, amount, paid_at) VALUES ($1, $2, $3, $4)',
+    [id, itemId, amount, paidAt]
   );
   
   const [payment] = await database.select<Payment[]>(
@@ -220,57 +249,60 @@ export async function recordPayment(subscriptionId: string, amount: number, paid
 
 // ============ Analytics ============
 
-export function calculateMonthlySpending(subscriptions: SubscriptionWithCategory[]): number {
-  return subscriptions
-    .filter(s => s.is_active === 1)
-    .reduce((total, sub) => {
-      switch (sub.billing_cycle) {
-        case 'weekly': return total + (sub.amount * 52 / 12);
-        case 'monthly': return total + sub.amount;
-        case 'quarterly': return total + (sub.amount / 3);
-        case 'yearly': return total + (sub.amount / 12);
+export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemType): number {
+  return items
+    .filter(s => s.is_active === 1 && (!type || s.item_type === type))
+    .reduce((total, item) => {
+      switch (item.billing_cycle) {
+        case 'weekly': return total + (item.amount * 52 / 12);
+        case 'monthly': return total + item.amount;
+        case 'quarterly': return total + (item.amount / 3);
+        case 'yearly': return total + (item.amount / 12);
         default: return total;
       }
     }, 0);
 }
 
-export function calculateYearlySpending(subscriptions: SubscriptionWithCategory[]): number {
-  return subscriptions
-    .filter(s => s.is_active === 1)
-    .reduce((total, sub) => {
-      switch (sub.billing_cycle) {
-        case 'weekly': return total + (sub.amount * 52);
-        case 'monthly': return total + (sub.amount * 12);
-        case 'quarterly': return total + (sub.amount * 4);
-        case 'yearly': return total + sub.amount;
+export function calculateYearlySpending(items: ItemWithCategory[], type?: ItemType): number {
+  return items
+    .filter(s => s.is_active === 1 && (!type || s.item_type === type))
+    .reduce((total, item) => {
+      switch (item.billing_cycle) {
+        case 'weekly': return total + (item.amount * 52);
+        case 'monthly': return total + (item.amount * 12);
+        case 'quarterly': return total + (item.amount * 4);
+        case 'yearly': return total + item.amount;
         default: return total;
       }
     }, 0);
 }
 
-export async function getSpendingByCategory(subscriptions: SubscriptionWithCategory[]): Promise<SpendingByCategory[]> {
-  const categories = await getCategories();
+export async function getSpendingByCategory(
+  items: ItemWithCategory[], 
+  type?: ItemType
+): Promise<SpendingByCategory[]> {
+  const categories = await getCategories(type);
   const categoryMap = new Map<string, SpendingByCategory>();
   
-  // Initialize with all categories
+  // Initialize with categories of the specified type
   for (const category of categories) {
     categoryMap.set(category.id, { category, total: 0, count: 0 });
   }
   
   // Calculate monthly normalized spending per category
-  for (const sub of subscriptions.filter(s => s.is_active === 1)) {
-    if (!sub.category_id) continue;
+  for (const item of items.filter(s => s.is_active === 1 && (!type || s.item_type === type))) {
+    if (!item.category_id) continue;
     
-    const entry = categoryMap.get(sub.category_id);
+    const entry = categoryMap.get(item.category_id);
     if (!entry) continue;
     
     let monthlyAmount: number;
-    switch (sub.billing_cycle) {
-      case 'weekly': monthlyAmount = sub.amount * 52 / 12; break;
-      case 'monthly': monthlyAmount = sub.amount; break;
-      case 'quarterly': monthlyAmount = sub.amount / 3; break;
-      case 'yearly': monthlyAmount = sub.amount / 12; break;
-      default: monthlyAmount = sub.amount;
+    switch (item.billing_cycle) {
+      case 'weekly': monthlyAmount = item.amount * 52 / 12; break;
+      case 'monthly': monthlyAmount = item.amount; break;
+      case 'quarterly': monthlyAmount = item.amount / 3; break;
+      case 'yearly': monthlyAmount = item.amount / 12; break;
+      default: monthlyAmount = item.amount;
     }
     
     entry.total += monthlyAmount;
@@ -282,23 +314,28 @@ export async function getSpendingByCategory(subscriptions: SubscriptionWithCateg
     .sort((a, b) => b.total - a.total);
 }
 
-export async function getUpcomingRenewals(subscriptions: SubscriptionWithCategory[], days: number = 7): Promise<SubscriptionWithCategory[]> {
+export async function getUpcomingItems(
+  items: ItemWithCategory[], 
+  days: number = 7,
+  type?: ItemType
+): Promise<ItemWithCategory[]> {
   const now = new Date();
   const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   
-  return subscriptions
-    .filter(sub => {
-      if (sub.is_active !== 1) return false;
-      const billingDate = new Date(sub.next_billing_date);
+  return items
+    .filter(item => {
+      if (item.is_active !== 1) return false;
+      if (type && item.item_type !== type) return false;
+      const billingDate = new Date(item.next_billing_date);
       return billingDate >= now && billingDate <= futureDate;
     })
     .sort((a, b) => new Date(a.next_billing_date).getTime() - new Date(b.next_billing_date).getTime());
 }
 
-export function advanceNextBillingDate(subscription: Subscription): string {
-  const currentDate = new Date(subscription.next_billing_date);
+export function advanceNextBillingDate(item: Item): string {
+  const currentDate = new Date(item.next_billing_date);
   
-  switch (subscription.billing_cycle) {
+  switch (item.billing_cycle) {
     case 'weekly':
       currentDate.setDate(currentDate.getDate() + 7);
       break;

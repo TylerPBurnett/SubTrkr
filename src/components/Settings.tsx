@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Plus, Pencil, X, Check } from 'lucide-react';
-import type { Category } from '../types';
+import { useState, useMemo } from 'react';
+import { Plus, Pencil, X, Check, Receipt, CreditCard } from 'lucide-react';
+import type { Category, ItemType } from '../types';
 import { createCategory, updateCategory, deleteCategory } from '../services/database';
 
 interface SettingsProps {
@@ -31,19 +31,25 @@ const colorOptions = [
 
 export default function Settings({ categories, onCategoriesChange }: SettingsProps) {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newCategory, setNewCategory] = useState({ name: '', color: '#3b82f6' });
-  const [showNewForm, setShowNewForm] = useState(false);
+  const [newCategory, setNewCategory] = useState({ name: '', color: '#3b82f6', type: 'subscription' as ItemType });
+  const [showNewForm, setShowNewForm] = useState<ItemType | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreateCategory = async () => {
+  // Split categories by type
+  const subscriptionCategories = useMemo(() => 
+    categories.filter(c => c.category_type === 'subscription'), [categories]);
+  const billCategories = useMemo(() => 
+    categories.filter(c => c.category_type === 'bill'), [categories]);
+
+  const handleCreateCategory = async (type: ItemType) => {
     const trimmedName = newCategory.name.trim();
     if (!trimmedName || isCreating) return;
     
     setIsCreating(true);
     try {
-      await createCategory(trimmedName, newCategory.color);
-      setNewCategory({ name: '', color: '#3b82f6' });
-      setShowNewForm(false);
+      await createCategory(trimmedName, newCategory.color, type);
+      setNewCategory({ name: '', color: '#3b82f6', type: 'subscription' });
+      setShowNewForm(null);
       await onCategoriesChange();
     } catch (error) {
       console.error('Failed to create category:', error);
@@ -68,162 +74,169 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
     onCategoriesChange();
   };
 
-  return (
-    <div className="max-w-2xl space-y-8">
-      {/* Categories */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-6">
+  // Render a category section
+  const renderCategorySection = (type: ItemType, categoryList: Category[], title: string, description: string, icon: React.ReactNode) => (
+    <div className="card">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-hover)' }}>
+            {icon}
+          </div>
           <div>
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Categories
+              {title}
             </h3>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Organize your subscriptions by category
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {description}
             </p>
           </div>
-          <button
-            onClick={() => setShowNewForm(true)}
-            className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
         </div>
+        <button
+          onClick={() => setShowNewForm(type)}
+          className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add
+        </button>
+      </div>
 
-        {/* New Category Form */}
-        {showNewForm && (
-          <div 
-            className="mb-4 p-4 rounded-xl"
-            style={{ backgroundColor: 'var(--bg-hover)' }}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <input
-                type="text"
-                value={newCategory.name}
-                onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newCategory.name.trim()) {
-                    e.preventDefault();
-                    handleCreateCategory();
-                  }
-                }}
-                placeholder="Category name"
-                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
-                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleCreateCategory}
-                disabled={!newCategory.name.trim() || isCreating}
-                className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ 
-                  backgroundColor: 'var(--brand-primary)', 
-                  color: 'var(--text-inverse)' 
-                }}
-              >
-                {isCreating ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Check className="w-5 h-5" />
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  setShowNewForm(false);
-                  setNewCategory({ name: '', color: '#3b82f6' });
-                }}
-                className="btn-secondary p-2 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Color picker */}
-            <div className="flex flex-wrap gap-2">
-              {colorOptions.map(color => (
-                <button
-                  key={color}
-                  onClick={() => setNewCategory(prev => ({ ...prev, color }))}
-                  className={`w-6 h-6 rounded-full transition-transform ${
-                    newCategory.color === color ? 'ring-2 ring-offset-2 scale-110' : ''
-                  }`}
-                  style={{ 
-                    backgroundColor: color,
-                    '--tw-ring-color': 'var(--text-primary)',
-                    '--tw-ring-offset-color': 'var(--bg-hover)'
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Editing Form (shown below grid when editing) */}
-        {editingCategory && (
-          <div 
-            className="mb-4 p-4 rounded-xl"
-            style={{ backgroundColor: 'var(--bg-hover)' }}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-6 h-6 rounded-lg shrink-0"
-                style={{ backgroundColor: editingCategory.color }}
-              />
-              <input
-                type="text"
-                value={editingCategory.name}
-                onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleUpdateCategory();
-                  } else if (e.key === 'Escape') {
-                    setEditingCategory(null);
-                  }
-                }}
-                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
-                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
-                autoFocus
-              />
-              <button
-                onClick={handleUpdateCategory}
-                className="p-2 rounded-lg transition-colors"
-                style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-inverse)' }}
-              >
+      {/* New Category Form */}
+      {showNewForm === type && (
+        <div 
+          className="mb-4 p-4 rounded-xl"
+          style={{ backgroundColor: 'var(--bg-hover)' }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <input
+              type="text"
+              value={newCategory.name}
+              onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newCategory.name.trim()) {
+                  e.preventDefault();
+                  handleCreateCategory(type);
+                }
+              }}
+              placeholder="Category name"
+              className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => handleCreateCategory(type)}
+              disabled={!newCategory.name.trim() || isCreating}
+              className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ 
+                backgroundColor: 'var(--brand-primary)', 
+                color: 'var(--text-inverse)' 
+              }}
+            >
+              {isCreating ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
                 <Check className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setEditingCategory(null)}
-                className="btn-secondary p-2 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Color picker for editing */}
-            <div className="flex flex-wrap gap-2">
-              {colorOptions.map(color => (
-                <button
-                  key={color}
-                  onClick={() => setEditingCategory(prev => prev ? { ...prev, color } : null)}
-                  className={`w-6 h-6 rounded-full transition-transform ${
-                    editingCategory.color === color ? 'ring-2 ring-offset-2 scale-110' : ''
-                  }`}
-                  style={{ 
-                    backgroundColor: color,
-                    '--tw-ring-color': 'var(--text-primary)',
-                    '--tw-ring-offset-color': 'var(--bg-hover)'
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setShowNewForm(null);
+                setNewCategory({ name: '', color: '#3b82f6', type: 'subscription' });
+              }}
+              className="btn-secondary p-2 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        )}
+          
+          {/* Color picker */}
+          <div className="flex flex-wrap gap-2">
+            {colorOptions.map(color => (
+              <button
+                key={color}
+                onClick={() => setNewCategory(prev => ({ ...prev, color }))}
+                className={`w-6 h-6 rounded-full transition-transform ${
+                  newCategory.color === color ? 'ring-2 ring-offset-2 scale-110' : ''
+                }`}
+                style={{ 
+                  backgroundColor: color,
+                  '--tw-ring-color': 'var(--text-primary)',
+                  '--tw-ring-offset-color': 'var(--bg-hover)'
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* Category Chip Grid */}
+      {/* Editing Form */}
+      {editingCategory && editingCategory.category_type === type && (
+        <div 
+          className="mb-4 p-4 rounded-xl"
+          style={{ backgroundColor: 'var(--bg-hover)' }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="w-6 h-6 rounded-lg shrink-0"
+              style={{ backgroundColor: editingCategory.color }}
+            />
+            <input
+              type="text"
+              value={editingCategory.name}
+              onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleUpdateCategory();
+                } else if (e.key === 'Escape') {
+                  setEditingCategory(null);
+                }
+              }}
+              className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
+              autoFocus
+            />
+            <button
+              onClick={handleUpdateCategory}
+              className="p-2 rounded-lg transition-colors"
+              style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-inverse)' }}
+            >
+              <Check className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setEditingCategory(null)}
+              className="btn-secondary p-2 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {/* Color picker for editing */}
+          <div className="flex flex-wrap gap-2">
+            {colorOptions.map(color => (
+              <button
+                key={color}
+                onClick={() => setEditingCategory(prev => prev ? { ...prev, color } : null)}
+                className={`w-6 h-6 rounded-full transition-transform ${
+                  editingCategory.color === color ? 'ring-2 ring-offset-2 scale-110' : ''
+                }`}
+                style={{ 
+                  backgroundColor: color,
+                  '--tw-ring-color': 'var(--text-primary)',
+                  '--tw-ring-offset-color': 'var(--bg-hover)'
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Category Chip Grid */}
+      {categoryList.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No categories yet. Add one above.</p>
+      ) : (
         <div className="flex flex-wrap gap-2">
-          {categories.map(category => (
+          {categoryList.map(category => (
             <div
               key={category.id}
               className="group flex items-center gap-2 px-3 py-1.5 rounded-full transition-all cursor-default"
@@ -240,18 +253,13 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                 e.currentTarget.style.borderColor = 'var(--border-default)';
               }}
             >
-              {/* Small color dot */}
               <div
                 className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: category.color }}
               />
-              
-              {/* Category name */}
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 {category.name}
               </span>
-              
-              {/* Edit button (visible on hover) */}
               <button
                 onClick={() => setEditingCategory(category)}
                 className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
@@ -261,8 +269,6 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
               >
                 <Pencil className="w-3 h-3" />
               </button>
-              
-              {/* Delete button */}
               <button
                 onClick={() => handleDeleteCategory(category.id)}
                 className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
@@ -273,7 +279,29 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
             </div>
           ))}
         </div>
-      </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      {/* Subscription Categories */}
+      {renderCategorySection(
+        'subscription',
+        subscriptionCategories,
+        'Subscription Categories',
+        'Organize your subscriptions',
+        <CreditCard className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+      )}
+
+      {/* Bill Categories */}
+      {renderCategorySection(
+        'bill',
+        billCategories,
+        'Bill Categories',
+        'Organize your bills and utilities',
+        <Receipt className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+      )}
 
       {/* About */}
       <div className="card">

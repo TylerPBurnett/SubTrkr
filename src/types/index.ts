@@ -1,14 +1,16 @@
 export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type ItemType = 'subscription' | 'bill';
 
 export interface Category {
   id: string;
   name: string;
   color: string;
   icon: string | null;
+  category_type: ItemType;
   created_at: string;
 }
 
-export interface Subscription {
+export interface Item {
   id: string;
   name: string;
   amount: number;
@@ -21,20 +23,21 @@ export interface Subscription {
   url: string | null;
   is_active: number; // SQLite uses 0/1 for boolean
   reminder_days: number;
+  item_type: ItemType;
   created_at: string;
   updated_at: string;
 }
 
 export interface Payment {
   id: string;
-  subscription_id: string;
+  item_id: string;
   amount: number;
   paid_at: string;
   created_at: string;
 }
 
 // Extended types for UI
-export interface SubscriptionWithCategory extends Subscription {
+export interface ItemWithCategory extends Item {
   category?: Category;
 }
 
@@ -56,7 +59,7 @@ export interface AppSettings {
 }
 
 // Form types
-export interface SubscriptionFormData {
+export interface ItemFormData {
   name: string;
   amount: string;
   currency: string;
@@ -67,4 +70,5 @@ export interface SubscriptionFormData {
   notes: string;
   url: string;
   reminder_days: number;
+  item_type: ItemType;
 }

@@ -8,16 +8,18 @@ import {
   Pause,
   Play,
   ExternalLink,
-  CreditCard
+  CreditCard,
+  Receipt
 } from 'lucide-react';
-import type { SubscriptionWithCategory, Category, BillingCycle } from '../types';
+import type { ItemWithCategory, Category, BillingCycle, ItemType } from '../types';
 import ConfirmDialog from './ui/ConfirmDialog';
 import EmptyState from './ui/EmptyState';
 
-interface SubscriptionListProps {
-  subscriptions: SubscriptionWithCategory[];
+interface ItemListProps {
+  items: ItemWithCategory[];
   categories: Category[];
-  onEdit: (subscription: SubscriptionWithCategory) => void;
+  itemType?: ItemType; // If provided, filters to this type
+  onEdit: (item: ItemWithCategory) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string) => void;
   onAddNew?: () => void;
@@ -46,37 +48,55 @@ const billingCycleLabels: Record<BillingCycle, string> = {
   yearly: 'Yearly',
 };
 
-export default function SubscriptionList({
-  subscriptions,
+export default function ItemList({
+  items,
   categories,
+  itemType,
   onEdit,
   onDelete,
   onToggleActive,
   onAddNew,
-}: SubscriptionListProps) {
+}: ItemListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showInactive, setShowInactive] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
-  const filteredSubscriptions = useMemo(() => {
-    return subscriptions.filter(sub => {
+  // Get labels based on item type
+  const labels = {
+    singular: itemType === 'bill' ? 'bill' : 'subscription',
+    plural: itemType === 'bill' ? 'bills' : 'subscriptions',
+    icon: itemType === 'bill' ? Receipt : CreditCard,
+  };
+
+  // Filter items by type first, then apply other filters
+  const typeFilteredItems = useMemo(() => {
+    return itemType ? items.filter(item => item.item_type === itemType) : items;
+  }, [items, itemType]);
+
+  // Filter categories by type
+  const filteredCategories = useMemo(() => {
+    return itemType ? categories.filter(cat => cat.category_type === itemType) : categories;
+  }, [categories, itemType]);
+
+  const filteredItems = useMemo(() => {
+    return typeFilteredItems.filter(item => {
       // Search filter
-      if (searchQuery && !sub.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
       // Category filter
-      if (selectedCategory !== 'all' && sub.category_id !== selectedCategory) {
+      if (selectedCategory !== 'all' && item.category_id !== selectedCategory) {
         return false;
       }
       // Active filter
-      if (!showInactive && sub.is_active !== 1) {
+      if (!showInactive && item.is_active !== 1) {
         return false;
       }
       return true;
     });
-  }, [subscriptions, searchQuery, selectedCategory, showInactive]);
+  }, [typeFilteredItems, searchQuery, selectedCategory, showInactive]);
 
   const handleMenuToggle = (id: string) => {
     setOpenMenuId(openMenuId === id ? null : id);
@@ -87,9 +107,9 @@ export default function SubscriptionList({
     setOpenMenuId(null);
   };
 
-  const handleDeleteClick = (sub: SubscriptionWithCategory) => {
+  const handleDeleteClick = (item: ItemWithCategory) => {
     setOpenMenuId(null);
-    setDeleteConfirm({ id: sub.id, name: sub.name });
+    setDeleteConfirm({ id: item.id, name: item.name });
   };
 
   const handleConfirmDelete = () => {
@@ -99,6 +119,8 @@ export default function SubscriptionList({
     }
   };
 
+  const Icon = labels.icon;
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -107,7 +129,7 @@ export default function SubscriptionList({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
-            placeholder="Search subscriptions..."
+            placeholder={`Search ${labels.plural}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input w-full pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0"
@@ -130,7 +152,7 @@ export default function SubscriptionList({
             } as React.CSSProperties}
           >
             <option value="all">All Categories</option>
-            {categories.map(cat => (
+            {filteredCategories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
@@ -148,17 +170,17 @@ export default function SubscriptionList({
         </label>
       </div>
 
-      {/* Subscription List */}
-      {subscriptions.length === 0 ? (
+      {/* Item List */}
+      {typeFilteredItems.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon={CreditCard}
-            title="No subscriptions yet"
-            description="Start tracking your recurring payments by adding your first subscription."
-            action={onAddNew ? { label: 'Add Subscription', onClick: onAddNew } : undefined}
+            icon={Icon}
+            title={`No ${labels.plural} yet`}
+            description={`Start tracking your recurring payments by adding your first ${labels.singular}.`}
+            action={onAddNew ? { label: `Add ${labels.singular.charAt(0).toUpperCase() + labels.singular.slice(1)}`, onClick: onAddNew } : undefined}
           />
         </div>
-      ) : filteredSubscriptions.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={Search}
@@ -168,15 +190,15 @@ export default function SubscriptionList({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredSubscriptions.map(sub => (
+          {filteredItems.map(item => (
             <div
-              key={sub.id}
+              key={item.id}
               className={`card relative group ${
-                sub.is_active !== 1 ? 'opacity-60' : ''
+                item.is_active !== 1 ? 'opacity-60' : ''
               }`}
             >
               {/* Status badge */}
-              {sub.is_active !== 1 && (
+              {item.is_active !== 1 && (
                 <div 
                   className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
                   style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
@@ -189,23 +211,23 @@ export default function SubscriptionList({
               <div className="flex items-start gap-4 mb-4">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0"
-                  style={{ backgroundColor: sub.category?.color || '#6b7280' }}
+                  style={{ backgroundColor: item.category?.color || '#6b7280' }}
                 >
-                  {sub.name.charAt(0).toUpperCase()}
+                  {item.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                    {sub.name}
+                    {item.name}
                   </h3>
                   <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {sub.category?.name || 'Uncategorized'}
+                    {item.category?.name || 'Uncategorized'}
                   </p>
                 </div>
 
                 {/* Menu */}
                 <div className="relative">
                   <button
-                    onClick={() => handleMenuToggle(sub.id)}
+                    onClick={() => handleMenuToggle(item.id)}
                     className="p-2 rounded-lg transition-colors"
                     style={{ color: 'var(--text-muted)' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
@@ -214,7 +236,7 @@ export default function SubscriptionList({
                     <MoreVertical className="w-5 h-5" />
                   </button>
 
-                  {openMenuId === sub.id && (
+                  {openMenuId === item.id && (
                     <>
                       <div 
                         className="fixed inset-0 z-10" 
@@ -224,7 +246,7 @@ export default function SubscriptionList({
                         className="dropdown absolute right-0 top-full mt-1 w-48 rounded-xl py-1 z-20"
                       >
                         <button
-                          onClick={() => handleAction(() => onEdit(sub))}
+                          onClick={() => handleAction(() => onEdit(item))}
                           className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
                           style={{ color: 'var(--text-secondary)' }}
                           onMouseEnter={(e) => {
@@ -240,7 +262,7 @@ export default function SubscriptionList({
                           Edit
                         </button>
                         <button
-                          onClick={() => handleAction(() => onToggleActive(sub.id))}
+                          onClick={() => handleAction(() => onToggleActive(item.id))}
                           className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
                           style={{ color: 'var(--text-secondary)' }}
                           onMouseEnter={(e) => {
@@ -252,7 +274,7 @@ export default function SubscriptionList({
                             e.currentTarget.style.color = 'var(--text-secondary)';
                           }}
                         >
-                          {sub.is_active === 1 ? (
+                          {item.is_active === 1 ? (
                             <>
                               <Pause className="w-4 h-4" />
                               Pause
@@ -264,9 +286,9 @@ export default function SubscriptionList({
                             </>
                           )}
                         </button>
-                        {sub.url && (
+                        {item.url && (
                           <a
-                            href={sub.url}
+                            href={item.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => setOpenMenuId(null)}
@@ -287,7 +309,7 @@ export default function SubscriptionList({
                         )}
                         <hr style={{ borderColor: 'var(--border-default)' }} className="my-1" />
                         <button
-                          onClick={() => handleDeleteClick(sub)}
+                          onClick={() => handleDeleteClick(item)}
                           className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
                           style={{ color: 'var(--accent-red)' }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red-muted)'}
@@ -305,10 +327,10 @@ export default function SubscriptionList({
               {/* Amount */}
               <div className="mb-4">
                 <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {formatCurrency(sub.amount, sub.currency)}
+                  {formatCurrency(item.amount, item.currency)}
                 </p>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {billingCycleLabels[sub.billing_cycle]}
+                  {billingCycleLabels[item.billing_cycle]}
                 </p>
               </div>
 
@@ -321,7 +343,7 @@ export default function SubscriptionList({
                   Next billing
                 </span>
                 <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {formatDate(sub.next_billing_date)}
+                  {formatDate(item.next_billing_date)}
                 </span>
               </div>
             </div>
@@ -332,7 +354,7 @@ export default function SubscriptionList({
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!deleteConfirm}
-        title="Delete Subscription"
+        title={`Delete ${labels.singular.charAt(0).toUpperCase() + labels.singular.slice(1)}`}
         message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
         confirmLabel="Delete"
         cancelLabel="Keep it"
