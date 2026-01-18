@@ -4,6 +4,7 @@ import {
   sendNotification,
 } from '@tauri-apps/plugin-notification';
 import type { ItemWithCategory } from '../types';
+import { getDaysUntil, shouldRemindToday } from '../utils/dates';
 
 export async function checkNotificationPermission(): Promise<boolean> {
   let permissionGranted = await isPermissionGranted();
@@ -20,7 +21,7 @@ export async function sendRenewalReminder(item: ItemWithCategory): Promise<void>
   const hasPermission = await checkNotificationPermission();
   if (!hasPermission) return;
 
-  const daysUntil = getDaysUntilBilling(item.next_billing_date);
+  const daysUntil = getDaysUntil(item.next_billing_date);
   const amount = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: item.currency,
@@ -47,26 +48,13 @@ export async function checkAndNotifyUpcomingRenewals(
   const hasPermission = await checkNotificationPermission();
   if (!hasPermission) return;
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
   for (const item of items) {
     if (item.is_active !== 1) continue;
     if (item.reminder_days === 0) continue;
 
-    const daysUntil = getDaysUntilBilling(item.next_billing_date);
-
     // Send notification if billing is within reminder_days
-    if (daysUntil >= 0 && daysUntil <= item.reminder_days) {
+    if (shouldRemindToday(item.next_billing_date, item.reminder_days)) {
       await sendRenewalReminder(item);
     }
   }
-}
-
-function getDaysUntilBilling(dateStr: string): number {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const billingDate = new Date(dateStr);
-  billingDate.setHours(0, 0, 0, 0);
-  return Math.ceil((billingDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }

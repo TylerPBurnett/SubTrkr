@@ -9,6 +9,14 @@ import type {
   BillingCycle,
   ItemType
 } from '../types';
+import {
+  parseLocalDate,
+  formatISODate,
+  getToday,
+  getDaysUntil,
+  isDueWithinDays,
+  calculateNextBillingDate as calcNextBillingDate,
+} from '../utils/dates';
 
 let db: Database | null = null;
 
@@ -319,36 +327,62 @@ export async function getUpcomingItems(
   days: number = 7,
   type?: ItemType
 ): Promise<ItemWithCategory[]> {
-  const now = new Date();
-  const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-  
   return items
     .filter(item => {
       if (item.is_active !== 1) return false;
       if (type && item.item_type !== type) return false;
-      const billingDate = new Date(item.next_billing_date);
-      return billingDate >= now && billingDate <= futureDate;
+      return isDueWithinDays(item.next_billing_date, days);
     })
-    .sort((a, b) => new Date(a.next_billing_date).getTime() - new Date(b.next_billing_date).getTime());
+    .sort((a, b) => getDaysUntil(a.next_billing_date) - getDaysUntil(b.next_billing_date));
 }
 
 export function advanceNextBillingDate(item: Item): string {
-  const currentDate = new Date(item.next_billing_date);
+  return calculateNextBillingDate(item.next_billing_date, item.billing_cycle);
+}
+
+/**
+ * Calculates the next billing date given a start date and billing cycle.
+ * Re-exports from centralized date utilities.
+ */
+export function calculateNextBillingDate(dateStr: string, billingCycle: BillingCycle): string {
+  return calcNextBillingDate(dateStr, billingCycle);
+}
+
+/**
+ * Advances all past-due items to their next billing date.
+ * Called on app load to "catch up" items whose billing dates have passed.
+ * Returns the number of items that were updated.
+ */
+export async function advancePastDueItems(): Promise<number> {
+  const database = await getDatabase();
+  const today = getToday();
+  const todayStr = formatISODate(today);
   
-  switch (item.billing_cycle) {
-    case 'weekly':
-      currentDate.setDate(currentDate.getDate() + 7);
-      break;
-    case 'monthly':
-      currentDate.setMonth(currentDate.getMonth() + 1);
-      break;
-    case 'quarterly':
-      currentDate.setMonth(currentDate.getMonth() + 3);
-      break;
-    case 'yearly':
-      currentDate.setFullYear(currentDate.getFullYear() + 1);
-      break;
+  // Get all active items with past-due billing dates
+  const pastDueItems = await database.select<Item[]>(
+    'SELECT * FROM items WHERE is_active = 1 AND next_billing_date < $1',
+    [todayStr]
+  );
+  
+  let updatedCount = 0;
+  
+  for (const item of pastDueItems) {
+    // Advance the date until it's in the future
+    let newDate = item.next_billing_date;
+    let tempItem = { ...item, next_billing_date: newDate };
+    
+    while (parseLocalDate(newDate) < today) {
+      newDate = advanceNextBillingDate(tempItem);
+      tempItem.next_billing_date = newDate;
+    }
+    
+    // Update the item in the database
+    await database.execute(
+      'UPDATE items SET next_billing_date = $1, updated_at = $2 WHERE id = $3',
+      [newDate, new Date().toISOString(), item.id]
+    );
+    updatedCount++;
   }
   
-  return currentDate.toISOString().split('T')[0];
+  return updatedCount;
 }

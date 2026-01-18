@@ -16,7 +16,8 @@ import {
   createItem,
   updateItem,
   deleteItem,
-  toggleItemActive
+  toggleItemActive,
+  advancePastDueItems
 } from './services/database';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
@@ -32,13 +33,21 @@ function App() {
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formItemType, setFormItemType] = useState<ItemType>('subscription');
   const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('subtrkr-theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+  });
 
   const loadData = useCallback(async () => {
     try {
+      // Advance any past-due billing dates before loading
+      await advancePastDueItems();
+      
       const [itemsData, cats] = await Promise.all([
         getItems(),
         getCategories()
@@ -56,36 +65,75 @@ function App() {
     loadData();
   }, [loadData]);
 
-  // Theme switching via data-theme attribute
+  // Theme switching via data-theme attribute + localStorage persistence
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('subtrkr-theme', theme);
   }, [theme]);
+
+  // Clear error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
   const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
-    await createItem(data);
-    await loadData();
-    setShowForm(false);
+    setIsSaving(true);
+    setError(null);
+    try {
+      await createItem(data);
+      await loadData();
+      setShowForm(false);
+    } catch (err) {
+      console.error('Failed to create item:', err);
+      setError('Failed to create item. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleUpdateItem = async (id: string, data: Parameters<typeof updateItem>[1]) => {
-    await updateItem(id, data);
-    await loadData();
-    setEditingItem(null);
-    setShowForm(false);
+    setIsSaving(true);
+    setError(null);
+    try {
+      await updateItem(id, data);
+      await loadData();
+      setEditingItem(null);
+      setShowForm(false);
+    } catch (err) {
+      console.error('Failed to update item:', err);
+      setError('Failed to update item. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteItem = async (id: string) => {
-    await deleteItem(id);
-    await loadData();
+    setError(null);
+    try {
+      await deleteItem(id);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to delete item:', err);
+      setError('Failed to delete item. Please try again.');
+    }
   };
 
   const handleToggleActive = async (id: string) => {
-    await toggleItemActive(id);
-    await loadData();
+    setError(null);
+    try {
+      await toggleItemActive(id);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to update item:', err);
+      setError('Failed to update item. Please try again.');
+    }
   };
 
   const handleEdit = (item: ItemWithCategory) => {
@@ -244,12 +292,32 @@ function App() {
         </div>
       </main>
 
+      {/* Error Toast */}
+      {error && (
+        <div 
+          className="fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
+          style={{ 
+            backgroundColor: 'var(--accent-red)',
+            color: 'white'
+          }}
+        >
+          <span>{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="p-1 rounded hover:bg-white/20 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Item Form Modal */}
       {showForm && (
         <ItemForm
           item={editingItem}
           categories={categories}
           itemType={formItemType}
+          isSaving={isSaving}
           onSave={editingItem 
             ? (data) => handleUpdateItem(editingItem.id, data)
             : handleCreateItem

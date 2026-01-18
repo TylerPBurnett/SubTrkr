@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Calendar, 
@@ -15,6 +15,7 @@ import {
   getSpendingByCategory,
   getUpcomingItems 
 } from '../services/database';
+import { formatShortDate, getDaysUntil } from '../utils/dates';
 
 interface DashboardProps {
   items: ItemWithCategory[];
@@ -31,50 +32,32 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
   }).format(amount);
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function getDaysUntil(dateStr: string): number {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr);
-  target.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 export default function Dashboard({ items, onEdit }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
-  
-  // Get the type filter for database queries
-  const typeFilter = filterTab === 'all' ? undefined : filterTab;
-  
-  const stats = useMemo(async () => {
-    const [monthly, yearly, byCategory, upcoming] = await Promise.all([
-      Promise.resolve(calculateMonthlySpending(items, typeFilter)),
-      Promise.resolve(calculateYearlySpending(items, typeFilter)),
-      getSpendingByCategory(items, typeFilter),
-      getUpcomingItems(items, 7, typeFilter)
-    ]);
-    return { monthly, yearly, byCategory, upcoming };
-  }, [items, typeFilter]);
-
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
   const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
   const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
+  
+  // Get the type filter for database queries
+  const typeFilter = filterTab === 'all' ? undefined : filterTab;
 
+  // Load stats when items or filter changes
   useEffect(() => {
-    stats.then(data => {
-      setMonthlySpending(data.monthly);
-      setYearlySpending(data.yearly);
-      setSpendingByCategory(data.byCategory);
-      setUpcomingItems(data.upcoming);
-    });
-  }, [stats]);
+    async function loadStats() {
+      const [monthly, yearly, byCategory, upcoming] = await Promise.all([
+        Promise.resolve(calculateMonthlySpending(items, typeFilter)),
+        Promise.resolve(calculateYearlySpending(items, typeFilter)),
+        getSpendingByCategory(items, typeFilter),
+        getUpcomingItems(items, 7, typeFilter)
+      ]);
+      setMonthlySpending(monthly);
+      setYearlySpending(yearly);
+      setSpendingByCategory(byCategory);
+      setUpcomingItems(upcoming);
+    }
+    loadStats();
+  }, [items, typeFilter]);
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
@@ -102,9 +85,7 @@ export default function Dashboard({ items, onEdit }: DashboardProps) {
           <button
             key={tab.id}
             onClick={() => setFilterTab(tab.id)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              filterTab === tab.id ? '' : ''
-            }`}
+            className="px-4 py-2 rounded-lg font-medium text-sm transition-colors"
             style={{
               backgroundColor: filterTab === tab.id ? 'var(--brand-primary)' : 'var(--bg-hover)',
               color: filterTab === tab.id ? 'var(--text-inverse)' : 'var(--text-secondary)',
@@ -230,7 +211,7 @@ export default function Dashboard({ items, onEdit }: DashboardProps) {
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDate(item.next_billing_date)}
+                        {formatShortDate(item.next_billing_date)}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />

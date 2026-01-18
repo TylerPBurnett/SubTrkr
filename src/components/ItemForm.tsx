@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType } from '../types';
+import { calculateNextBillingDate, formatISODate, getToday } from '../utils/dates';
 
 interface ItemFormProps {
   item?: ItemWithCategory | null;
   categories: Category[];
   itemType: ItemType;
+  isSaving?: boolean;
   onSave: (data: {
     name: string;
     amount: number;
@@ -35,11 +37,12 @@ export default function ItemForm({
   item,
   categories,
   itemType,
+  isSaving = false,
   onSave,
   onClose,
 }: ItemFormProps) {
   const isEditing = !!item;
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatISODate(getToday());
   
   // Get labels based on item type
   const labels = {
@@ -52,18 +55,21 @@ export default function ItemForm({
     return categories.filter(cat => cat.category_type === itemType);
   }, [categories, itemType]);
 
-  const [formData, setFormData] = useState<ItemFormData>({
-    name: '',
-    amount: '',
-    currency: 'USD',
-    billing_cycle: 'monthly',
-    category_id: '',
-    next_billing_date: today,
-    start_date: today,
-    notes: '',
-    url: '',
-    reminder_days: 3,
-    item_type: itemType,
+  const [formData, setFormData] = useState<ItemFormData>(() => {
+    const defaultNextBilling = calculateNextBillingDate(today, 'monthly');
+    return {
+      name: '',
+      amount: '',
+      currency: 'USD',
+      billing_cycle: 'monthly',
+      category_id: '',
+      next_billing_date: defaultNextBilling,
+      start_date: today,
+      notes: '',
+      url: '',
+      reminder_days: 3,
+      item_type: itemType,
+    };
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormData, string>>>({});
@@ -87,6 +93,14 @@ export default function ItemForm({
       });
     }
   }, [item]);
+
+  // Auto-calculate next_billing_date when start_date or billing_cycle changes (only for new items)
+  useEffect(() => {
+    if (!isEditing && formData.start_date) {
+      const nextDate = calculateNextBillingDate(formData.start_date, formData.billing_cycle);
+      setFormData(prev => ({ ...prev, next_billing_date: nextDate }));
+    }
+  }, [formData.start_date, formData.billing_cycle, isEditing]);
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof ItemFormData, string>> = {};
@@ -147,7 +161,7 @@ export default function ItemForm({
       amount: parseFloat(formData.amount),
       currency: formData.currency,
       billing_cycle: formData.billing_cycle,
-      item_type: itemType,
+      item_type: formData.item_type, // Use form data to preserve original type when editing
       category_id: formData.category_id || undefined,
       next_billing_date: formData.next_billing_date,
       start_date: formData.start_date,
@@ -161,7 +175,9 @@ export default function ItemForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Convert reminder_days to number since it's a numeric select
+    const processedValue = name === 'reminder_days' ? Number(value) : value;
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
     if (errors[name as keyof ItemFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
@@ -428,15 +444,17 @@ export default function ItemForm({
             <button
               type="button"
               onClick={onClose}
-              className="btn-secondary flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors"
+              disabled={isSaving}
+              className="btn-secondary flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn-primary flex-1 px-4 py-2.5 rounded-xl font-medium transition-all"
+              disabled={isSaving}
+              className="btn-primary flex-1 px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50"
             >
-              {isEditing ? 'Save Changes' : `Add ${labels.singular}`}
+              {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : `Add ${labels.singular}`}
             </button>
           </div>
         </form>

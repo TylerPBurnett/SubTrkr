@@ -14,6 +14,7 @@ import {
 import type { ItemWithCategory, Category, BillingCycle, ItemType } from '../types';
 import ConfirmDialog from './ui/ConfirmDialog';
 import EmptyState from './ui/EmptyState';
+import { formatDisplayDate } from '../utils/dates';
 
 interface ItemListProps {
   items: ItemWithCategory[];
@@ -31,14 +32,6 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
     currency,
     minimumFractionDigits: 2,
   }).format(amount);
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 const billingCycleLabels: Record<BillingCycle, string> = {
@@ -343,7 +336,7 @@ export default function ItemList({
                   Next billing
                 </span>
                 <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {formatDate(item.next_billing_date)}
+                  {formatDisplayDate(item.next_billing_date)}
                 </span>
               </div>
             </div>
