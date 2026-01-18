@@ -6,7 +6,14 @@
 
 ## Overview
 
-**SubTrkr** is a local-first desktop application for tracking recurring subscriptions. Built with modern web technologies wrapped in a native shell, it prioritizes privacy by storing all data locally.
+**SubTrkr** is a local-first desktop application for tracking recurring **subscriptions** and **bills**. Built with modern web technologies wrapped in a native shell, it prioritizes privacy by storing all data locally.
+
+### Key Concept: Unified Items Model
+As of v1.1, SubTrkr uses a **unified data model** where both subscriptions and bills are stored in a single `items` table with an `item_type` field. This allows:
+- Shared UI components (`ItemList`, `ItemForm`) with type-specific filtering
+- Combined analytics with type filtering (All / Bills / Subscriptions)
+- Categories scoped by type (`category_type` field)
+- Simpler database queries and maintenance
 
 ### Tech Stack
 
@@ -30,8 +37,8 @@
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                 React Frontend                       │   │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌────────┐ │   │
-│  │  │Dashboard│  │SubList  │  │Analytics│  │Settings│ │   │
+│  │  ┌─────────┐  ┌────────┐  ┌─────────┐  ┌────────┐ │   │
+│  │  │Dashboard│  │ItemList│  │Analytics│  │Settings│ │   │
 │  │  └────┬────┘  └────┬────┘  └────┬────┘  └───┬────┘ │   │
 │  │       │            │            │            │       │   │
 │  │       └────────────┴────────────┴────────────┘       │   │
@@ -59,16 +66,17 @@
 SubTrkr/
 ├── src/                          # React frontend
 │   ├── components/               # UI components
-│   │   ├── Dashboard.tsx         # Overview with stats & charts
-│   │   ├── SubscriptionList.tsx  # Filterable subscription grid
-│   │   ├── SubscriptionForm.tsx  # Add/edit modal
-│   │   ├── Analytics.tsx         # Spending trends & insights
-│   │   ├── Settings.tsx          # Category management
+│   │   ├── Dashboard.tsx         # Overview with stats, charts, type tabs
+│   │   ├── ItemList.tsx          # Filterable item grid (bills OR subscriptions)
+│   │   ├── ItemForm.tsx          # Add/edit modal (type-aware)
+│   │   ├── Analytics.tsx         # Spending trends with type filter
+│   │   ├── Settings.tsx          # Split category management by type
 │   │   └── ui/                   # Reusable UI primitives
 │   │       ├── ConfirmDialog.tsx # Confirmation modal
 │   │       └── EmptyState.tsx    # Empty state placeholder
 │   ├── services/
-│   │   └── database.ts           # All database operations
+│   │   ├── database.ts           # All database operations
+│   │   └── notifications.ts      # Renewal reminder notifications
 │   ├── types/
 │   │   └── index.ts              # TypeScript interfaces
 │   ├── App.tsx                   # Main app shell & routing
@@ -91,43 +99,49 @@ SubTrkr/
 
 ### Database Schema
 
-The SQLite database (`subtrkr.db`) contains three tables:
+The SQLite database (`subtrkr.db`) contains three tables. **Migration 2** renamed `subscriptions` → `items` and added type fields.
 
 #### `categories`
-Organizes subscriptions into groups with visual styling.
+Organizes items into groups with visual styling. **Scoped by type** via `category_type`.
 
 ```sql
 CREATE TABLE categories (
-    id TEXT PRIMARY KEY,           -- Format: 'cat-{uuid}' or 'cat-{name}' for defaults
-    name TEXT NOT NULL,            -- Display name
-    color TEXT NOT NULL,           -- Hex color (e.g., '#ef4444')
-    icon TEXT,                     -- Reserved for future icon support
+    id TEXT PRIMARY KEY,              -- Format: 'cat-{uuid}' or 'cat-{name}' for defaults
+    name TEXT NOT NULL,               -- Display name
+    color TEXT NOT NULL,              -- Hex color (e.g., '#ef4444')
+    icon TEXT,                        -- Reserved for future icon support
+    category_type TEXT DEFAULT 'subscription',  -- 'subscription' | 'bill'
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-**Default Categories** (seeded on first run):
+**Default Subscription Categories** (seeded Migration 1):
 - Streaming (#ef4444), Software (#3b82f6), Gaming (#8b5cf6)
 - News (#f59e0b), Fitness (#10b981), Music (#ec4899)
 - Cloud Storage (#06b6d4), Other (#6b7280)
 
-#### `subscriptions`
-Core subscription data with billing information.
+**Default Bill Categories** (seeded Migration 2):
+- Utilities (#f59e0b), Housing (#8b5cf6), Insurance (#3b82f6)
+- Phone & Internet (#06b6d4), Transportation (#10b981)
+
+#### `items` (formerly `subscriptions`)
+Unified table for both subscriptions and bills.
 
 ```sql
-CREATE TABLE subscriptions (
-    id TEXT PRIMARY KEY,           -- Format: 'sub-{uuid}'
-    name TEXT NOT NULL,            -- Service name (e.g., 'Netflix')
-    amount REAL NOT NULL,          -- Cost per billing cycle
-    currency TEXT DEFAULT 'USD',   -- ISO currency code
-    billing_cycle TEXT NOT NULL,   -- 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+CREATE TABLE items (
+    id TEXT PRIMARY KEY,              -- Format: 'item-{uuid}'
+    name TEXT NOT NULL,               -- Service/bill name
+    amount REAL NOT NULL,             -- Cost per billing cycle
+    currency TEXT DEFAULT 'USD',      -- ISO currency code
+    billing_cycle TEXT NOT NULL,      -- 'weekly' | 'monthly' | 'quarterly' | 'yearly'
     category_id TEXT REFERENCES categories(id),
     next_billing_date TEXT NOT NULL,  -- ISO date string
-    start_date TEXT NOT NULL,         -- When subscription began
-    notes TEXT,                    -- User notes
-    url TEXT,                      -- Service website
-    is_active INTEGER DEFAULT 1,   -- 1 = active, 0 = paused
+    start_date TEXT NOT NULL,         -- When tracking began
+    notes TEXT,                       -- User notes
+    url TEXT,                         -- Service website
+    is_active INTEGER DEFAULT 1,      -- 1 = active, 0 = paused
     reminder_days INTEGER DEFAULT 3,  -- Days before billing to remind
+    item_type TEXT DEFAULT 'subscription',  -- 'subscription' | 'bill'
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -138,10 +152,10 @@ Payment history for tracking (not yet fully implemented in UI).
 
 ```sql
 CREATE TABLE payments (
-    id TEXT PRIMARY KEY,           -- Format: 'pay-{uuid}'
-    subscription_id TEXT REFERENCES subscriptions(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,              -- Format: 'pay-{uuid}'
+    item_id TEXT REFERENCES items(id) ON DELETE CASCADE,
     amount REAL NOT NULL,
-    paid_at TEXT NOT NULL,         -- When payment occurred
+    paid_at TEXT NOT NULL,            -- When payment occurred
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -150,16 +164,18 @@ CREATE TABLE payments (
 
 ```typescript
 type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+type ItemType = 'subscription' | 'bill';
 
 interface Category {
   id: string;
   name: string;
   color: string;
   icon: string | null;
+  category_type: ItemType;  // Scopes category to bill or subscription
   created_at: string;
 }
 
-interface Subscription {
+interface Item {
   id: string;
   name: string;
   amount: number;
@@ -170,15 +186,31 @@ interface Subscription {
   start_date: string;
   notes: string | null;
   url: string | null;
-  is_active: number;  // SQLite boolean
+  is_active: number;       // SQLite boolean
   reminder_days: number;
+  item_type: ItemType;     // 'subscription' | 'bill'
   created_at: string;
   updated_at: string;
 }
 
 // Extended for UI with joined category data
-interface SubscriptionWithCategory extends Subscription {
+interface ItemWithCategory extends Item {
   category?: Category;
+}
+
+// Form data (subset for create/update)
+interface ItemFormData {
+  name: string;
+  amount: string;  // String for form input
+  currency: string;
+  billing_cycle: BillingCycle;
+  category_id: string;
+  next_billing_date: string;
+  start_date: string;
+  notes: string;
+  url: string;
+  reminder_days: string;
+  item_type: ItemType;
 }
 ```
 
@@ -208,35 +240,35 @@ export async function getDatabase(): Promise<Database> {
 
 | Function | Purpose |
 |----------|---------|
-| `getCategories()` | Fetch all categories, sorted by name |
-| `createCategory(name, color, icon?)` | Create new category |
+| `getCategories(type?)` | Fetch categories, optionally filtered by type |
+| `createCategory(name, color, type, icon?)` | Create new category with type |
 | `updateCategory(id, name, color, icon?)` | Update existing category |
-| `deleteCategory(id)` | Delete category (sets subscriptions to null) |
-| `getSubscriptions()` | Fetch all subscriptions with joined categories |
-| `getActiveSubscriptions()` | Filter to only active subscriptions |
-| `getSubscriptionById(id)` | Fetch single subscription with category |
-| `createSubscription(data)` | Create new subscription |
-| `updateSubscription(id, data)` | Partial update of subscription |
-| `deleteSubscription(id)` | Delete subscription (cascades to payments) |
-| `toggleSubscriptionActive(id)` | Toggle is_active between 0/1 |
+| `deleteCategory(id)` | Delete category (sets items to null) |
+| `getItems(type?)` | Fetch all items, optionally filtered by type |
+| `getActiveItems(type?)` | Filter to only active items |
+| `getItemById(id)` | Fetch single item with category |
+| `createItem(data)` | Create new item (bill or subscription) |
+| `updateItem(id, data)` | Partial update of item |
+| `deleteItem(id)` | Delete item (cascades to payments) |
+| `toggleItemActive(id)` | Toggle is_active between 0/1 |
 
 ### Analytics Functions
 
 ```typescript
 // Calculate total monthly cost (normalizes all billing cycles)
-calculateMonthlySpending(subscriptions): number
+calculateMonthlySpending(items: ItemWithCategory[]): number
 
 // Calculate total yearly cost
-calculateYearlySpending(subscriptions): number
+calculateYearlySpending(items: ItemWithCategory[]): number
 
 // Group spending by category for charts
-getSpendingByCategory(subscriptions): SpendingByCategory[]
+getSpendingByCategory(items: ItemWithCategory[]): SpendingByCategory[]
 
-// Get subscriptions due within N days
-getUpcomingRenewals(subscriptions, days = 7): SubscriptionWithCategory[]
+// Get items due within N days
+getUpcomingRenewals(items: ItemWithCategory[], days = 7): ItemWithCategory[]
 
 // Calculate next billing date based on cycle
-advanceNextBillingDate(subscription): string
+advanceNextBillingDate(item: Item): string
 ```
 
 **Billing Cycle Normalization**:
@@ -257,73 +289,121 @@ switch (billing_cycle) {
 ### App Shell (`App.tsx`)
 
 The main app component manages:
-- **View state**: Current active view (dashboard, subscriptions, analytics, settings)
-- **Data state**: Subscriptions and categories arrays
-- **UI state**: Form visibility, editing state, dark mode
+- **View state**: Current active view (dashboard, bills, subscriptions, analytics, settings)
+- **Data state**: Items and categories arrays
+- **UI state**: Form visibility, editing state, form item type
+- **Theme state**: Light/dark mode toggle
 - **Data loading**: Centralized `loadData()` function refreshes all data
 
 ```typescript
+type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
+
 function App() {
   const [view, setView] = useState<View>('dashboard');
-  const [subscriptions, setSubscriptions] = useState<SubscriptionWithCategory[]>([]);
+  const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [editingSubscription, setEditingSubscription] = useState<SubscriptionWithCategory | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
+  const [formItemType, setFormItemType] = useState<ItemType>('subscription');
   
   const loadData = useCallback(async () => {
-    const [subs, cats] = await Promise.all([
-      getSubscriptions(),
+    const [loadedItems, cats] = await Promise.all([
+      getItems(),
       getCategories()
     ]);
-    setSubscriptions(subs);
+    setItems(loadedItems);
     setCategories(cats);
   }, []);
 }
 ```
 
+**Navigation Structure**:
+- Dashboard (tabs: All / Bills / Subscriptions)
+- Bills → `ItemList` with `itemType="bill"`
+- Subscriptions → `ItemList` with `itemType="subscription"`
+- Analytics (tabs: All / Bills / Subscriptions)
+- Settings (split category sections)
+
 ### Dashboard (`Dashboard.tsx`)
 
-Shows at-a-glance metrics:
-- Monthly/yearly spending totals
-- Active subscription count
-- Upcoming renewals (7 days)
-- Spending by category pie chart
+Shows at-a-glance metrics with **type filter tabs** (All / Bills / Subscriptions):
+- Monthly/yearly spending totals (filtered by type)
+- Active item count (filtered by type)
+- Upcoming renewals (7 days, filtered by type)
+- Spending by category pie chart (filtered by type)
 
-Uses `useMemo` for expensive calculations and `useEffect` for async data loading.
+The `FilterTab` type controls which items appear in all widgets.
 
-### SubscriptionList (`SubscriptionList.tsx`)
+### ItemList (`ItemList.tsx`)
+
+Generic list component that displays either bills or subscriptions based on `itemType` prop.
+
+```typescript
+interface ItemListProps {
+  items: ItemWithCategory[];
+  categories: Category[];
+  itemType: ItemType;  // 'bill' | 'subscription'
+  onEdit: (item: ItemWithCategory) => void;
+  onDelete: (id: string) => Promise<void>;
+  onToggleActive: (id: string) => Promise<void>;
+  onAddNew: () => void;
+}
+```
 
 Features:
+- Auto-filters items by `item_type`
+- Dynamic labels ("Add Bill" vs "Add Subscription")
 - Search filtering by name
-- Category dropdown filter
+- Category dropdown filter (shows only matching type categories)
 - Show/hide inactive toggle
 - Card-based grid layout
 - Context menu (edit, pause/resume, delete)
 - Delete confirmation dialog
 
-### SubscriptionForm (`SubscriptionForm.tsx`)
+### ItemForm (`ItemForm.tsx`)
 
-Modal form for creating/editing subscriptions:
+Modal form for creating/editing items with type-aware behavior.
+
+```typescript
+interface ItemFormProps {
+  item: ItemWithCategory | null;  // null = create mode
+  categories: Category[];
+  itemType: ItemType;
+  onSave: (data: ItemFormData) => Promise<void>;
+  onClose: () => void;
+}
+```
+
+Features:
+- Filters category dropdown by `itemType`
+- Dynamic labels ("Bill" vs "Subscription" in title)
 - Validation with error messages
 - Shake animation on validation failure
-- Supports all subscription fields
-- Pre-fills data when editing
+- Pre-fills data when editing (preserves original item_type)
 
 ### Analytics (`Analytics.tsx`)
 
-Displays:
+Displays spending insights with **type filter tabs** (All / Bills / Subscriptions):
 - Monthly spending trend (line chart)
 - Category breakdown (horizontal bar chart)
-- Top 5 most expensive subscriptions
+- Top 5 most expensive items (label adapts to filter)
 
 ### Settings (`Settings.tsx`)
 
-Category management:
-- Create new categories with color picker
-- Edit existing category names/colors
-- Delete custom categories (defaults protected)
-- Inline editing UX
+**Split category management** by type:
+
+1. **Subscription Categories** section
+   - Shows only categories where `category_type = 'subscription'`
+   - Add creates category with `category_type = 'subscription'`
+
+2. **Bill Categories** section
+   - Shows only categories where `category_type = 'bill'`
+   - Add creates category with `category_type = 'bill'`
+
+Both sections have:
+- Color picker with 18 color options
+- Inline edit mode
+- Delete functionality
 
 ---
 
@@ -385,7 +465,13 @@ pub fn run() {
         Migration {
             version: 1,
             description: "create_initial_tables",
-            sql: "...",  // Creates tables + seeds default categories
+            sql: "...",  // Creates tables + seeds default subscription categories
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "add_bills_support",
+            sql: "...",  // Renames subscriptions→items, adds item_type/category_type, seeds bill categories
             kind: MigrationKind::Up,
         },
     ];
@@ -402,6 +488,13 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 ```
+
+**Migration 2 Details** (adds bills support):
+1. Renames `subscriptions` table to `items`
+2. Adds `item_type TEXT DEFAULT 'subscription'` to items
+3. Adds `category_type TEXT DEFAULT 'subscription'` to categories
+4. Recreates `payments` table with `item_id` foreign key
+5. Inserts default bill categories (Utilities, Housing, Insurance, Phone & Internet, Transportation)
 
 ### Permissions (`capabilities/default.json`)
 
@@ -433,21 +526,26 @@ Required permissions for the app to function:
 Data is reloaded after every mutation to ensure UI consistency:
 
 ```typescript
-const handleCreateSubscription = async (data) => {
-  await createSubscription(data);
+const handleCreateItem = async (data: ItemFormData) => {
+  await createItem(data);
   await loadData();  // Refresh everything
   setShowForm(false);
 };
 ```
 
-### 2. Dark Mode
+### 2. Theme Management
 
-Toggle via state, applied to `document.documentElement`:
+Theme stored in state and localStorage, applied to `document.documentElement`:
 
 ```typescript
+const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+  return localStorage.getItem('theme') as 'light' | 'dark' || 'light';
+});
+
 useEffect(() => {
-  document.documentElement.classList.toggle('dark', darkMode);
-}, [darkMode]);
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  localStorage.setItem('theme', theme);
+}, [theme]);
 ```
 
 ### 3. Form State Management
@@ -455,11 +553,28 @@ useEffect(() => {
 Forms use controlled components with a single `formData` object:
 
 ```typescript
-const [formData, setFormData] = useState<SubscriptionFormData>({...});
+const [formData, setFormData] = useState<ItemFormData>({...});
 
 const handleChange = (e) => {
   setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 };
+```
+
+### 4. Type-Aware Component Pattern
+
+Components accept `itemType` prop and filter data accordingly:
+
+```typescript
+// In ItemList
+const filteredItems = useMemo(() => 
+  items.filter(item => item.item_type === itemType),
+  [items, itemType]
+);
+
+const relevantCategories = useMemo(() =>
+  categories.filter(c => c.category_type === itemType),
+  [categories, itemType]
+);
 ```
 
 ### 4. Currency Formatting
@@ -513,18 +628,29 @@ bunx tsc --noEmit
 ## Future Roadmap
 
 ### Planned Features
-- [ ] **Notifications**: Renewal reminders (tauri-plugin-notification is configured)
+- [ ] **Notifications**: Renewal reminders (tauri-plugin-notification is configured, service exists)
 - [ ] **Payment History**: UI for viewing/recording payments
 - [ ] **Data Export**: Export to CSV/JSON
 - [ ] **Cloud Sync**: Optional E2EE sync (requires auth system)
 - [ ] **Recurring Payment Auto-Advance**: Auto-update next_billing_date after it passes
+- [ ] **Bill-specific fields**: Account numbers, payment methods, auto-pay status
 
 ### Technical Debt
 - [ ] Add proper error boundaries
 - [ ] Implement loading skeletons for all async states
 - [ ] Add unit tests for database service
-- [ ] Persist dark mode preference to localStorage
+- [x] ~~Persist dark mode preference to localStorage~~ (implemented)
 - [ ] Add keyboard navigation support
+
+### Recent Changes (v1.1 - Bills Support)
+- Renamed `subscriptions` table to `items` with `item_type` field
+- Added `category_type` to categories for type-scoped categorization
+- Created unified `ItemList` and `ItemForm` components
+- Added Bills navigation item in sidebar
+- Dashboard now has All/Bills/Subscriptions filter tabs
+- Analytics now has All/Bills/Subscriptions filter tabs
+- Settings split into Subscription Categories and Bill Categories sections
+- Updated notifications service to use `ItemWithCategory`
 
 ---
 
