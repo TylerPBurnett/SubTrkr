@@ -78,16 +78,16 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
       <div className="card">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
               Categories
             </h3>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
               Organize your subscriptions by category
             </p>
           </div>
           <button
             onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium transition-colors"
+            className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -96,7 +96,10 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
 
         {/* New Category Form */}
         {showNewForm && (
-          <div className="mb-4 p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-xl">
+          <div 
+            className="mb-4 p-4 rounded-xl"
+            style={{ backgroundColor: 'var(--bg-hover)' }}
+          >
             <div className="flex items-center gap-3 mb-3">
               <input
                 type="text"
@@ -109,14 +112,19 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                   }
                 }}
                 placeholder="Category name"
-                className="flex-1 px-3 py-2 bg-white dark:bg-surface-800 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                 autoFocus
               />
               <button
                 type="button"
                 onClick={handleCreateCategory}
                 disabled={!newCategory.name.trim() || isCreating}
-                className="p-2 bg-brand-500 hover:bg-brand-600 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ 
+                  backgroundColor: 'var(--brand-primary)', 
+                  color: 'var(--text-inverse)' 
+                }}
               >
                 {isCreating ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -129,9 +137,9 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                   setShowNewForm(false);
                   setNewCategory({ name: '', color: '#3b82f6' });
                 }}
-                className="p-2 bg-neutral-200 dark:bg-neutral-600 hover:bg-neutral-300 dark:hover:bg-neutral-500 rounded-lg transition-colors"
+                className="btn-secondary p-2 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             
@@ -142,9 +150,13 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                   key={color}
                   onClick={() => setNewCategory(prev => ({ ...prev, color }))}
                   className={`w-6 h-6 rounded-full transition-transform ${
-                    newCategory.color === color ? 'ring-2 ring-offset-2 ring-neutral-900 dark:ring-white scale-110' : ''
+                    newCategory.color === color ? 'ring-2 ring-offset-2 scale-110' : ''
                   }`}
-                  style={{ backgroundColor: color }}
+                  style={{ 
+                    backgroundColor: color,
+                    '--tw-ring-color': 'var(--text-primary)',
+                    '--tw-ring-offset-color': 'var(--bg-hover)'
+                  } as React.CSSProperties}
                 />
               ))}
             </div>
@@ -156,7 +168,10 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
           {categories.map(category => (
             <div
               key={category.id}
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-xl transition-colors group"
+              style={{ backgroundColor: 'transparent' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               {editingCategory?.id === category.id ? (
                 <>
@@ -168,21 +183,23 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                     type="text"
                     value={editingCategory.name}
                     onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-                    className="flex-1 px-3 py-1.5 bg-white dark:bg-surface-800 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="input flex-1 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2"
+                    style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                     autoFocus
                   />
                   <div className="flex gap-1">
                     <button
                       onClick={handleUpdateCategory}
-                      className="p-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors"
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-inverse)' }}
                     >
                       <Check className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setEditingCategory(null)}
-                      className="p-1.5 bg-neutral-200 dark:bg-neutral-600 hover:bg-neutral-300 dark:hover:bg-neutral-500 rounded-lg transition-colors"
+                      className="btn-secondary p-1.5 rounded-lg transition-colors"
                     >
-                      <X className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 </>
@@ -192,22 +209,28 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
                     className="w-8 h-8 rounded-lg shrink-0"
                     style={{ backgroundColor: category.color }}
                   />
-                  <span className="flex-1 font-medium text-neutral-900 dark:text-white">
+                  <span className="flex-1 font-medium" style={{ color: 'var(--text-primary)' }}>
                     {category.name}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => setEditingCategory(category)}
-                      className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-lg transition-colors"
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-active)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      <Pencil className="w-4 h-4 text-neutral-500" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     {!category.id.match(/^cat-[a-z]+$/) && (
                       <button
                         onClick={() => handleDeleteCategory(category.id)}
-                        className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: 'var(--accent-red)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red-muted)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -220,13 +243,13 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
 
       {/* About */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           About SubTrkr
         </h3>
-        <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+        <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
           A simple, local-first subscription tracker built with Tauri, React, and SQLite.
         </p>
-        <div className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400">
+        <div className="space-y-2 text-sm" style={{ color: 'var(--text-muted)' }}>
           <p>Version 1.0.0</p>
           <p>Your data is stored locally on your device.</p>
         </div>

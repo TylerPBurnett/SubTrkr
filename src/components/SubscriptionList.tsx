@@ -104,22 +104,30 @@ export default function SubscriptionList({
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
             placeholder="Search subscriptions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-surface-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="input w-full pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0"
+            style={{ 
+              '--tw-ring-color': 'var(--brand-primary)',
+              borderColor: 'var(--border-default)'
+            } as React.CSSProperties}
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-neutral-400" />
+          <Filter className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2.5 bg-white dark:bg-surface-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="input px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+            style={{ 
+              '--tw-ring-color': 'var(--brand-primary)',
+              borderColor: 'var(--border-default)'
+            } as React.CSSProperties}
           >
             <option value="all">All Categories</option>
             {categories.map(cat => (
@@ -133,9 +141,10 @@ export default function SubscriptionList({
             type="checkbox"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
-            className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-600 text-brand-500 focus:ring-brand-500"
+            className="w-4 h-4 rounded accent-[var(--brand-primary)]"
+            style={{ borderColor: 'var(--border-default)' }}
           />
-          <span className="text-sm text-neutral-600 dark:text-neutral-400">Show inactive</span>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Show inactive</span>
         </label>
       </div>
 
@@ -168,7 +177,10 @@ export default function SubscriptionList({
             >
               {/* Status badge */}
               {sub.is_active !== 1 && (
-                <div className="absolute top-4 right-4 px-2 py-1 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <div 
+                  className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
+                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
+                >
                   Paused
                 </div>
               )}
@@ -182,10 +194,10 @@ export default function SubscriptionList({
                   {sub.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-neutral-900 dark:text-white truncate">
+                  <h3 className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                     {sub.name}
                   </h3>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {sub.category?.name || 'Uncategorized'}
                   </p>
                 </div>
@@ -194,9 +206,12 @@ export default function SubscriptionList({
                 <div className="relative">
                   <button
                     onClick={() => handleMenuToggle(sub.id)}
-                    className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <MoreVertical className="w-5 h-5 text-neutral-400" />
+                    <MoreVertical className="w-5 h-5" />
                   </button>
 
                   {openMenuId === sub.id && (
@@ -205,17 +220,37 @@ export default function SubscriptionList({
                         className="fixed inset-0 z-10" 
                         onClick={() => setOpenMenuId(null)}
                       />
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700 py-1 z-20">
+                      <div 
+                        className="dropdown absolute right-0 top-full mt-1 w-48 rounded-xl py-1 z-20"
+                      >
                         <button
                           onClick={() => handleAction(() => onEdit(sub))}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
                         >
                           <Pencil className="w-4 h-4" />
                           Edit
                         </button>
                         <button
                           onClick={() => handleAction(() => onToggleActive(sub.id))}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
                         >
                           {sub.is_active === 1 ? (
                             <>
@@ -235,16 +270,28 @@ export default function SubscriptionList({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => setOpenMenuId(null)}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                            className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                              e.currentTarget.style.color = 'var(--text-primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
                           >
                             <ExternalLink className="w-4 h-4" />
                             Visit Website
                           </a>
                         )}
-                        <hr className="my-1 border-neutral-200 dark:border-neutral-700" />
+                        <hr style={{ borderColor: 'var(--border-default)' }} className="my-1" />
                         <button
                           onClick={() => handleDeleteClick(sub)}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                          style={{ color: 'var(--accent-red)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-red-muted)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                           <Trash2 className="w-4 h-4" />
                           Delete
@@ -257,20 +304,23 @@ export default function SubscriptionList({
 
               {/* Amount */}
               <div className="mb-4">
-                <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                   {formatCurrency(sub.amount, sub.currency)}
                 </p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {billingCycleLabels[sub.billing_cycle]}
                 </p>
               </div>
 
               {/* Footer */}
-              <div className="pt-4 border-t border-neutral-100 dark:border-neutral-700 flex items-center justify-between text-sm">
-                <span className="text-neutral-500 dark:text-neutral-400">
+              <div 
+                className="pt-4 flex items-center justify-between text-sm"
+                style={{ borderTop: '1px solid var(--border-muted)' }}
+              >
+                <span style={{ color: 'var(--text-secondary)' }}>
                   Next billing
                 </span>
-                <span className="font-medium text-neutral-900 dark:text-white">
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                   {formatDate(sub.next_billing_date)}
                 </span>
               </div>

@@ -24,6 +24,7 @@ import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 
 type View = 'dashboard' | 'subscriptions' | 'analytics' | 'settings';
+type Theme = 'light' | 'dark';
 
 function App() {
   const [view, setView] = useState<View>('dashboard');
@@ -32,7 +33,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<SubscriptionWithCategory | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [theme, setTheme] = useState<Theme>('dark');
 
   const loadData = useCallback(async () => {
     try {
@@ -53,9 +54,14 @@ function App() {
     loadData();
   }, [loadData]);
 
+  // Theme switching via data-theme attribute
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [darkMode]);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   const handleCreateSubscription = async (data: Parameters<typeof createSubscription>[0]) => {
     await createSubscription(data);
@@ -99,21 +105,21 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-900">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-base)' }}>
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-brand-500/20" />
-          <p className="text-neutral-500 dark:text-neutral-400">Loading...</p>
+          <div className="w-12 h-12 rounded-full" style={{ backgroundColor: 'var(--brand-muted)' }} />
+          <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex">
+    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-surface-800 border-r border-neutral-200 dark:border-neutral-700 flex flex-col">
+      <aside className="sidebar w-64 flex flex-col">
         <div className="p-6">
-          <h1 className="text-xl font-bold text-brand-600 dark:text-brand-400 flex items-center gap-2">
+          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--brand-text)' }}>
             <CreditCard className="w-6 h-6" />
             SubTrkr
           </h1>
@@ -125,9 +131,7 @@ function App() {
               key={item.id}
               onClick={() => setView(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
-                view === item.id
-                  ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 font-medium'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50'
+                view === item.id ? 'nav-item-active font-medium' : 'nav-item'
               }`}
             >
               <item.icon className="w-5 h-5" />
@@ -136,30 +140,30 @@ function App() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-neutral-200 dark:border-neutral-700">
+        <div className="p-4" style={{ borderTop: '1px solid var(--border-default)' }}>
           <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl btn-secondary"
           >
-            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
+            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="main-content flex-1 overflow-auto">
         <div className="p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {view === 'dashboard' && 'Dashboard'}
                 {view === 'subscriptions' && 'Subscriptions'}
                 {view === 'analytics' && 'Analytics'}
                 {view === 'settings' && 'Settings'}
               </h2>
-              <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+              <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
                 {view === 'dashboard' && 'Your subscription overview at a glance'}
                 {view === 'subscriptions' && 'Manage all your recurring subscriptions'}
                 {view === 'analytics' && 'Spending insights and trends'}
@@ -170,7 +174,7 @@ function App() {
             {(view === 'dashboard' || view === 'subscriptions') && (
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40 transition-all duration-200"
+                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
                 Add Subscription

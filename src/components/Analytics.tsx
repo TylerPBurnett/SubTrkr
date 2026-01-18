@@ -115,18 +115,18 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
             Monthly Average
           </p>
           <div className="flex items-end gap-2">
-            <p className="text-3xl font-bold text-neutral-900 dark:text-white">
+            <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
               {formatCurrency(monthlySpending)}
             </p>
-            <div className={`flex items-center gap-1 text-sm mb-1 ${
-              trend.direction === 'up' ? 'text-red-500' :
-              trend.direction === 'down' ? 'text-green-500' :
-              'text-neutral-400'
-            }`}>
+            <div className="flex items-center gap-1 text-sm mb-1" style={{
+              color: trend.direction === 'up' ? 'var(--accent-red)' :
+                     trend.direction === 'down' ? 'var(--accent-emerald)' :
+                     'var(--text-muted)'
+            }}>
               {trend.direction === 'up' && <TrendingUp className="w-4 h-4" />}
               {trend.direction === 'down' && <TrendingDown className="w-4 h-4" />}
               {trend.direction === 'flat' && <Minus className="w-4 h-4" />}
@@ -136,19 +136,19 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
         </div>
 
         <div className="card">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
             Yearly Total
           </p>
-          <p className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {formatCurrency(yearlySpending)}
           </p>
         </div>
 
         <div className="card">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
             Active Subscriptions
           </p>
-          <p className="text-3xl font-bold text-neutral-900 dark:text-white">
+          <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {subscriptions.filter(s => s.is_active === 1).length}
           </p>
         </div>
@@ -158,44 +158,46 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trend */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
+          <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
             Monthly Spending Trend
           </h3>
           
           {monthlySpending === 0 ? (
-            <div className="h-64 flex items-center justify-center text-neutral-400">
+            <div className="h-64 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
               No spending data to display
             </div>
           ) : (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                   <XAxis 
                     dataKey="month" 
-                    stroke="#a3a3a3"
+                    stroke="var(--text-muted)"
                     fontSize={12}
                   />
                   <YAxis 
-                    stroke="#a3a3a3"
+                    stroke="var(--text-muted)"
                     fontSize={12}
                     tickFormatter={(value) => `$${value}`}
                   />
                   <Tooltip 
                     formatter={(value) => [`$${value}`, 'Spending']}
                     contentStyle={{
-                      backgroundColor: 'white',
-                      border: 'none',
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-default)',
                       borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      boxShadow: 'var(--shadow-elevated)'
                     }}
+                    labelStyle={{ color: 'var(--text-primary)' }}
+                    itemStyle={{ color: 'var(--text-primary)' }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="amount" 
-                    stroke="#22c55e" 
+                    stroke="var(--brand-primary)" 
                     strokeWidth={3}
-                    dot={{ fill: '#22c55e', strokeWidth: 2 }}
+                    dot={{ fill: 'var(--brand-primary)', strokeWidth: 2 }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>
@@ -206,40 +208,42 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
 
         {/* Category Breakdown */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-6">
+          <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
             Spending by Category
           </h3>
           
           {categoryChartData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-neutral-400">
+            <div className="h-64 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
               No category data to display
             </div>
           ) : (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" horizontal={false} />
                   <XAxis 
                     type="number"
-                    stroke="#a3a3a3"
+                    stroke="var(--text-muted)"
                     fontSize={12}
                     tickFormatter={(value) => `$${value}`}
                   />
                   <YAxis 
                     type="category"
                     dataKey="name"
-                    stroke="#a3a3a3"
+                    stroke="var(--text-muted)"
                     fontSize={12}
                     width={100}
                   />
                   <Tooltip 
                     formatter={(value) => [`$${value}/mo`, 'Spending']}
                     contentStyle={{
-                      backgroundColor: 'white',
-                      border: 'none',
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-default)',
                       borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      boxShadow: 'var(--shadow-elevated)'
                     }}
+                    labelStyle={{ color: 'var(--text-primary)' }}
+                    itemStyle={{ color: 'var(--text-primary)' }}
                   />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                     {categoryChartData.map((entry, index) => (
@@ -255,12 +259,12 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
 
       {/* Top Subscriptions */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           Most Expensive Subscriptions
         </h3>
         
         {topSubscriptions.length === 0 ? (
-          <div className="text-center py-8 text-neutral-400">
+          <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
             No active subscriptions
           </div>
         ) : (
@@ -268,9 +272,15 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
             {topSubscriptions.map((sub, index) => (
               <div 
                 key={sub.id}
-                className="flex items-center gap-4 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors"
+                className="flex items-center gap-4 p-3 rounded-xl transition-colors"
+                style={{ backgroundColor: 'transparent' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center text-sm font-bold text-neutral-500">
+                <div 
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                >
                   {index + 1}
                 </div>
                 <div
@@ -280,16 +290,16 @@ export default function Analytics({ subscriptions }: AnalyticsProps) {
                   {sub.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-neutral-900 dark:text-white">{sub.name}</p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{sub.name}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {sub.category?.name || 'Uncategorized'}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-neutral-900 dark:text-white">
+                  <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {formatCurrency(sub.monthlyAmount)}/mo
                   </p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {formatCurrency(sub.amount, sub.currency)} {sub.billing_cycle}
                   </p>
                 </div>

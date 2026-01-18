@@ -159,17 +159,26 @@ export default function SubscriptionForm({
       />
 
       {/* Modal */}
-      <div className={`relative w-full max-w-lg bg-white dark:bg-surface-800 rounded-2xl shadow-xl max-h-[90vh] overflow-hidden ${shake ? 'animate-shake' : ''}`}>
+      <div 
+        className={`relative w-full max-w-lg rounded-2xl shadow-xl max-h-[90vh] overflow-hidden ${shake ? 'animate-shake' : ''}`}
+        style={{ backgroundColor: 'var(--bg-surface)' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
+        <div 
+          className="flex items-center justify-between p-6"
+          style={{ borderBottom: '1px solid var(--border-default)' }}
+        >
+          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEditing ? 'Edit Subscription' : 'Add Subscription'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <X className="w-5 h-5 text-neutral-500" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -177,11 +186,17 @@ export default function SubscriptionForm({
         <form ref={formRef} onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           {/* Error summary */}
           {Object.keys(errors).length > 0 && (
-            <div className="mb-5 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div 
+              className="mb-5 p-4 rounded-xl flex items-start gap-3"
+              style={{ 
+                backgroundColor: 'var(--accent-red-muted)', 
+                border: '1px solid var(--accent-red)' 
+              }}
+            >
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--accent-red)' }} />
               <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-300">Please fix the following errors:</p>
-                <ul className="mt-1 text-sm text-red-600 dark:text-red-400 list-disc list-inside">
+                <p className="text-sm font-medium" style={{ color: 'var(--accent-red)' }}>Please fix the following errors:</p>
+                <ul className="mt-1 text-sm list-disc list-inside" style={{ color: 'var(--accent-red)' }}>
                   {Object.values(errors).filter(Boolean).map((error, i) => (
                     <li key={i}>{error}</li>
                   ))}
@@ -192,7 +207,7 @@ export default function SubscriptionForm({
           <div className="space-y-5">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Subscription Name *
               </label>
               <input
@@ -201,19 +216,21 @@ export default function SubscriptionForm({
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="e.g., Netflix, Spotify"
-                className={`w-full px-4 py-2.5 bg-white dark:bg-surface-900 border rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                  errors.name ? 'border-red-500' : 'border-neutral-200 dark:border-neutral-700'
-                }`}
+                className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: errors.name ? 'var(--accent-red)' : 'var(--border-default)',
+                  '--tw-ring-color': 'var(--brand-primary)'
+                } as React.CSSProperties}
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--accent-red)' }}>{errors.name}</p>
               )}
             </div>
 
             {/* Amount & Currency */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Amount *
                 </label>
                 <input
@@ -224,24 +241,27 @@ export default function SubscriptionForm({
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  className={`w-full px-4 py-2.5 bg-white dark:bg-surface-900 border rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                    errors.amount ? 'border-red-500' : 'border-neutral-200 dark:border-neutral-700'
-                  }`}
+                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  style={{ 
+                    borderColor: errors.amount ? 'var(--accent-red)' : 'var(--border-default)',
+                    '--tw-ring-color': 'var(--brand-primary)'
+                  } as React.CSSProperties}
                 />
                 {errors.amount && (
-                  <p className="mt-1 text-sm text-red-500">{errors.amount}</p>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--accent-red)' }}>{errors.amount}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Currency
                 </label>
                 <select
                   name="currency"
                   value={formData.currency}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-surface-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                 >
                   {currencies.map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -253,14 +273,15 @@ export default function SubscriptionForm({
             {/* Billing Cycle & Category */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Billing Cycle
                 </label>
                 <select
                   name="billing_cycle"
                   value={formData.billing_cycle}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-surface-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                 >
                   {billingCycles.map(({ value, label }) => (
                     <option key={value} value={value}>{label}</option>
@@ -269,14 +290,15 @@ export default function SubscriptionForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Category
                 </label>
                 <select
                   name="category_id"
                   value={formData.category_id}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-surface-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                 >
                   <option value="">Select category</option>
                   {categories.map(cat => (
@@ -289,7 +311,7 @@ export default function SubscriptionForm({
             {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Next Billing Date *
                 </label>
                 <input
@@ -297,14 +319,16 @@ export default function SubscriptionForm({
                   name="next_billing_date"
                   value={formData.next_billing_date}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2.5 bg-white dark:bg-surface-900 border rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                    errors.next_billing_date ? 'border-red-500' : 'border-neutral-200 dark:border-neutral-700'
-                  }`}
+                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  style={{ 
+                    borderColor: errors.next_billing_date ? 'var(--accent-red)' : 'var(--border-default)',
+                    '--tw-ring-color': 'var(--brand-primary)'
+                  } as React.CSSProperties}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Start Date *
                 </label>
                 <input
@@ -312,23 +336,26 @@ export default function SubscriptionForm({
                   name="start_date"
                   value={formData.start_date}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2.5 bg-white dark:bg-surface-900 border rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                    errors.start_date ? 'border-red-500' : 'border-neutral-200 dark:border-neutral-700'
-                  }`}
+                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  style={{ 
+                    borderColor: errors.start_date ? 'var(--accent-red)' : 'var(--border-default)',
+                    '--tw-ring-color': 'var(--brand-primary)'
+                  } as React.CSSProperties}
                 />
               </div>
             </div>
 
             {/* Reminder */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Remind me before (days)
               </label>
               <select
                 name="reminder_days"
                 value={formData.reminder_days}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-white dark:bg-surface-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
               >
                 <option value={0}>Don't remind</option>
                 <option value={1}>1 day</option>
@@ -339,7 +366,7 @@ export default function SubscriptionForm({
 
             {/* URL */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Website URL
               </label>
               <input
@@ -348,18 +375,20 @@ export default function SubscriptionForm({
                 value={formData.url}
                 onChange={handleChange}
                 placeholder="https://..."
-                className={`w-full px-4 py-2.5 bg-white dark:bg-surface-900 border rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                  errors.url ? 'border-red-500' : 'border-neutral-200 dark:border-neutral-700'
-                }`}
+                className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: errors.url ? 'var(--accent-red)' : 'var(--border-default)',
+                  '--tw-ring-color': 'var(--brand-primary)'
+                } as React.CSSProperties}
               />
               {errors.url && (
-                <p className="mt-1 text-sm text-red-500">{errors.url}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--accent-red)' }}>{errors.url}</p>
               )}
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Notes
               </label>
               <textarea
@@ -368,23 +397,27 @@ export default function SubscriptionForm({
                 onChange={handleChange}
                 rows={3}
                 placeholder="Any additional notes..."
-                className="w-full px-4 py-2.5 bg-white dark:bg-surface-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none"
+                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
               />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3 mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+          <div 
+            className="flex items-center gap-3 mt-6 pt-6"
+            style={{ borderTop: '1px solid var(--border-default)' }}
+          >
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+              className="btn-secondary flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium shadow-lg shadow-brand-500/25 transition-all"
+              className="btn-primary flex-1 px-4 py-2.5 rounded-xl font-medium transition-all"
             >
               {isEditing ? 'Save Changes' : 'Add Subscription'}
             </button>

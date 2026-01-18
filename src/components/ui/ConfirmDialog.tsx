@@ -23,22 +23,31 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
-  const variantStyles = {
-    danger: {
-      icon: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-      button: 'bg-red-500 hover:bg-red-600 shadow-red-500/25',
-    },
-    warning: {
-      icon: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
-      button: 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/25',
-    },
-    info: {
-      icon: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-      button: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/25',
-    },
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'danger':
+        return {
+          iconBg: 'var(--accent-red-muted)',
+          iconColor: 'var(--accent-red)',
+          buttonBg: 'var(--accent-red)',
+        };
+      case 'warning':
+        return {
+          iconBg: 'var(--accent-amber-muted)',
+          iconColor: 'var(--accent-amber)',
+          buttonBg: 'var(--accent-amber)',
+        };
+      case 'info':
+      default:
+        return {
+          iconBg: 'var(--accent-blue-muted)',
+          iconColor: 'var(--accent-blue)',
+          buttonBg: 'var(--accent-blue)',
+        };
+    }
   };
 
-  const styles = variantStyles[variant];
+  const styles = getVariantStyles();
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -49,26 +58,35 @@ export default function ConfirmDialog({
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-md bg-white dark:bg-surface-800 rounded-2xl shadow-xl animate-in zoom-in-95 fade-in duration-200">
+      <div 
+        className="relative w-full max-w-md rounded-2xl shadow-xl animate-in zoom-in-95 fade-in duration-200"
+        style={{ backgroundColor: 'var(--bg-surface)' }}
+      >
         {/* Close button */}
         <button
           onClick={onCancel}
-          className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
-          <X className="w-5 h-5 text-neutral-400" />
+          <X className="w-5 h-5" />
         </button>
 
         <div className="p-6">
           {/* Icon */}
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${styles.icon}`}>
-            <AlertTriangle className="w-6 h-6" />
+          <div 
+            className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+            style={{ backgroundColor: styles.iconBg }}
+          >
+            <AlertTriangle className="w-6 h-6" style={{ color: styles.iconColor }} />
           </div>
 
           {/* Content */}
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
             {title}
           </h3>
-          <p className="text-neutral-600 dark:text-neutral-400 mb-6">
+          <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
             {message}
           </p>
 
@@ -76,13 +94,14 @@ export default function ConfirmDialog({
           <div className="flex gap-3">
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+              className="btn-secondary flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors"
             >
               {cancelLabel}
             </button>
             <button
               onClick={onConfirm}
-              className={`flex-1 px-4 py-2.5 text-white rounded-xl font-medium shadow-lg transition-all ${styles.button}`}
+              className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium shadow-lg transition-all hover:opacity-90"
+              style={{ backgroundColor: styles.buttonBg }}
             >
               {confirmLabel}
             </button>

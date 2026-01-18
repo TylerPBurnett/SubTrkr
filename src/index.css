@@ -1,55 +1,133 @@
 @import "tailwindcss";
 
-/* Custom design tokens */
+/* ============================================
+   SEMANTIC DESIGN TOKENS (CSS Custom Properties)
+   ============================================
+   This theming system uses semantic tokens that describe
+   PURPOSE rather than specific colors. This makes adding
+   new themes (monokai, gruvbox, etc.) trivial.
+   ============================================ */
+
+/* Light Theme (Default) */
+:root,
+[data-theme="light"] {
+  /* Backgrounds */
+  --bg-base: #f5f5f5;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #f5f5f5;
+  --bg-active: #e5e5e5;
+  
+  /* Text */
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --text-muted: #a3a3a3;
+  --text-inverse: #ffffff;
+  
+  /* Borders */
+  --border-default: #e5e5e5;
+  --border-muted: #f5f5f5;
+  --border-strong: #d4d4d4;
+  
+  /* Brand */
+  --brand-primary: #22c55e;
+  --brand-primary-hover: #16a34a;
+  --brand-muted: #f0fdf4;
+  --brand-text: #166534;
+  
+  /* Accent colors for categories/stats */
+  --accent-blue: #3b82f6;
+  --accent-blue-muted: #dbeafe;
+  --accent-purple: #8b5cf6;
+  --accent-purple-muted: #ede9fe;
+  --accent-amber: #f59e0b;
+  --accent-amber-muted: #fef3c7;
+  --accent-red: #ef4444;
+  --accent-red-muted: #fee2e2;
+  --accent-emerald: #10b981;
+  --accent-emerald-muted: #d1fae5;
+  --accent-pink: #ec4899;
+  --accent-cyan: #06b6d4;
+  --accent-gray: #6b7280;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.12);
+  --shadow-brand: 0 4px 14px -3px rgba(34, 197, 94, 0.35);
+  
+  /* Focus ring */
+  --ring-offset: #ffffff;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-base: #0a0a0a;
+  --bg-surface: #171717;
+  --bg-card: #1c1c1c;
+  --bg-input: #262626;
+  --bg-hover: #262626;
+  --bg-active: #333333;
+  
+  /* Text */
+  --text-primary: #fafafa;
+  --text-secondary: #a3a3a3;
+  --text-muted: #525252;
+  --text-inverse: #171717;
+  
+  /* Borders */
+  --border-default: #2e2e2e;
+  --border-muted: #262626;
+  --border-strong: #404040;
+  
+  /* Brand */
+  --brand-primary: #22c55e;
+  --brand-primary-hover: #4ade80;
+  --brand-muted: rgba(34, 197, 94, 0.15);
+  --brand-text: #4ade80;
+  
+  /* Accent colors (slightly adjusted for dark bg) */
+  --accent-blue: #60a5fa;
+  --accent-blue-muted: rgba(59, 130, 246, 0.2);
+  --accent-purple: #a78bfa;
+  --accent-purple-muted: rgba(139, 92, 246, 0.2);
+  --accent-amber: #fbbf24;
+  --accent-amber-muted: rgba(245, 158, 11, 0.2);
+  --accent-red: #f87171;
+  --accent-red-muted: rgba(239, 68, 68, 0.2);
+  --accent-emerald: #34d399;
+  --accent-emerald-muted: rgba(16, 185, 129, 0.2);
+  --accent-pink: #f472b6;
+  --accent-cyan: #22d3ee;
+  --accent-gray: #9ca3af;
+  
+  /* Shadows (subtler in dark mode) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+  --shadow-brand: 0 4px 14px -3px rgba(34, 197, 94, 0.25);
+  
+  /* Focus ring */
+  --ring-offset: #171717;
+}
+
+/* ============================================
+   TAILWIND THEME EXTENSION
+   ============================================ */
 @theme {
-  /* Primary brand colors */
-  --color-brand-50: #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-200: #bbf7d0;
-  --color-brand-300: #86efac;
-  --color-brand-400: #4ade80;
-  --color-brand-500: #22c55e;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
-  --color-brand-800: #166534;
-  --color-brand-900: #14532d;
-
-  /* Surface colors for cards and backgrounds */
-  --color-surface-50: #fafafa;
-  --color-surface-100: #f5f5f5;
-  --color-surface-200: #e5e5e5;
-  --color-surface-800: #262626;
-  --color-surface-900: #171717;
-
-  /* Category accent colors */
-  --color-accent-red: #ef4444;
-  --color-accent-blue: #3b82f6;
-  --color-accent-purple: #8b5cf6;
-  --color-accent-amber: #f59e0b;
-  --color-accent-emerald: #10b981;
-  --color-accent-pink: #ec4899;
-  --color-accent-cyan: #06b6d4;
-  --color-accent-gray: #6b7280;
-
   /* Typography */
   --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
-
-  /* Shadows */
-  --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 4px 16px -4px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.12), 0 16px 48px -16px rgba(0, 0, 0, 0.08);
-
-  /* Border radius */
-  --radius-card: 1rem;
-  --radius-button: 0.75rem;
-  --radius-input: 0.5rem;
-
+  
   /* Animations */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Base styles */
+/* ============================================
+   BASE STYLES
+   ============================================ */
 html {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -57,69 +135,149 @@ html {
 }
 
 body {
-  @apply bg-surface-50 text-neutral-900;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
   min-height: 100vh;
-}
-
-/* Dark mode */
-.dark body {
-  @apply bg-surface-900 text-neutral-100;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Headings use display font */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  @apply font-semibold tracking-tight;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
 /* Smooth transitions for interactive elements */
 button, a, input, select, textarea {
-  @apply transition-all duration-200;
+  transition: all 0.2s ease;
 }
 
 /* Focus states */
 *:focus-visible {
-  @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring-offset), 0 0 0 4px var(--brand-primary);
 }
 
-.dark *:focus-visible {
-  @apply ring-offset-surface-900;
-}
+/* ============================================
+   COMPONENT CLASSES
+   ============================================ */
 
 /* Card component */
 .card {
-  @apply bg-white rounded-2xl p-6;
+  background-color: var(--bg-card);
+  border-radius: 1rem;
+  padding: 1.5rem;
   box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-muted);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.dark .card {
-  @apply bg-surface-800 border border-neutral-700/50;
+/* Sidebar */
+.sidebar {
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-default);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Scrollbar styling */
+/* Main content area */
+.main-content {
+  background-color: var(--bg-base);
+  transition: background-color 0.2s ease;
+}
+
+/* Input fields */
+.input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--brand-primary);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--brand-primary);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-brand);
+}
+
+.btn-primary:hover {
+  background-color: var(--brand-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-active);
+  color: var(--text-primary);
+}
+
+/* Nav items */
+.nav-item {
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-item-active {
+  background-color: var(--brand-muted);
+  color: var(--brand-text);
+}
+
+/* Dropdown menus */
+.dropdown {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Text utilities */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-neutral-300 rounded-full;
+  background-color: var(--border-strong);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-400;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  @apply bg-neutral-600;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-500;
+  background-color: var(--text-muted);
 }
 
 /* Animations */

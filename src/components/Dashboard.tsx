@@ -84,13 +84,13 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Monthly Spending</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Monthly Spending</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {formatCurrency(monthlySpending)}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
+              <TrendingUp className="w-6 h-6" style={{ color: 'var(--brand-primary)' }} />
             </div>
           </div>
         </div>
@@ -98,13 +98,13 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Yearly Spending</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Yearly Spending</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {formatCurrency(yearlySpending)}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-purple-muted)' }}>
+              <Calendar className="w-6 h-6" style={{ color: 'var(--accent-purple)' }} />
             </div>
           </div>
         </div>
@@ -112,13 +112,13 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Active Subscriptions</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">
-                {activeCount} <span className="text-sm font-normal text-neutral-400">/ {totalCount}</span>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active Subscriptions</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
+                {activeCount} <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>/ {totalCount}</span>
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
+              <CreditCard className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} />
             </div>
           </div>
         </div>
@@ -126,13 +126,13 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Due This Week</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Due This Week</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {upcomingRenewals.length}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-amber-muted)' }}>
+              <AlertCircle className="w-6 h-6" style={{ color: 'var(--accent-amber)' }} />
             </div>
           </div>
         </div>
@@ -141,14 +141,14 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Renewals */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Upcoming Renewals
           </h3>
           
           {upcomingRenewals.length === 0 ? (
             <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-              <p className="text-neutral-500 dark:text-neutral-400">No renewals in the next 7 days</p>
+              <Calendar className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+              <p style={{ color: 'var(--text-secondary)' }}>No renewals in the next 7 days</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -158,7 +158,10 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
                   <button
                     key={sub.id}
                     onClick={() => onEdit(sub)}
-                    className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors group"
+                    className="w-full flex items-center gap-4 p-3 rounded-xl transition-colors group"
+                    style={{ backgroundColor: 'transparent' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <div 
                       className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
@@ -167,22 +170,22 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
                       {sub.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="font-medium text-neutral-900 dark:text-white">{sub.name}</p>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{sub.name}</p>
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {formatCurrency(sub.amount, sub.currency)} · {sub.billing_cycle}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-medium ${
-                        daysUntil <= 1 ? 'text-red-500' : daysUntil <= 3 ? 'text-amber-500' : 'text-neutral-600 dark:text-neutral-400'
-                      }`}>
+                      <p className="text-sm font-medium" style={{ 
+                        color: daysUntil <= 1 ? 'var(--accent-red)' : daysUntil <= 3 ? 'var(--accent-amber)' : 'var(--text-secondary)'
+                      }}>
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {formatDate(sub.next_billing_date)}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition-colors" />
+                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                   </button>
                 );
               })}
@@ -192,14 +195,14 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
 
         {/* Spending by Category */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Spending by Category
           </h3>
           
           {chartData.length === 0 ? (
             <div className="text-center py-8">
-              <CreditCard className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-              <p className="text-neutral-500 dark:text-neutral-400">No spending data yet</p>
+              <CreditCard className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+              <p style={{ color: 'var(--text-secondary)' }}>No spending data yet</p>
             </div>
           ) : (
             <div className="flex items-center gap-6">
@@ -222,11 +225,13 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
                     <Tooltip 
                       formatter={(value) => formatCurrency(value as number)}
                       contentStyle={{
-                        backgroundColor: 'white',
-                        border: 'none',
+                        backgroundColor: 'var(--bg-surface)',
+                        border: '1px solid var(--border-default)',
                         borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        boxShadow: 'var(--shadow-elevated)'
                       }}
+                      labelStyle={{ color: 'var(--text-primary)' }}
+                      itemStyle={{ color: 'var(--text-primary)' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -239,10 +244,10 @@ export default function Dashboard({ subscriptions, onEdit }: DashboardProps) {
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: item.category.color }}
                     />
-                    <span className="flex-1 text-sm text-neutral-600 dark:text-neutral-400">
+                    <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {item.category.name}
                     </span>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                       {formatCurrency(item.total)}
                     </span>
                   </div>
