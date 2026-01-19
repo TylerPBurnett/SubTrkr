@@ -10,12 +10,12 @@ import type {
   ItemType
 } from '../types';
 import {
-  parseLocalDate,
   formatISODate,
   getToday,
   getDaysUntil,
   isDueWithinDays,
   calculateNextBillingDate as calcNextBillingDate,
+  getNextFutureBillingDate,
 } from '../utils/dates';
 
 let db: Database | null = null;
@@ -220,10 +220,31 @@ export async function deleteItem(id: string): Promise<void> {
 
 export async function toggleItemActive(id: string): Promise<void> {
   const database = await getDatabase();
-  await database.execute(
-    'UPDATE items SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = $1 WHERE id = $2',
-    [new Date().toISOString(), id]
+  
+  // Get current item state
+  const [item] = await database.select<Item[]>(
+    'SELECT * FROM items WHERE id = $1',
+    [id]
   );
+  if (!item) return;
+  
+  const now = new Date().toISOString();
+  const isResuming = item.is_active === 0;
+  
+  if (isResuming) {
+    // When resuming, recalculate next_billing_date if it's in the past
+    const newNextDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
+    await database.execute(
+      'UPDATE items SET is_active = 1, next_billing_date = $1, updated_at = $2 WHERE id = $3',
+      [newNextDate, now, id]
+    );
+  } else {
+    // When pausing, just flip the flag
+    await database.execute(
+      'UPDATE items SET is_active = 0, updated_at = $1 WHERE id = $2',
+      [now, id]
+    );
+  }
 }
 
 // ============ Payments ============
@@ -355,8 +376,7 @@ export function calculateNextBillingDate(dateStr: string, billingCycle: BillingC
  */
 export async function advancePastDueItems(): Promise<number> {
   const database = await getDatabase();
-  const today = getToday();
-  const todayStr = formatISODate(today);
+  const todayStr = formatISODate(getToday());
   
   // Get all active items with past-due billing dates
   const pastDueItems = await database.select<Item[]>(
@@ -367,14 +387,8 @@ export async function advancePastDueItems(): Promise<number> {
   let updatedCount = 0;
   
   for (const item of pastDueItems) {
-    // Advance the date until it's in the future
-    let newDate = item.next_billing_date;
-    let tempItem = { ...item, next_billing_date: newDate };
-    
-    while (parseLocalDate(newDate) < today) {
-      newDate = advanceNextBillingDate(tempItem);
-      tempItem.next_billing_date = newDate;
-    }
+    // Calculate the next future billing date from the current (past-due) date
+    const newDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
     
     // Update the item in the database
     await database.execute(

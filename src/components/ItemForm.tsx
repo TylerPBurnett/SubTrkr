@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType } from '../types';
-import { calculateNextBillingDate, formatISODate, getToday } from '../utils/dates';
+import { getNextFutureBillingDate, formatISODate, getToday } from '../utils/dates';
 
 interface ItemFormProps {
   item?: ItemWithCategory | null;
@@ -56,7 +56,7 @@ export default function ItemForm({
   }, [categories, itemType]);
 
   const [formData, setFormData] = useState<ItemFormData>(() => {
-    const defaultNextBilling = calculateNextBillingDate(today, 'monthly');
+    const defaultNextBilling = getNextFutureBillingDate(today, 'monthly');
     return {
       name: '',
       amount: '',
@@ -93,14 +93,6 @@ export default function ItemForm({
       });
     }
   }, [item]);
-
-  // Auto-calculate next_billing_date when start_date or billing_cycle changes (only for new items)
-  useEffect(() => {
-    if (!isEditing && formData.start_date) {
-      const nextDate = calculateNextBillingDate(formData.start_date, formData.billing_cycle);
-      setFormData(prev => ({ ...prev, next_billing_date: nextDate }));
-    }
-  }, [formData.start_date, formData.billing_cycle, isEditing]);
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof ItemFormData, string>> = {};
@@ -177,7 +169,28 @@ export default function ItemForm({
     const { name, value } = e.target;
     // Convert reminder_days to number since it's a numeric select
     const processedValue = name === 'reminder_days' ? Number(value) : value;
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    
+    setFormData(prev => {
+      const updated = { ...prev, [name]: processedValue };
+      
+      // Recalculate next_billing_date when scheduling fields change
+      if (name === 'start_date') {
+        // User is correcting when they started → recalculate from new start_date
+        updated.next_billing_date = getNextFutureBillingDate(
+          updated.start_date,
+          updated.billing_cycle
+        );
+      } else if (name === 'billing_cycle') {
+        // User is switching plans → new cycle starts from today
+        updated.next_billing_date = getNextFutureBillingDate(
+          today,
+          updated.billing_cycle as BillingCycle
+        );
+      }
+      
+      return updated;
+    });
+    
     if (errors[name as keyof ItemFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }

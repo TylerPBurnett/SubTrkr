@@ -95,6 +95,32 @@ export function calculateNextBillingDate(dateStr: string, cycle: BillingCycle): 
 }
 
 /**
+ * Calculates the next future billing date from an anchor date (typically start_date).
+ * Advances by the billing cycle until the date is strictly after today.
+ * 
+ * Use this when:
+ * - Creating a new item (anchor = start_date)
+ * - Changing billing_cycle on an existing item (recalculates from start_date)
+ * 
+ * @param anchorDateStr - The anchor date (usually start_date) in YYYY-MM-DD format
+ * @param cycle - The billing cycle
+ * @returns ISO date string (YYYY-MM-DD) of the next future billing date
+ */
+export function getNextFutureBillingDate(anchorDateStr: string, cycle: BillingCycle): string {
+  const anchor = parseLocalDate(anchorDateStr);
+  const today = getToday();
+  
+  let nextDate = anchor;
+  
+  // Advance until we're strictly in the future
+  while (nextDate <= today) {
+    nextDate = addBillingCycle(nextDate, cycle);
+  }
+  
+  return formatISODate(nextDate);
+}
+
+/**
  * Gets the number of days until a given date.
  * Returns negative if the date is in the past.
  */
