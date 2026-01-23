@@ -1,34 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  LayoutDashboard, 
-  CreditCard, 
+import type { Session } from '@supabase/supabase-js';
+import {
+  LayoutDashboard,
+  CreditCard,
   Receipt,
-  BarChart3, 
+  BarChart3,
   Settings as SettingsIcon,
   Plus,
   Moon,
-  Sun
+  Sun,
+  WifiOff,
 } from 'lucide-react';
 import type { ItemWithCategory, Category, ItemType } from './types';
-import { 
-  getItems, 
+import {
+  getItems,
   getCategories,
   createItem,
   updateItem,
   deleteItem,
   toggleItemActive,
-  advancePastDueItems
+  advancePastDueItems,
 } from './services/database';
+import { supabase } from './services/supabase';
+import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
 import ItemForm from './components/ItemForm';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
+import AuthScreen from './components/AuthScreen';
 
 type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
 type Theme = 'light' | 'dark';
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [view, setView] = useState<View>('dashboard');
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -40,30 +48,94 @@ function App() {
   const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('subtrkr-theme');
-    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    return saved === 'light' || saved === 'dark' ? saved : 'dark';
   });
 
   const loadData = useCallback(async () => {
     try {
       // Advance any past-due billing dates before loading
       await advancePastDueItems();
-      
-      const [itemsData, cats] = await Promise.all([
-        getItems(),
-        getCategories()
-      ]);
+
+      const [itemsData, cats] = await Promise.all([getItems(), getCategories()]);
       setItems(itemsData);
       setCategories(cats);
     } catch (error) {
       console.error('Failed to load data:', error);
+      setError('Failed to load data. Please check your connection.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Check auth session on mount
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+
+    // Subscribe to auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load data when authenticated
+  useEffect(() => {
+    if (session) {
+      loadData();
+    }
+  }, [session, loadData]);
+
+  // Seed default categories on first login
+  useEffect(() => {
+    if (session) {
+      seedDefaultCategoriesIfNeeded()
+        .then(() => {
+          // Refresh categories after seeding
+          getCategories().then(setCategories);
+        })
+        .catch((error) => {
+          console.error('Failed to seed categories:', error);
+        });
+    }
+  }, [session]);
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () =>
+        loadData()
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () =>
+        loadData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, loadData]);
+
+  // Network connectivity check
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Theme switching via data-theme attribute + localStorage persistence
   useEffect(() => {
@@ -80,7 +152,7 @@ function App() {
   }, [error]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
@@ -161,9 +233,59 @@ function App() {
     { id: 'settings' as const, label: 'Settings', icon: SettingsIcon },
   ];
 
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-base)' }}
+      >
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full" style={{ backgroundColor: 'var(--brand-muted)' }} />
+          <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth screen if not logged in
+  if (!session) {
+    return <AuthScreen />;
+  }
+
+  // Show offline message
+  if (!isOnline) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ backgroundColor: 'var(--bg-base)' }}
+      >
+        <div
+          className="max-w-md w-full card p-8 text-center"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            border: '1px solid var(--border-default)',
+          }}
+        >
+          <WifiOff className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+            No Internet Connection
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            SubTrkr requires an internet connection to work. Please check your network and try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Data loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-base)' }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-base)' }}
+      >
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full" style={{ backgroundColor: 'var(--brand-muted)' }} />
           <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
@@ -177,14 +299,17 @@ function App() {
       {/* Sidebar */}
       <aside className="sidebar w-64 flex flex-col">
         <div className="p-6">
-          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--brand-text)' }}>
+          <h1
+            className="text-xl font-bold flex items-center gap-2"
+            style={{ color: 'var(--brand-text)' }}
+          >
             <CreditCard className="w-6 h-6" />
             SubTrkr
           </h1>
         </div>
 
         <nav className="flex-1 px-3">
-          {navItems.map(item => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setView(item.id)}
@@ -252,12 +377,7 @@ function App() {
           </div>
 
           {/* Content */}
-          {view === 'dashboard' && (
-            <Dashboard 
-              items={items} 
-              onEdit={handleEdit}
-            />
-          )}
+          {view === 'dashboard' && <Dashboard items={items} onEdit={handleEdit} />}
           {view === 'bills' && (
             <ItemList
               items={items}
@@ -280,29 +400,24 @@ function App() {
               onAddNew={() => handleAddNew('subscription')}
             />
           )}
-          {view === 'analytics' && (
-            <Analytics items={items} />
-          )}
+          {view === 'analytics' && <Analytics items={items} />}
           {view === 'settings' && (
-            <Settings 
-              categories={categories}
-              onCategoriesChange={loadData}
-            />
+            <Settings categories={categories} onCategoriesChange={loadData} />
           )}
         </div>
       </main>
 
       {/* Error Toast */}
       {error && (
-        <div 
+        <div
           className="fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
-          style={{ 
+          style={{
             backgroundColor: 'var(--accent-red)',
-            color: 'white'
+            color: 'white',
           }}
         >
           <span>{error}</span>
-          <button 
+          <button
             onClick={() => setError(null)}
             className="p-1 rounded hover:bg-white/20 transition-colors"
           >
@@ -318,9 +433,8 @@ function App() {
           categories={categories}
           itemType={formItemType}
           isSaving={isSaving}
-          onSave={editingItem 
-            ? (data) => handleUpdateItem(editingItem.id, data)
-            : handleCreateItem
+          onSave={
+            editingItem ? (data) => handleUpdateItem(editingItem.id, data) : handleCreateItem
           }
           onClose={handleCloseForm}
         />

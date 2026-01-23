@@ -83,7 +83,7 @@ export default function Analytics({ items }: AnalyticsProps) {
   // Top items by cost (monthly normalized)
   const topItems = useMemo(() => {
     return filteredItems
-      .filter(s => s.is_active === 1)
+      .filter(s => s.is_active)
       .map(item => {
         let monthlyAmount: number;
         switch (item.billing_cycle) {
@@ -188,7 +188,7 @@ export default function Analytics({ items }: AnalyticsProps) {
             Active {itemTypeLabel}
           </p>
           <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {filteredItems.filter(s => s.is_active === 1).length}
+            {filteredItems.filter(s => s.is_active).length}
           </p>
         </div>
       </div>

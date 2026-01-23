@@ -61,7 +61,7 @@ export default function Dashboard({ items, onEdit }: DashboardProps) {
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
-  const activeCount = filteredItems.filter(s => s.is_active === 1).length;
+  const activeCount = filteredItems.filter(s => s.is_active).length;
   const totalCount = filteredItems.length;
 
   const chartData = spendingByCategory.map(item => ({

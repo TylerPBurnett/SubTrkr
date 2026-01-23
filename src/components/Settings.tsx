@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
-import { Plus, Pencil, X, Check, Receipt, CreditCard } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, Pencil, X, Check, Receipt, CreditCard, User, LogOut } from 'lucide-react';
 import type { Category, ItemType } from '../types';
 import { createCategory, updateCategory, deleteCategory } from '../services/database';
+import { supabase } from '../services/supabase';
+import { signOut } from '../services/auth';
 
 interface SettingsProps {
   categories: Category[];
@@ -34,12 +36,30 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
   const [newCategory, setNewCategory] = useState({ name: '', color: '#3b82f6', type: 'subscription' as ItemType });
   const [showNewForm, setShowNewForm] = useState<ItemType | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   // Split categories by type
-  const subscriptionCategories = useMemo(() => 
+  const subscriptionCategories = useMemo(() =>
     categories.filter(c => c.category_type === 'subscription'), [categories]);
-  const billCategories = useMemo(() => 
+  const billCategories = useMemo(() =>
     categories.filter(c => c.category_type === 'bill'), [categories]);
+
+  // Fetch current user
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUserEmail(data.user.email || '');
+      }
+    });
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+    }
+  };
 
   const handleCreateCategory = async (type: ItemType) => {
     const trimmedName = newCategory.name.trim();
@@ -303,17 +323,56 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
         <Receipt className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
       )}
 
+      {/* Account */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-hover)' }}>
+              <User className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Account
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Manage your account settings
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              Email
+            </label>
+            <div className="input px-4 py-2 rounded-lg" style={{ color: 'var(--text-primary)' }}>
+              {userEmail || 'Loading...'}
+            </div>
+          </div>
+
+          <button
+            onClick={handleSignOut}
+            className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors"
+            style={{ color: 'var(--accent-red)' }}
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
+      </div>
+
       {/* About */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           About SubTrkr
         </h3>
         <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-          A simple, local-first subscription tracker built with Tauri, React, and SQLite.
+          A cloud-native subscription and bills tracker built with Tauri, React, and Supabase.
         </p>
         <div className="space-y-2 text-sm" style={{ color: 'var(--text-muted)' }}>
           <p>Version 1.0.0</p>
-          <p>Your data is stored locally on your device.</p>
+          <p>Your data is securely stored in the cloud and synced across all your devices.</p>
         </div>
       </div>
     </div>

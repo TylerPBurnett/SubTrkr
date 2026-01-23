@@ -84,7 +84,7 @@ export default function ItemList({
         return false;
       }
       // Active filter
-      if (!showInactive && item.is_active !== 1) {
+      if (!showInactive && !item.is_active) {
         return false;
       }
       return true;
@@ -187,11 +187,11 @@ export default function ItemList({
             <div
               key={item.id}
               className={`card relative group ${
-                item.is_active !== 1 ? 'opacity-60' : ''
+                !item.is_active ? 'opacity-60' : ''
               }`}
             >
               {/* Status badge */}
-              {item.is_active !== 1 && (
+              {!item.is_active && (
                 <div 
                   className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
                   style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
@@ -267,7 +267,7 @@ export default function ItemList({
                             e.currentTarget.style.color = 'var(--text-secondary)';
                           }}
                         >
-                          {item.is_active === 1 ? (
+                          {item.is_active ? (
                             <>
                               <Pause className="w-4 h-4" />
                               Pause

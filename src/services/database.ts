@@ -1,13 +1,12 @@
-import Database from '@tauri-apps/plugin-sql';
-import { v4 as uuidv4 } from 'uuid';
-import type { 
-  Category, 
-  Item, 
-  Payment, 
+import { supabase } from './supabase';
+import type {
+  Category,
+  Item,
+  Payment,
   ItemWithCategory,
   SpendingByCategory,
   BillingCycle,
-  ItemType
+  ItemType,
 } from '../types';
 import {
   formatISODate,
@@ -18,117 +17,104 @@ import {
   getNextFutureBillingDate,
 } from '../utils/dates';
 
-let db: Database | null = null;
-
-export async function getDatabase(): Promise<Database> {
-  if (!db) {
-    db = await Database.load('sqlite:subtrkr.db');
-  }
-  return db;
+// Helper to get current user ID
+async function getUserId(): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
 }
 
 // ============ Categories ============
 
 export async function getCategories(type?: ItemType): Promise<Category[]> {
-  const database = await getDatabase();
+  let query = supabase.from('categories').select('*').order('name');
   if (type) {
-    return database.select<Category[]>(
-      'SELECT * FROM categories WHERE category_type = $1 ORDER BY name',
-      [type]
-    );
+    query = query.eq('category_type', type);
   }
-  return database.select<Category[]>('SELECT * FROM categories ORDER BY name');
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
 export async function createCategory(
-  name: string, 
-  color: string, 
+  name: string,
+  color: string,
   categoryType: ItemType,
   icon?: string
 ): Promise<Category> {
-  const database = await getDatabase();
-  const id = `cat-${uuidv4()}`;
-  await database.execute(
-    'INSERT INTO categories (id, name, color, icon, category_type) VALUES ($1, $2, $3, $4, $5)',
-    [id, name, color, icon || null, categoryType]
-  );
-  const [category] = await database.select<Category[]>(
-    'SELECT * FROM categories WHERE id = $1',
-    [id]
-  );
-  return category;
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({
+      user_id: userId,
+      name,
+      color,
+      category_type: categoryType,
+      icon: icon || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function updateCategory(
-  id: string, 
-  name: string, 
-  color: string, 
+  id: string,
+  name: string,
+  color: string,
   icon?: string
 ): Promise<void> {
-  const database = await getDatabase();
-  await database.execute(
-    'UPDATE categories SET name = $1, color = $2, icon = $3 WHERE id = $4',
-    [name, color, icon || null, id]
-  );
+  const { error } = await supabase
+    .from('categories')
+    .update({ name, color, icon: icon || null })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  const database = await getDatabase();
-  // Set items with this category to null
-  await database.execute(
-    'UPDATE items SET category_id = NULL WHERE category_id = $1',
-    [id]
-  );
-  await database.execute('DELETE FROM categories WHERE id = $1', [id]);
+  // Orphan items first
+  await supabase.from('items').update({ category_id: null }).eq('category_id', id);
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) throw error;
 }
 
-// ============ Items (Bills & Subscriptions) ============
+// ============ Items ============
 
 export async function getItems(type?: ItemType): Promise<ItemWithCategory[]> {
-  const database = await getDatabase();
-  let items: Item[];
-  
+  let query = supabase
+    .from('items')
+    .select('*, category:categories(*)')
+    .order('next_billing_date', { ascending: true });
   if (type) {
-    items = await database.select<Item[]>(
-      'SELECT * FROM items WHERE item_type = $1 ORDER BY next_billing_date ASC',
-      [type]
-    );
-  } else {
-    items = await database.select<Item[]>(
-      'SELECT * FROM items ORDER BY next_billing_date ASC'
-    );
+    query = query.eq('item_type', type);
   }
-  
-  const categories = await getCategories();
-  const categoryMap = new Map(categories.map(c => [c.id, c]));
-  
-  return items.map(item => ({
-    ...item,
-    category: item.category_id ? categoryMap.get(item.category_id) : undefined
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    ...row,
+    category: row.category || undefined,
   }));
 }
 
 export async function getActiveItems(type?: ItemType): Promise<ItemWithCategory[]> {
   const items = await getItems(type);
-  return items.filter(s => s.is_active === 1);
+  return items.filter((s) => s.is_active === true);
 }
 
 export async function getItemById(id: string): Promise<ItemWithCategory | null> {
-  const database = await getDatabase();
-  const [item] = await database.select<Item[]>(
-    'SELECT * FROM items WHERE id = $1',
-    [id]
-  );
-  if (!item) return null;
-  
-  if (item.category_id) {
-    const [category] = await database.select<Category[]>(
-      'SELECT * FROM categories WHERE id = $1',
-      [item.category_id]
-    );
-    return { ...item, category };
+  const { data, error } = await supabase
+    .from('items')
+    .select('*, category:categories(*)')
+    .eq('id', id)
+    .single();
+  if (error) {
+    if (error.code === 'PGRST116') return null; // not found
+    throw error;
   }
-  return item;
+  return { ...data, category: data.category || undefined };
 }
 
 export async function createItem(data: {
@@ -144,36 +130,26 @@ export async function createItem(data: {
   url?: string;
   reminder_days?: number;
 }): Promise<Item> {
-  const database = await getDatabase();
-  const id = `item-${uuidv4()}`;
-  const now = new Date().toISOString();
-  
-  await database.execute(
-    `INSERT INTO items 
-     (id, name, amount, currency, billing_cycle, item_type, category_id, next_billing_date, start_date, notes, url, reminder_days, created_at, updated_at) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-    [
-      id,
-      data.name,
-      data.amount,
-      data.currency,
-      data.billing_cycle,
-      data.item_type,
-      data.category_id || null,
-      data.next_billing_date,
-      data.start_date,
-      data.notes || null,
-      data.url || null,
-      data.reminder_days ?? 3,
-      now,
-      now
-    ]
-  );
-  
-  const [item] = await database.select<Item[]>(
-    'SELECT * FROM items WHERE id = $1',
-    [id]
-  );
+  const userId = await getUserId();
+  const { data: item, error } = await supabase
+    .from('items')
+    .insert({
+      user_id: userId,
+      name: data.name,
+      amount: data.amount,
+      currency: data.currency,
+      billing_cycle: data.billing_cycle,
+      item_type: data.item_type,
+      category_id: data.category_id || null,
+      next_billing_date: data.next_billing_date,
+      start_date: data.start_date,
+      notes: data.notes || null,
+      url: data.url || null,
+      reminder_days: data.reminder_days ?? 3,
+    })
+    .select()
+    .single();
+  if (error) throw error;
   return item;
 }
 
@@ -181,222 +157,238 @@ export async function updateItem(
   id: string,
   data: Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>>
 ): Promise<void> {
-  const database = await getDatabase();
-  const updates: string[] = [];
-  const values: unknown[] = [];
-  let paramIndex = 1;
-
+  // Filter out undefined/non-present fields
+  const updateData: Record<string, unknown> = {};
   const fields = [
-    'name', 'amount', 'currency', 'billing_cycle', 'item_type', 'category_id',
-    'next_billing_date', 'start_date', 'notes', 'url', 'is_active', 'reminder_days'
+    'name',
+    'amount',
+    'currency',
+    'billing_cycle',
+    'item_type',
+    'category_id',
+    'next_billing_date',
+    'start_date',
+    'notes',
+    'url',
+    'is_active',
+    'reminder_days',
   ] as const;
-
   for (const field of fields) {
     if (field in data) {
-      updates.push(`${field} = $${paramIndex}`);
-      values.push(data[field as keyof typeof data]);
-      paramIndex++;
+      updateData[field] = data[field as keyof typeof data];
     }
   }
+  if (Object.keys(updateData).length === 0) return;
 
-  if (updates.length === 0) return;
-
-  updates.push(`updated_at = $${paramIndex}`);
-  values.push(new Date().toISOString());
-  paramIndex++;
-  
-  values.push(id);
-  
-  await database.execute(
-    `UPDATE items SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-    values
-  );
+  const { error } = await supabase.from('items').update(updateData).eq('id', id);
+  if (error) throw error;
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  const database = await getDatabase();
-  await database.execute('DELETE FROM items WHERE id = $1', [id]);
+  const { error } = await supabase.from('items').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function toggleItemActive(id: string): Promise<void> {
-  const database = await getDatabase();
-  
-  // Get current item state
-  const [item] = await database.select<Item[]>(
-    'SELECT * FROM items WHERE id = $1',
-    [id]
-  );
+  const item = await getItemById(id);
   if (!item) return;
-  
-  const now = new Date().toISOString();
-  const isResuming = item.is_active === 0;
-  
+
+  const isResuming = !item.is_active;
   if (isResuming) {
-    // When resuming, recalculate next_billing_date if it's in the past
     const newNextDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
-    await database.execute(
-      'UPDATE items SET is_active = 1, next_billing_date = $1, updated_at = $2 WHERE id = $3',
-      [newNextDate, now, id]
-    );
+    const { error } = await supabase
+      .from('items')
+      .update({ is_active: true, next_billing_date: newNextDate })
+      .eq('id', id);
+    if (error) throw error;
   } else {
-    // When pausing, just flip the flag
-    await database.execute(
-      'UPDATE items SET is_active = 0, updated_at = $1 WHERE id = $2',
-      [now, id]
-    );
+    const { error } = await supabase.from('items').update({ is_active: false }).eq('id', id);
+    if (error) throw error;
   }
 }
 
 // ============ Payments ============
 
 export async function getPayments(itemId?: string): Promise<Payment[]> {
-  const database = await getDatabase();
+  let query = supabase.from('payments').select('*').order('paid_at', { ascending: false });
   if (itemId) {
-    return database.select<Payment[]>(
-      'SELECT * FROM payments WHERE item_id = $1 ORDER BY paid_at DESC',
-      [itemId]
-    );
+    query = query.eq('item_id', itemId);
   }
-  return database.select<Payment[]>('SELECT * FROM payments ORDER BY paid_at DESC');
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
-export async function recordPayment(itemId: string, amount: number, paidAt: string): Promise<Payment> {
-  const database = await getDatabase();
-  const id = `pay-${uuidv4()}`;
-  
-  await database.execute(
-    'INSERT INTO payments (id, item_id, amount, paid_at) VALUES ($1, $2, $3, $4)',
-    [id, itemId, amount, paidAt]
-  );
-  
-  const [payment] = await database.select<Payment[]>(
-    'SELECT * FROM payments WHERE id = $1',
-    [id]
-  );
-  return payment;
+export async function recordPayment(
+  itemId: string,
+  amount: number,
+  paidAt: string
+): Promise<Payment> {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('payments')
+    .insert({ user_id: userId, item_id: itemId, amount, paid_at: paidAt })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-// ============ Analytics ============
+// ============ Analytics (pure calculations - unchanged except is_active checks) ============
 
 export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemType): number {
-  return items
-    .filter(s => s.is_active === 1 && (!type || s.item_type === type))
-    .reduce((total, item) => {
-      switch (item.billing_cycle) {
-        case 'weekly': return total + (item.amount * 52 / 12);
-        case 'monthly': return total + item.amount;
-        case 'quarterly': return total + (item.amount / 3);
-        case 'yearly': return total + (item.amount / 12);
-        default: return total;
-      }
-    }, 0);
+  const filtered = items.filter((item) => {
+    if (!item.is_active) return false;
+    if (type && item.item_type !== type) return false;
+    return true;
+  });
+
+  return filtered.reduce((total, item) => {
+    let monthlyAmount = item.amount;
+
+    switch (item.billing_cycle) {
+      case 'weekly':
+        monthlyAmount = (item.amount * 52) / 12;
+        break;
+      case 'monthly':
+        monthlyAmount = item.amount;
+        break;
+      case 'quarterly':
+        monthlyAmount = item.amount / 3;
+        break;
+      case 'yearly':
+        monthlyAmount = item.amount / 12;
+        break;
+    }
+
+    return total + monthlyAmount;
+  }, 0);
 }
 
 export function calculateYearlySpending(items: ItemWithCategory[], type?: ItemType): number {
-  return items
-    .filter(s => s.is_active === 1 && (!type || s.item_type === type))
-    .reduce((total, item) => {
-      switch (item.billing_cycle) {
-        case 'weekly': return total + (item.amount * 52);
-        case 'monthly': return total + (item.amount * 12);
-        case 'quarterly': return total + (item.amount * 4);
-        case 'yearly': return total + item.amount;
-        default: return total;
-      }
-    }, 0);
+  const filtered = items.filter((item) => {
+    if (!item.is_active) return false;
+    if (type && item.item_type !== type) return false;
+    return true;
+  });
+
+  return filtered.reduce((total, item) => {
+    let yearlyAmount = item.amount;
+
+    switch (item.billing_cycle) {
+      case 'weekly':
+        yearlyAmount = item.amount * 52;
+        break;
+      case 'monthly':
+        yearlyAmount = item.amount * 12;
+        break;
+      case 'quarterly':
+        yearlyAmount = item.amount * 4;
+        break;
+      case 'yearly':
+        yearlyAmount = item.amount;
+        break;
+    }
+
+    return total + yearlyAmount;
+  }, 0);
 }
 
 export async function getSpendingByCategory(
-  items: ItemWithCategory[], 
+  items: ItemWithCategory[],
   type?: ItemType
 ): Promise<SpendingByCategory[]> {
   const categories = await getCategories(type);
   const categoryMap = new Map<string, SpendingByCategory>();
-  
-  // Initialize with categories of the specified type
-  for (const category of categories) {
-    categoryMap.set(category.id, { category, total: 0, count: 0 });
-  }
-  
-  // Calculate monthly normalized spending per category
-  for (const item of items.filter(s => s.is_active === 1 && (!type || s.item_type === type))) {
-    if (!item.category_id) continue;
-    
-    const entry = categoryMap.get(item.category_id);
-    if (!entry) continue;
-    
-    let monthlyAmount: number;
-    switch (item.billing_cycle) {
-      case 'weekly': monthlyAmount = item.amount * 52 / 12; break;
-      case 'monthly': monthlyAmount = item.amount; break;
-      case 'quarterly': monthlyAmount = item.amount / 3; break;
-      case 'yearly': monthlyAmount = item.amount / 12; break;
-      default: monthlyAmount = item.amount;
+
+  categories.forEach((category) => {
+    categoryMap.set(category.id, {
+      category,
+      total: 0,
+      count: 0,
+    });
+  });
+
+  items.forEach((item) => {
+    if (!item.is_active) return;
+    if (type && item.item_type !== type) return;
+    if (!item.category_id) return;
+
+    const spending = categoryMap.get(item.category_id);
+    if (spending) {
+      let monthlyAmount = item.amount;
+      switch (item.billing_cycle) {
+        case 'weekly':
+          monthlyAmount = (item.amount * 52) / 12;
+          break;
+        case 'monthly':
+          monthlyAmount = item.amount;
+          break;
+        case 'quarterly':
+          monthlyAmount = item.amount / 3;
+          break;
+        case 'yearly':
+          monthlyAmount = item.amount / 12;
+          break;
+      }
+      spending.total += monthlyAmount;
+      spending.count += 1;
     }
-    
-    entry.total += monthlyAmount;
-    entry.count += 1;
-  }
-  
+  });
+
   return Array.from(categoryMap.values())
-    .filter(entry => entry.count > 0)
+    .filter((s) => s.count > 0)
     .sort((a, b) => b.total - a.total);
 }
 
 export async function getUpcomingItems(
-  items: ItemWithCategory[], 
+  items: ItemWithCategory[],
   days: number = 7,
   type?: ItemType
 ): Promise<ItemWithCategory[]> {
-  return items
-    .filter(item => {
-      if (item.is_active !== 1) return false;
-      if (type && item.item_type !== type) return false;
-      return isDueWithinDays(item.next_billing_date, days);
-    })
-    .sort((a, b) => getDaysUntil(a.next_billing_date) - getDaysUntil(b.next_billing_date));
+  const filtered = items.filter((item) => {
+    if (!item.is_active) return false;
+    if (type && item.item_type !== type) return false;
+    return isDueWithinDays(item.next_billing_date, days);
+  });
+
+  return filtered.sort((a, b) => {
+    const daysA = getDaysUntil(a.next_billing_date);
+    const daysB = getDaysUntil(b.next_billing_date);
+    return daysA - daysB;
+  });
+}
+
+// ============ Date/Maintenance ============
+
+export async function advancePastDueItems(): Promise<number> {
+  const todayStr = formatISODate(getToday());
+
+  const { data: pastDueItems, error } = await supabase
+    .from('items')
+    .select('*')
+    .eq('is_active', true)
+    .lt('next_billing_date', todayStr);
+
+  if (error) throw error;
+  if (!pastDueItems || pastDueItems.length === 0) return 0;
+
+  let updatedCount = 0;
+  for (const item of pastDueItems) {
+    const newDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
+    const { error: updateError } = await supabase
+      .from('items')
+      .update({ next_billing_date: newDate })
+      .eq('id', item.id);
+    if (!updateError) updatedCount++;
+  }
+  return updatedCount;
 }
 
 export function advanceNextBillingDate(item: Item): string {
-  return calculateNextBillingDate(item.next_billing_date, item.billing_cycle);
+  return calcNextBillingDate(item.next_billing_date, item.billing_cycle);
 }
 
-/**
- * Calculates the next billing date given a start date and billing cycle.
- * Re-exports from centralized date utilities.
- */
 export function calculateNextBillingDate(dateStr: string, billingCycle: BillingCycle): string {
   return calcNextBillingDate(dateStr, billingCycle);
-}
-
-/**
- * Advances all past-due items to their next billing date.
- * Called on app load to "catch up" items whose billing dates have passed.
- * Returns the number of items that were updated.
- */
-export async function advancePastDueItems(): Promise<number> {
-  const database = await getDatabase();
-  const todayStr = formatISODate(getToday());
-  
-  // Get all active items with past-due billing dates
-  const pastDueItems = await database.select<Item[]>(
-    'SELECT * FROM items WHERE is_active = 1 AND next_billing_date < $1',
-    [todayStr]
-  );
-  
-  let updatedCount = 0;
-  
-  for (const item of pastDueItems) {
-    // Calculate the next future billing date from the current (past-due) date
-    const newDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
-    
-    // Update the item in the database
-    await database.execute(
-      'UPDATE items SET next_billing_date = $1, updated_at = $2 WHERE id = $3',
-      [newDate, new Date().toISOString(), item.id]
-    );
-    updatedCount++;
-  }
-  
-  return updatedCount;
 }

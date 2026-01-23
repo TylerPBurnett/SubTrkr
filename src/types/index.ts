@@ -21,7 +21,7 @@ export interface Item {
   start_date: string;
   notes: string | null;
   url: string | null;
-  is_active: number; // SQLite uses 0/1 for boolean
+  is_active: boolean;
   reminder_days: number;
   item_type: ItemType;
   created_at: string;

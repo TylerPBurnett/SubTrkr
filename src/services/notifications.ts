@@ -49,7 +49,7 @@ export async function checkAndNotifyUpcomingRenewals(
   if (!hasPermission) return;
 
   for (const item of items) {
-    if (item.is_active !== 1) continue;
+    if (!item.is_active) continue;
     if (item.reminder_days === 0) continue;
 
     // Send notification if billing is within reminder_days
