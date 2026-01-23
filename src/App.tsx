@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
@@ -50,6 +50,7 @@ function App() {
     const saved = localStorage.getItem('subtrkr-theme');
     return saved === 'light' || saved === 'dark' ? saved : 'dark';
   });
+  const hasSeededCategories = useRef(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -93,7 +94,8 @@ function App() {
 
   // Seed default categories on first login
   useEffect(() => {
-    if (session) {
+    if (session && !hasSeededCategories.current) {
+      hasSeededCategories.current = true;
       seedDefaultCategoriesIfNeeded()
         .then(() => {
           // Refresh categories after seeding
