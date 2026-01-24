@@ -18,6 +18,7 @@ import {
   calculateYearlySpending,
   getSpendingByCategory 
 } from '../services/database';
+import { parseLocalDate } from '../utils/dates';
 
 type FilterTab = 'all' | ItemType;
 
@@ -32,6 +33,21 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function getMonthlyAmount(item: ItemWithCategory): number {
+  switch (item.billing_cycle) {
+    case 'weekly':
+      return (item.amount * 52) / 12;
+    case 'monthly':
+      return item.amount;
+    case 'quarterly':
+      return item.amount / 3;
+    case 'yearly':
+      return item.amount / 12;
+    default:
+      return item.amount;
+  }
 }
 
 export default function Analytics({ items }: AnalyticsProps) {
@@ -60,41 +76,34 @@ export default function Analytics({ items }: AnalyticsProps) {
     loadStats();
   }, [filteredItems]);
 
-  // Generate mock monthly trend data (last 6 months)
+  // Monthly trend data (last 6 months) derived from item start dates
   const monthlyTrendData = useMemo(() => {
-    const months = [];
+    const months: { month: string; amount: number }[] = [];
     const now = new Date();
     
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-      
-      // For demo: simulate some variance in spending
-      const variance = 1 + (Math.random() - 0.5) * 0.2;
-      months.push({
-        month: monthName,
-        amount: Math.round(monthlySpending * variance),
-      });
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' });
+
+      const amount = filteredItems.reduce((total, item) => {
+        if (!item.is_active) return total;
+        const startDate = parseLocalDate(item.start_date);
+        if (startDate > monthEnd) return total;
+        return total + getMonthlyAmount(item);
+      }, 0);
+
+      months.push({ month: monthName, amount: Math.round(amount) });
     }
     
     return months;
-  }, [monthlySpending]);
+  }, [filteredItems]);
 
   // Top items by cost (monthly normalized)
   const topItems = useMemo(() => {
     return filteredItems
       .filter(s => s.is_active)
-      .map(item => {
-        let monthlyAmount: number;
-        switch (item.billing_cycle) {
-          case 'weekly': monthlyAmount = item.amount * 52 / 12; break;
-          case 'monthly': monthlyAmount = item.amount; break;
-          case 'quarterly': monthlyAmount = item.amount / 3; break;
-          case 'yearly': monthlyAmount = item.amount / 12; break;
-          default: monthlyAmount = item.amount;
-        }
-        return { ...item, monthlyAmount };
-      })
+      .map((item) => ({ ...item, monthlyAmount: getMonthlyAmount(item) }))
       .sort((a, b) => b.monthlyAmount - a.monthlyAmount)
       .slice(0, 5);
   }, [filteredItems]);

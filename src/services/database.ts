@@ -29,7 +29,8 @@ async function getUserId(): Promise<string> {
 // ============ Categories ============
 
 export async function getCategories(type?: ItemType): Promise<Category[]> {
-  let query = supabase.from('categories').select('*').order('name');
+  const userId = await getUserId();
+  let query = supabase.from('categories').select('*').eq('user_id', userId).order('name');
   if (type) {
     query = query.eq('category_type', type);
   }
@@ -66,26 +67,37 @@ export async function updateCategory(
   color: string,
   icon?: string
 ): Promise<void> {
+  const userId = await getUserId();
   const { error } = await supabase
     .from('categories')
     .update({ name, color, icon: icon || null })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
 export async function deleteCategory(id: string): Promise<void> {
+  const userId = await getUserId();
   // Orphan items first
-  await supabase.from('items').update({ category_id: null }).eq('category_id', id);
-  const { error } = await supabase.from('categories').delete().eq('id', id);
+  const { error: updateError } = await supabase
+    .from('items')
+    .update({ category_id: null })
+    .eq('category_id', id)
+    .eq('user_id', userId);
+  if (updateError) throw updateError;
+
+  const { error } = await supabase.from('categories').delete().eq('id', id).eq('user_id', userId);
   if (error) throw error;
 }
 
 // ============ Items ============
 
 export async function getItems(type?: ItemType): Promise<ItemWithCategory[]> {
+  const userId = await getUserId();
   let query = supabase
     .from('items')
     .select('*, category:categories(*)')
+    .eq('user_id', userId)
     .order('next_billing_date', { ascending: true });
   if (type) {
     query = query.eq('item_type', type);
@@ -104,11 +116,16 @@ export async function getActiveItems(type?: ItemType): Promise<ItemWithCategory[
   return items.filter((s) => s.is_active === true);
 }
 
-export async function getItemById(id: string): Promise<ItemWithCategory | null> {
+export async function getItemById(
+  id: string,
+  userId?: string
+): Promise<ItemWithCategory | null> {
+  const resolvedUserId = userId ?? (await getUserId());
   const { data, error } = await supabase
     .from('items')
     .select('*, category:categories(*)')
     .eq('id', id)
+    .eq('user_id', resolvedUserId)
     .single();
   if (error) {
     if (error.code === 'PGRST116') return null; // not found
@@ -157,6 +174,7 @@ export async function updateItem(
   id: string,
   data: Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>>
 ): Promise<void> {
+  const userId = await getUserId();
   // Filter out undefined/non-present fields
   const updateData: Record<string, unknown> = {};
   const fields = [
@@ -180,17 +198,23 @@ export async function updateItem(
   }
   if (Object.keys(updateData).length === 0) return;
 
-  const { error } = await supabase.from('items').update(updateData).eq('id', id);
+  const { error } = await supabase
+    .from('items')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  const { error } = await supabase.from('items').delete().eq('id', id);
+  const userId = await getUserId();
+  const { error } = await supabase.from('items').delete().eq('id', id).eq('user_id', userId);
   if (error) throw error;
 }
 
 export async function toggleItemActive(id: string): Promise<void> {
-  const item = await getItemById(id);
+  const userId = await getUserId();
+  const item = await getItemById(id, userId);
   if (!item) return;
 
   const isResuming = !item.is_active;
@@ -199,10 +223,15 @@ export async function toggleItemActive(id: string): Promise<void> {
     const { error } = await supabase
       .from('items')
       .update({ is_active: true, next_billing_date: newNextDate })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userId);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('items').update({ is_active: false }).eq('id', id);
+    const { error } = await supabase
+      .from('items')
+      .update({ is_active: false })
+      .eq('id', id)
+      .eq('user_id', userId);
     if (error) throw error;
   }
 }
@@ -210,7 +239,12 @@ export async function toggleItemActive(id: string): Promise<void> {
 // ============ Payments ============
 
 export async function getPayments(itemId?: string): Promise<Payment[]> {
-  let query = supabase.from('payments').select('*').order('paid_at', { ascending: false });
+  const userId = await getUserId();
+  let query = supabase
+    .from('payments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('paid_at', { ascending: false });
   if (itemId) {
     query = query.eq('item_id', itemId);
   }
@@ -363,10 +397,12 @@ export async function getUpcomingItems(
 
 export async function advancePastDueItems(): Promise<number> {
   const todayStr = formatISODate(getToday());
+  const userId = await getUserId();
 
   const { data: pastDueItems, error } = await supabase
     .from('items')
     .select('*')
+    .eq('user_id', userId)
     .eq('is_active', true)
     .lt('next_billing_date', todayStr);
 
@@ -379,7 +415,8 @@ export async function advancePastDueItems(): Promise<number> {
     const { error: updateError } = await supabase
       .from('items')
       .update({ next_billing_date: newDate })
-      .eq('id', item.id);
+      .eq('id', item.id)
+      .eq('user_id', userId);
     if (!updateError) updatedCount++;
   }
   return updatedCount;

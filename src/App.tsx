@@ -23,6 +23,7 @@ import {
 } from './services/database';
 import { supabase } from './services/supabase';
 import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
+import { checkAndNotifyUpcomingRenewals } from './services/notifications';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
 import ItemForm from './components/ItemForm';
@@ -60,6 +61,9 @@ function App() {
       const [itemsData, cats] = await Promise.all([getItems(), getCategories()]);
       setItems(itemsData);
       setCategories(cats);
+      checkAndNotifyUpcomingRenewals(itemsData).catch((notifyError) => {
+        console.warn('Failed to send reminders:', notifyError);
+      });
     } catch (error) {
       console.error('Failed to load data:', error);
       setError('Failed to load data. Please check your connection.');
@@ -265,7 +269,7 @@ function App() {
         <div
           className="max-w-md w-full card p-8 text-center"
           style={{
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: 'var(--bg-card)',
             border: '1px solid var(--border-default)',
           }}
         >

@@ -264,7 +264,7 @@ export default function AuthScreen() {
         <div className="relative flex justify-center text-sm">
           <span
             className="px-2"
-            style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}
+            style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)' }}
           >
             or
           </span>
@@ -313,12 +313,12 @@ export default function AuthScreen() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: 'var(--bg-primary)' }}
+      style={{ backgroundColor: 'var(--bg-base)' }}
     >
       <div
         className="w-full max-w-md card p-8"
         style={{
-          backgroundColor: 'var(--bg-secondary)',
+          backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
         }}
       >

@@ -94,7 +94,7 @@ export default function ItemForm({
     }
   }, [item]);
 
-  const validate = (): boolean => {
+  const validate = (): Partial<Record<keyof ItemFormData, string>> => {
     const newErrors: Partial<Record<keyof ItemFormData, string>> = {};
 
     if (!formData.name.trim()) {
@@ -119,7 +119,7 @@ export default function ItemForm({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const isValidUrl = (str: string): boolean => {
@@ -134,13 +134,14 @@ export default function ItemForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validate()) {
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
       // Shake animation
       setShake(true);
       setTimeout(() => setShake(false), 500);
       
       // Focus first error field
-      const firstErrorField = Object.keys(errors)[0];
+      const firstErrorField = Object.keys(newErrors)[0];
       if (firstErrorField && formRef.current) {
         const input = formRef.current.querySelector(`[name="${firstErrorField}"]`) as HTMLInputElement;
         input?.focus();
