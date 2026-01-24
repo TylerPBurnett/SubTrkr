@@ -328,14 +328,17 @@ export function calculateYearlySpending(items: ItemWithCategory[], type?: ItemTy
   }, 0);
 }
 
-export async function getSpendingByCategory(
+export function getSpendingByCategory(
   items: ItemWithCategory[],
+  categories: Category[],
   type?: ItemType
-): Promise<SpendingByCategory[]> {
-  const categories = await getCategories(type);
+): SpendingByCategory[] {
+  const filteredCategories = type
+    ? categories.filter((category) => category.category_type === type)
+    : categories;
   const categoryMap = new Map<string, SpendingByCategory>();
 
-  categories.forEach((category) => {
+  filteredCategories.forEach((category) => {
     categoryMap.set(category.id, {
       category,
       total: 0,

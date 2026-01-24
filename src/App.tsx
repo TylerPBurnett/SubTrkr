@@ -52,6 +52,7 @@ function App() {
     return saved === 'light' || saved === 'dark' ? saved : 'dark';
   });
   const hasSeededCategories = useRef(false);
+  const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -71,6 +72,16 @@ function App() {
       setIsLoading(false);
     }
   }, []);
+
+  // Debounced reload function to batch rapid changes
+  const debouncedLoadData = useCallback(() => {
+    if (reloadTimerRef.current) {
+      clearTimeout(reloadTimerRef.current);
+    }
+    reloadTimerRef.current = setTimeout(() => {
+      loadData();
+    }, 100);
+  }, [loadData]);
 
   // Check auth session on mount
   useEffect(() => {
@@ -117,19 +128,22 @@ function App() {
 
     const channel = supabase
       .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => debouncedLoadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () =>
-        loadData()
+        debouncedLoadData()
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () =>
-        loadData()
+        debouncedLoadData()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+      }
     };
-  }, [session, loadData]);
+  }, [session, debouncedLoadData]);
 
   // Network connectivity check
   useEffect(() => {
@@ -166,7 +180,6 @@ function App() {
     setError(null);
     try {
       await createItem(data);
-      await loadData();
       setShowForm(false);
     } catch (err) {
       console.error('Failed to create item:', err);
@@ -181,7 +194,6 @@ function App() {
     setError(null);
     try {
       await updateItem(id, data);
-      await loadData();
       setEditingItem(null);
       setShowForm(false);
     } catch (err) {
@@ -196,7 +208,6 @@ function App() {
     setError(null);
     try {
       await deleteItem(id);
-      await loadData();
     } catch (err) {
       console.error('Failed to delete item:', err);
       setError('Failed to delete item. Please try again.');
@@ -207,7 +218,6 @@ function App() {
     setError(null);
     try {
       await toggleItemActive(id);
-      await loadData();
     } catch (err) {
       console.error('Failed to update item:', err);
       setError('Failed to update item. Please try again.');
@@ -383,7 +393,9 @@ function App() {
           </div>
 
           {/* Content */}
-          {view === 'dashboard' && <Dashboard items={items} onEdit={handleEdit} />}
+          {view === 'dashboard' && (
+            <Dashboard items={items} categories={categories} onEdit={handleEdit} />
+          )}
           {view === 'bills' && (
             <ItemList
               items={items}
@@ -406,7 +418,7 @@ function App() {
               onAddNew={() => handleAddNew('subscription')}
             />
           )}
-          {view === 'analytics' && <Analytics items={items} />}
+          {view === 'analytics' && <Analytics items={items} categories={categories} />}
           {view === 'settings' && (
             <Settings categories={categories} onCategoriesChange={loadData} />
           )}

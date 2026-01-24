@@ -12,7 +12,7 @@ import {
   Cell
 } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Receipt, CreditCard } from 'lucide-react';
-import type { ItemWithCategory, SpendingByCategory, ItemType } from '../types';
+import type { Category, ItemWithCategory, SpendingByCategory, ItemType } from '../types';
 import { 
   calculateMonthlySpending,
   calculateYearlySpending,
@@ -24,6 +24,7 @@ type FilterTab = 'all' | ItemType;
 
 interface AnalyticsProps {
   items: ItemWithCategory[];
+  categories: Category[];
 }
 
 function formatCurrency(amount: number, currency: string = 'USD'): string {
@@ -50,7 +51,7 @@ function getMonthlyAmount(item: ItemWithCategory): number {
   }
 }
 
-export default function Analytics({ items }: AnalyticsProps) {
+export default function Analytics({ items, categories }: AnalyticsProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
@@ -67,14 +68,20 @@ export default function Analytics({ items }: AnalyticsProps) {
       const [monthly, yearly, byCategory] = await Promise.all([
         calculateMonthlySpending(filteredItems),
         calculateYearlySpending(filteredItems),
-        getSpendingByCategory(filteredItems)
+        Promise.resolve(
+          getSpendingByCategory(
+            filteredItems,
+            categories,
+            activeTab === 'all' ? undefined : activeTab
+          )
+        ),
       ]);
       setMonthlySpending(monthly);
       setYearlySpending(yearly);
       setSpendingByCategory(byCategory);
     }
     loadStats();
-  }, [filteredItems]);
+  }, [filteredItems, categories, activeTab]);
 
   // Monthly trend data (last 6 months) derived from item start dates
   const monthlyTrendData = useMemo(() => {

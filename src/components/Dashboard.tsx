@@ -8,7 +8,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import type { ItemWithCategory, SpendingByCategory } from '../types';
+import type { Category, ItemWithCategory, SpendingByCategory } from '../types';
 import { 
   calculateMonthlySpending, 
   calculateYearlySpending,
@@ -19,6 +19,7 @@ import { formatShortDate, getDaysUntil } from '../utils/dates';
 
 interface DashboardProps {
   items: ItemWithCategory[];
+  categories: Category[];
   onEdit: (item: ItemWithCategory) => void;
 }
 
@@ -32,7 +33,7 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
   }).format(amount);
 }
 
-export default function Dashboard({ items, onEdit }: DashboardProps) {
+export default function Dashboard({ items, categories, onEdit }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
@@ -48,8 +49,8 @@ export default function Dashboard({ items, onEdit }: DashboardProps) {
       const [monthly, yearly, byCategory, upcoming] = await Promise.all([
         Promise.resolve(calculateMonthlySpending(items, typeFilter)),
         Promise.resolve(calculateYearlySpending(items, typeFilter)),
-        getSpendingByCategory(items, typeFilter),
-        getUpcomingItems(items, 7, typeFilter)
+        Promise.resolve(getSpendingByCategory(items, categories, typeFilter)),
+        getUpcomingItems(items, 7, typeFilter),
       ]);
       setMonthlySpending(monthly);
       setYearlySpending(yearly);
@@ -57,7 +58,7 @@ export default function Dashboard({ items, onEdit }: DashboardProps) {
       setUpcomingItems(upcoming);
     }
     loadStats();
-  }, [items, typeFilter]);
+  }, [items, categories, typeFilter]);
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
