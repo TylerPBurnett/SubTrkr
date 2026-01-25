@@ -59,6 +59,7 @@ export default function ItemList({
   const [showPaused, setShowPaused] = useState(true);
   const [showCancelled, setShowCancelled] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -135,156 +136,153 @@ export default function ItemList({
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        {/* Search Bar */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+      {/* Unified Search & Filter Component */}
+      <div className="relative flex-1 max-w-2xl">
+        {/* Search Bar Container */}
+        <div
+          className="flex items-center gap-2 px-4 py-3 rounded-xl transition-all"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            boxShadow: searchFocused ? '0 0 0 3px var(--brand-muted)' : 'var(--shadow-card)'
+          }}
+        >
+          {/* Search Input */}
           <input
             type="text"
             placeholder={`Search ${labels.plural}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input w-full pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            className="flex-1 bg-transparent outline-none border-none focus:outline-none focus:ring-0"
             style={{
-              '--tw-ring-color': 'var(--brand-primary)',
-              borderColor: 'var(--border-default)'
-            } as React.CSSProperties}
+              color: 'var(--text-primary)',
+              fontFamily: 'Archivo, sans-serif',
+              boxShadow: 'none'
+            }}
           />
-        </div>
 
-        {/* Filters Dropdown */}
-        <div className="relative">
+          {/* Filter Icon Button (Circular) */}
           <button
             onClick={() => setFiltersOpen(!filtersOpen)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-medium"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0"
             style={{
-              backgroundColor: filtersOpen || activeFilterCount > 0 ? 'var(--brand-primary)' : 'var(--bg-hover)',
-              color: filtersOpen || activeFilterCount > 0 ? 'var(--text-inverse)' : 'var(--text-secondary)',
-              border: '1px solid var(--border-default)'
+              backgroundColor: 'var(--bg-hover)',
+              color: 'var(--text-secondary)'
             }}
             onMouseEnter={(e) => {
-              if (!filtersOpen && activeFilterCount === 0) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-              }
+              e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+              e.currentTarget.style.transform = 'scale(1.05)';
             }}
             onMouseLeave={(e) => {
-              if (!filtersOpen && activeFilterCount === 0) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              }
+              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
             <Filter className="w-5 h-5" />
-            <span>Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded text-xs font-bold font-mono" style={{
-                backgroundColor: filtersOpen ? 'rgba(255,255,255,0.25)' : 'var(--brand-primary)',
-                color: filtersOpen ? 'white' : 'var(--text-inverse)'
-              }}>
-                {activeFilterCount}
-              </span>
-            )}
           </button>
-
-          {filtersOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setFiltersOpen(false)}
-              />
-              <div
-                className="dropdown absolute right-0 top-full mt-2 w-64 rounded-xl p-4 z-20"
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-default)',
-                  boxShadow: 'var(--shadow-elevated)'
-                }}
-              >
-                {/* Category Filter */}
-                <div className="mb-4">
-                  <label className="label block mb-2">CATEGORY</label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
-                    style={{
-                      '--tw-ring-color': 'var(--brand-primary)',
-                      borderColor: 'var(--border-default)'
-                    } as React.CSSProperties}
-                  >
-                    <option value="all">All Categories</option>
-                    {filteredCategories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Status Filters */}
-                <div className="space-y-3">
-                  <label className="label block mb-2">STATUS</label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={showPaused}
-                      onChange={(e) => setShowPaused(e.target.checked)}
-                      className="w-4 h-4 rounded transition-all"
-                      style={{
-                        accentColor: 'var(--brand-primary)',
-                        borderColor: 'var(--border-default)'
-                      }}
-                    />
-                    <span className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
-                      Show paused
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={showCancelled}
-                      onChange={(e) => setShowCancelled(e.target.checked)}
-                      className="w-4 h-4 rounded transition-all"
-                      style={{
-                        accentColor: 'var(--brand-primary)',
-                        borderColor: 'var(--border-default)'
-                      }}
-                    />
-                    <span className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
-                      Show cancelled
-                    </span>
-                  </label>
-                </div>
-
-                {/* Clear Filters Button */}
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('all');
-                      setShowPaused(true);
-                      setShowCancelled(false);
-                    }}
-                    className="w-full mt-4 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                    style={{
-                      backgroundColor: 'var(--bg-hover)',
-                      color: 'var(--text-secondary)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                      e.currentTarget.style.color = 'var(--text-secondary)';
-                    }}
-                  >
-                    Clear all filters
-                  </button>
-                )}
-              </div>
-            </>
-          )}
         </div>
+
+        {/* Filters Dropdown */}
+        {filtersOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setFiltersOpen(false)}
+            />
+            <div
+              className="dropdown absolute right-0 top-full mt-2 w-72 rounded-xl p-4 z-20"
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                boxShadow: 'var(--shadow-elevated)'
+              }}
+            >
+              {/* Category Filter */}
+              <div className="mb-4">
+                <label className="label block mb-2">CATEGORY</label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    '--tw-ring-color': 'var(--brand-primary)',
+                    borderColor: 'var(--border-default)'
+                  } as React.CSSProperties}
+                >
+                  <option value="all">All Categories</option>
+                  {filteredCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filters */}
+              <div className="space-y-3">
+                <label className="label block mb-2">STATUS</label>
+
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={showPaused}
+                    onChange={(e) => setShowPaused(e.target.checked)}
+                    className="w-4 h-4 rounded transition-all"
+                    style={{
+                      accentColor: 'var(--brand-primary)',
+                      borderColor: 'var(--border-default)'
+                    }}
+                  />
+                  <span className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
+                    Show paused
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={showCancelled}
+                    onChange={(e) => setShowCancelled(e.target.checked)}
+                    className="w-4 h-4 rounded transition-all"
+                    style={{
+                      accentColor: 'var(--brand-primary)',
+                      borderColor: 'var(--border-default)'
+                    }}
+                  />
+                  <span className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
+                    Show cancelled
+                  </span>
+                </label>
+              </div>
+
+              {/* Clear Filters Button */}
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setShowPaused(true);
+                    setShowCancelled(false);
+                  }}
+                  className="w-full mt-4 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  style={{
+                    backgroundColor: 'var(--bg-hover)',
+                    color: 'var(--text-secondary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Item List */}
