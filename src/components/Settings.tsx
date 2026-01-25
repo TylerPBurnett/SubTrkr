@@ -259,25 +259,27 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
           {categoryList.map(category => (
             <div
               key={category.id}
-              className="group flex items-center gap-2 px-3 py-1.5 rounded-full transition-all cursor-default"
-              style={{ 
+              className="group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all cursor-default"
+              style={{
                 backgroundColor: 'var(--bg-hover)',
-                border: '1px solid var(--border-default)'
+                border: '2px solid var(--border-default)'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-                e.currentTarget.style.borderColor = 'var(--border-strong)';
+                e.currentTarget.style.borderColor = category.color;
+                e.currentTarget.style.boxShadow = `0 2px 8px ${category.color}40`;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                 e.currentTarget.style.borderColor = 'var(--border-default)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
             >
               <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
+                className="w-2.5 h-2.5 rounded-sm shrink-0"
                 style={{ backgroundColor: category.color }}
               />
-              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <span className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {category.name}
               </span>
               <button

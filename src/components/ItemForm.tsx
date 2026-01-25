@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Receipt, CreditCard } from 'lucide-react';
 import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType } from '../types';
 import { getNextFutureBillingDate, formatISODate, getToday } from '../utils/dates';
 
@@ -206,38 +206,59 @@ export default function ItemForm({
       />
 
       {/* Modal */}
-      <div 
-        className={`relative w-full max-w-lg rounded-2xl shadow-xl max-h-[90vh] overflow-hidden ${shake ? 'animate-shake' : ''}`}
+      <div
+        className={`zoom-in-95 relative w-full max-w-lg rounded-2xl shadow-xl max-h-[90vh] overflow-hidden ${shake ? 'animate-shake' : ''}`}
         style={{ backgroundColor: 'var(--bg-surface)' }}
       >
+        {/* Colored header bar with shimmer */}
+        <div className="relative h-2 shimmer" style={{
+          background: 'linear-gradient(90deg, var(--brand-primary) 0%, #16a34a 100%)'
+        }} />
+
         {/* Header */}
-        <div 
-          className="flex items-center justify-between p-6"
-          style={{ borderBottom: '1px solid var(--border-default)' }}
-        >
-          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {isEditing ? `Edit ${labels.singular}` : `Add ${labels.singular}`}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div style={{
+              background: 'linear-gradient(135deg, var(--brand-primary) 0%, #16a34a 100%)',
+              boxShadow: '0 4px 14px -3px rgba(34, 197, 94, 0.35)'
+            }} className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0">
+              {itemType === 'bill' ? (
+                <Receipt className="w-8 h-8 text-white" />
+              ) : (
+                <CreditCard className="w-8 h-8 text-white" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-2xl font-bold" style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                {isEditing ? 'Edit' : 'Add'} {labels.singular}
+              </h2>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {isEditing ? 'Update your details' : 'Track a new recurring payment'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg transition-colors shrink-0"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
+        <div style={{ height: '1px', backgroundColor: 'var(--border-default)' }} />
+
         {/* Form */}
-        <form ref={formRef} onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <form ref={formRef} onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {/* Error summary */}
           {Object.keys(errors).length > 0 && (
-            <div 
+            <div
               className="mb-5 p-4 rounded-xl flex items-start gap-3"
-              style={{ 
-                backgroundColor: 'var(--accent-red-muted)', 
-                border: '1px solid var(--accent-red)' 
+              style={{
+                backgroundColor: 'var(--accent-red-muted)',
+                border: '1px solid var(--accent-red)'
               }}
             >
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--accent-red)' }} />
@@ -253,8 +274,8 @@ export default function ItemForm({
           )}
           <div className="space-y-5">
             {/* Name */}
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
+              <label className="label block mb-1.5">
                 {labels.singular} Name *
               </label>
               <input
@@ -275,9 +296,9 @@ export default function ItemForm({
             </div>
 
             {/* Amount & Currency */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="stagger-item grid grid-cols-2 gap-4" style={{ animationDelay: '0.1s' }}>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label className="label block mb-1.5">
                   Amount *
                 </label>
                 <input
@@ -288,10 +309,12 @@ export default function ItemForm({
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
-                  style={{ 
+                  className="input w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2"
+                  style={{
                     borderColor: errors.amount ? 'var(--accent-red)' : 'var(--border-default)',
-                    '--tw-ring-color': 'var(--brand-primary)'
+                    '--tw-ring-color': 'var(--brand-primary)',
+                    fontSize: '1.5rem',
+                    fontWeight: 600
                   } as React.CSSProperties}
                 />
                 {errors.amount && (
@@ -300,14 +323,14 @@ export default function ItemForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label className="label block mb-1.5">
                   Currency
                 </label>
                 <select
                   name="currency"
                   value={formData.currency}
                   onChange={handleChange}
-                  className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                  className="input w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2"
                   style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
                 >
                   {currencies.map(c => (
@@ -318,9 +341,9 @@ export default function ItemForm({
             </div>
 
             {/* Billing Cycle & Category */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="stagger-item grid grid-cols-2 gap-4" style={{ animationDelay: '0.15s' }}>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label className="label block mb-1.5">
                   Billing Cycle
                 </label>
                 <select
@@ -337,7 +360,7 @@ export default function ItemForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label className="label block mb-1.5">
                   Category
                 </label>
                 <select
@@ -356,9 +379,9 @@ export default function ItemForm({
             </div>
 
             {/* Dates */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="stagger-item grid grid-cols-2 gap-4" style={{ animationDelay: '0.2s' }}>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label className="label block mb-1.5">
                   Next Billing Date *
                 </label>
                 <input
@@ -375,7 +398,7 @@ export default function ItemForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                <label className="label block mb-1.5">
                   Start Date *
                 </label>
                 <input
@@ -393,8 +416,8 @@ export default function ItemForm({
             </div>
 
             {/* Reminder */}
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <div className="stagger-item" style={{ animationDelay: '0.25s' }}>
+              <label className="label block mb-1.5">
                 Remind me before (days)
               </label>
               <select
@@ -412,8 +435,8 @@ export default function ItemForm({
             </div>
 
             {/* URL */}
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <div className="stagger-item" style={{ animationDelay: '0.3s' }}>
+              <label className="label block mb-1.5">
                 Website URL
               </label>
               <input
@@ -434,8 +457,8 @@ export default function ItemForm({
             </div>
 
             {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <div className="stagger-item" style={{ animationDelay: '0.35s' }}>
+              <label className="label block mb-1.5">
                 Notes
               </label>
               <textarea

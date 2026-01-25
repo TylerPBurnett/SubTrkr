@@ -217,7 +217,7 @@ export default function ItemList({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredItems.map(item => {
+          {filteredItems.map((item, index) => {
             // Determine opacity and styling based on status
             const statusStyles = {
               active: '',
@@ -226,55 +226,77 @@ export default function ItemList({
               archived: 'opacity-40',
             };
 
+            const categoryColor = item.category?.color || '#6b7280';
+
             return (
             <div
               key={item.id}
-              className={`card relative group ${statusStyles[item.status]}`}
-              style={
-                item.status === 'cancelled' || item.status === 'archived'
-                  ? { filter: 'grayscale(0.3)' }
-                  : undefined
-              }
+              className={`stagger-item card relative group ${statusStyles[item.status]}`}
+              style={{
+                borderLeft: `6px solid ${categoryColor}`,
+                filter: item.status === 'cancelled' || item.status === 'archived' ? 'grayscale(0.3)' : undefined,
+                animationDelay: `${index * 0.05}s`,
+                transition: 'all 0.2s var(--ease-out-expo)'
+              }}
+              onMouseEnter={(e) => {
+                if (item.status === 'active') {
+                  e.currentTarget.style.boxShadow = `0 8px 24px -8px ${categoryColor}40, var(--shadow-elevated)`;
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--shadow-card)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
               {/* Status badge */}
               {item.status === 'paused' && (
                 <div
-                  className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: 'var(--accent-amber-muted)', color: 'var(--accent-amber)' }}
+                  className="absolute top-4 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
+                    letterSpacing: '0.02em'
+                  }}
                 >
-                  Paused {item.paused_until && `until ${formatShortDate(item.paused_until)}`}
+                  PAUSED {item.paused_until && `· ${formatShortDate(item.paused_until)}`}
                 </div>
               )}
               {item.status === 'cancelled' && (
                 <div
-                  className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: 'var(--accent-red-muted)', color: 'var(--accent-red)' }}
+                  className="absolute top-4 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
+                    letterSpacing: '0.02em'
+                  }}
                 >
-                  Cancelled {item.cancellation_date && formatShortDate(item.cancellation_date)}
+                  CANCELLED {item.cancellation_date && `· ${formatShortDate(item.cancellation_date)}`}
                 </div>
               )}
               {item.status === 'archived' && (
                 <div
-                  className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                  className="absolute top-4 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                  style={{
+                    backgroundColor: 'var(--bg-hover)',
+                    color: 'var(--text-muted)',
+                    border: '1px solid var(--border-default)',
+                    letterSpacing: '0.02em'
+                  }}
                 >
-                  Archived
+                  ARCHIVED
                 </div>
               )}
 
               {/* Header */}
               <div className="flex items-start gap-4 mb-4">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0"
-                  style={{ backgroundColor: item.category?.color || '#6b7280' }}
-                >
-                  {item.name.charAt(0).toUpperCase()}
-                </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                  <h3 className="font-mono font-semibold text-lg truncate" style={{ color: 'var(--text-primary)' }}>
                     {item.name}
                   </h3>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
                     {item.category?.name || 'Uncategorized'}
                   </p>
                 </div>
@@ -477,7 +499,11 @@ export default function ItemList({
 
               {/* Amount */}
               <div className="mb-4">
-                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                <p className="font-mono font-bold" style={{
+                  fontSize: '1.75rem',
+                  letterSpacing: '-0.01em',
+                  color: 'var(--text-primary)'
+                }}>
                   {formatCurrency(item.amount, item.currency)}
                 </p>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -486,14 +512,14 @@ export default function ItemList({
               </div>
 
               {/* Footer */}
-              <div 
+              <div
                 className="pt-4 flex items-center justify-between text-sm"
                 style={{ borderTop: '1px solid var(--border-muted)' }}
               >
                 <span style={{ color: 'var(--text-secondary)' }}>
                   Next billing
                 </span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                <span className="font-mono font-medium" style={{ color: 'var(--text-primary)' }}>
                   {formatDisplayDate(item.next_billing_date)}
                 </span>
               </div>

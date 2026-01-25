@@ -284,19 +284,19 @@ Added missing tokens:
 ### **Immediate (Typography Consistency)**
 - [x] Update global CSS with Archivo + JetBrains Mono
 - [x] StatusChangeDialog redesigned
-- [ ] Update Dashboard stats cards
-- [ ] Update ItemList cards with new badges
-- [ ] Update ItemForm to match StatusChangeDialog
-- [ ] Add stagger animations to all lists
+- [x] Update Dashboard stats cards
+- [x] Update ItemList cards with new badges
+- [x] Update ItemForm to match StatusChangeDialog
+- [x] Add stagger animations to all lists
 
 ### **Next Phase (Visual Polish)**
-- [ ] Redesign Analytics charts
-- [ ] Enhance Upcoming Payments section
-- [ ] Update Category badges
-- [ ] Polish sidebar navigation
-- [ ] Improve theme toggle
+- [x] Redesign Analytics charts
+- [x] Enhance Upcoming Payments section
+- [x] Update Category badges
+- [x] Polish sidebar navigation
+- [x] Improve theme toggle
 - [ ] Redesign error toasts
-- [ ] Enhance empty states
+- [x] Enhance empty states
 
 ### **Testing**
 - [ ] Verify font loading (Google Fonts CDN)

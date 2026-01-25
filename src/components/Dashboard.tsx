@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   TrendingUp,
-  TrendingDown,
   Calendar,
   CreditCard,
   Receipt,
@@ -14,7 +13,6 @@ import type { Category, ItemWithCategory, SpendingByCategory } from '../types';
 import {
   calculateMonthlySpending,
   calculateYearlySpending,
-  calculateMonthlySavings,
   getSpendingByCategory,
   getUpcomingItems
 } from '../services/database';
@@ -40,7 +38,6 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
-  const [monthlySavings, setMonthlySavings] = useState(0);
   const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
   const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
   
@@ -50,16 +47,14 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
   // Load stats when items or filter changes
   useEffect(() => {
     async function loadStats() {
-      const [monthly, yearly, savings, byCategory, upcoming] = await Promise.all([
+      const [monthly, yearly, byCategory, upcoming] = await Promise.all([
         Promise.resolve(calculateMonthlySpending(items, typeFilter)),
         Promise.resolve(calculateYearlySpending(items, typeFilter)),
-        Promise.resolve(calculateMonthlySavings(items, typeFilter)),
         Promise.resolve(getSpendingByCategory(items, categories, typeFilter)),
         getUpcomingItems(items, 7, typeFilter),
       ]);
       setMonthlySpending(monthly);
       setYearlySpending(yearly);
-      setMonthlySavings(savings);
       setSpendingByCategory(byCategory);
       setUpcomingItems(upcoming);
     }
@@ -93,10 +88,12 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
           <button
             key={tab.id}
             onClick={() => setFilterTab(tab.id)}
-            className="px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            className="px-4 py-2 rounded-lg text-sm transition-colors"
             style={{
               backgroundColor: filterTab === tab.id ? 'var(--brand-primary)' : 'var(--bg-hover)',
               color: filterTab === tab.id ? 'var(--text-inverse)' : 'var(--text-secondary)',
+              fontWeight: 700,
+              letterSpacing: '-0.01em'
             }}
             onMouseEnter={(e) => {
               if (filterTab !== tab.id) {
@@ -115,84 +112,119 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Monthly Spending</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                {formatCurrency(monthlySpending)}
-              </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Monthly Spending Card */}
+        <div className="stagger-item card" style={{
+          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
+          borderLeft: '4px solid var(--brand-primary)'
+        }}>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <p className="label">MONTHLY SPENDING</p>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
+                <TrendingUp className="w-5 h-5" style={{ color: 'var(--brand-primary)' }} />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
-              <TrendingUp className="w-6 h-6" style={{ color: 'var(--brand-primary)' }} />
-            </div>
+            <h1 className="font-mono" style={{
+              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+              fontWeight: 650,
+              letterSpacing: '-0.02em',
+              lineHeight: 1,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {formatCurrency(monthlySpending)}
+            </h1>
           </div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Monthly Savings</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--accent-green)' }}>
-                {formatCurrency(monthlySavings)}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                From {cancelledCount} cancelled
-              </p>
+        {/* Yearly Spending Card */}
+        <div className="stagger-item card" style={{
+          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
+          borderLeft: '4px solid var(--accent-purple)'
+        }}>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <p className="label">YEARLY SPENDING</p>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-purple-muted)' }}>
+                <Calendar className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-green-muted)' }}>
-              <TrendingDown className="w-6 h-6" style={{ color: 'var(--accent-green)' }} />
-            </div>
+            <h1 className="font-mono" style={{
+              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+              fontWeight: 650,
+              letterSpacing: '-0.02em',
+              lineHeight: 1,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {formatCurrency(yearlySpending)}
+            </h1>
           </div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Yearly Spending</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                {formatCurrency(yearlySpending)}
+        {/* Active Items Card */}
+        <div className="stagger-item card" style={{
+          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
+          borderLeft: '4px solid var(--accent-blue)'
+        }}>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <p className="label">
+                {filterTab === 'bill' ? 'ACTIVE BILLS' : filterTab === 'subscription' ? 'ACTIVE SUBSCRIPTIONS' : 'ACTIVE ITEMS'}
               </p>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
+                {filterTab === 'bill' ? <Receipt className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} /> : <CreditCard className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />}
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-purple-muted)' }}>
-              <Calendar className="w-6 h-6" style={{ color: 'var(--accent-purple)' }} />
-            </div>
+            <h1 className="font-mono" style={{
+              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+              fontWeight: 650,
+              letterSpacing: '-0.02em',
+              lineHeight: 1,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {activeCount}
+            </h1>
+            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+              {pausedCount > 0 && `${pausedCount} paused`}
+              {pausedCount > 0 && cancelledCount > 0 && ' / '}
+              {cancelledCount > 0 && `${cancelledCount} cancelled`}
+            </p>
           </div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {filterTab === 'bill' ? 'Active Bills' : filterTab === 'subscription' ? 'Active Subscriptions' : 'Active Items'}
-              </p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                {activeCount}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {pausedCount > 0 && `${pausedCount} paused`}
-                {pausedCount > 0 && cancelledCount > 0 && ' / '}
-                {cancelledCount > 0 && `${cancelledCount} cancelled`}
-              </p>
+        {/* Due This Week Card */}
+        <div className="stagger-item card" style={{
+          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
+          borderLeft: '4px solid var(--accent-amber)'
+        }}>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <p className="label">DUE THIS WEEK</p>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-amber-muted)' }}>
+                <AlertCircle className="w-5 h-5" style={{ color: 'var(--accent-amber)' }} />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
-              {filterTab === 'bill' ? <Receipt className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} /> : <CreditCard className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} />}
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Due This Week</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                {upcomingItems.length}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-amber-muted)' }}>
-              <AlertCircle className="w-6 h-6" style={{ color: 'var(--accent-amber)' }} />
-            </div>
+            <h1 className="font-mono" style={{
+              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+              fontWeight: 650,
+              letterSpacing: '-0.02em',
+              lineHeight: 1,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {upcomingItems.length}
+            </h1>
           </div>
         </div>
       </div>
@@ -200,7 +232,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Items */}
         <div className="card">
-          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
             {filterTab === 'bill' ? 'Upcoming Bills' : filterTab === 'subscription' ? 'Upcoming Renewals' : 'Upcoming Payments'}
           </h3>
           
@@ -211,7 +243,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingItems.slice(0, 5).map(item => {
+              {upcomingItems.slice(0, 5).map((item, index) => {
                 const isPaused = item.status === 'paused' && item.paused_until;
                 const targetDate = isPaused ? item.paused_until! : item.next_billing_date;
                 const daysUntil = getDaysUntil(targetDate);
@@ -220,10 +252,19 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                   <button
                     key={item.id}
                     onClick={() => onEdit(item)}
-                    className="w-full flex items-center gap-4 p-3 rounded-xl transition-colors group"
-                    style={{ backgroundColor: 'transparent' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    className="stagger-item w-full flex items-center gap-4 p-3 rounded-xl transition-all group"
+                    style={{
+                      backgroundColor: 'transparent',
+                      animationDelay: `${index * 0.05}s`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                      e.currentTarget.style.transform = 'scale(1.01)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
                   >
                     {isPaused && (
                       <div className="absolute top-2 left-2">
@@ -231,14 +272,14 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                       </div>
                     )}
                     <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium shrink-0"
                       style={{ backgroundColor: item.category?.color || '#6b7280' }}
                     >
                       {item.name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex-1 text-left">
-                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
-                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                      <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
                         {isPaused ? (
                           <>Resumes on {formatShortDate(targetDate)}</>
                         ) : (
@@ -246,17 +287,18 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                         )}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium" style={{
-                        color: daysUntil <= 1 ? 'var(--accent-red)' : daysUntil <= 3 ? 'var(--accent-amber)' : 'var(--text-secondary)'
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold font-mono" style={{
+                        color: daysUntil <= 1 ? 'var(--accent-red)' : daysUntil <= 3 ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                        fontWeight: 700
                       }}>
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                         {isPaused ? 'Auto-resume' : formatShortDate(item.next_billing_date)}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                    <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                   </button>
                 );
               })}
@@ -266,7 +308,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
 
         {/* Spending by Category */}
         <div className="card">
-          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
             Spending by Category
           </h3>
           
@@ -311,14 +353,14 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
               <div className="flex-1 space-y-2">
                 {spendingByCategory.slice(0, 5).map(item => (
                   <div key={item.category.id} className="flex items-center gap-3">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: item.category.color }}
                     />
                     <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {item.category.name}
                     </span>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <span className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {formatCurrency(item.total)}
                     </span>
                   </div>

@@ -198,15 +198,13 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card">
-          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-            Monthly Average
-          </p>
+        <div className="stagger-item card">
+          <p className="label mb-2">MONTHLY AVERAGE</p>
           <div className="flex items-end gap-2">
-            <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
               {formatCurrency(monthlySpending)}
             </p>
-            <div className="flex items-center gap-1 text-sm mb-1" style={{
+            <div className="flex items-center gap-1 text-sm mb-1 font-mono" style={{
               color: trend.direction === 'up' ? 'var(--accent-red)' :
                      trend.direction === 'down' ? 'var(--accent-emerald)' :
                      'var(--text-muted)'
@@ -219,32 +217,26 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
           </div>
         </div>
 
-        <div className="card">
-          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-            Monthly Savings
-          </p>
-          <p className="text-3xl font-bold" style={{ color: 'var(--accent-green)' }}>
+        <div className="stagger-item card">
+          <p className="label mb-2">MONTHLY SAVINGS</p>
+          <p className="text-3xl font-bold font-mono" style={{ color: 'var(--accent-green)' }}>
             {formatCurrency(monthlySavings)}
           </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>
             {cancelledItems.length} cancelled
           </p>
         </div>
 
-        <div className="card">
-          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-            Yearly Total
-          </p>
-          <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <div className="stagger-item card">
+          <p className="label mb-2">YEARLY TOTAL</p>
+          <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
             {formatCurrency(yearlySpending)}
           </p>
         </div>
 
-        <div className="card">
-          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-            Active {itemTypeLabel}
-          </p>
-          <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <div className="stagger-item card">
+          <p className="label mb-2">ACTIVE {itemTypeLabel.toUpperCase()}</p>
+          <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
             {filteredItems.filter(s => s.status === 'active').length}
           </p>
         </div>
@@ -253,8 +245,8 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trend */}
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
+        <div className="card animate-in" style={{ animationDelay: '0.3s' }}>
+          <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
             Monthly Spending Trend
           </h3>
           
@@ -267,26 +259,31 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyTrendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="month"
                     stroke="var(--text-muted)"
                     fontSize={12}
+                    fontFamily="Archivo, sans-serif"
+                    fontWeight={600}
+                    style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="var(--text-muted)"
                     fontSize={12}
+                    fontFamily="JetBrains Mono, monospace"
                     tickFormatter={(value) => `$${value}`}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value) => [`$${value}`, 'Spending']}
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '8px',
-                      boxShadow: 'var(--shadow-elevated)'
+                      border: '2px solid var(--border-default)',
+                      borderRadius: '12px',
+                      boxShadow: 'var(--shadow-elevated)',
+                      fontFamily: 'JetBrains Mono, monospace'
                     }}
-                    labelStyle={{ color: 'var(--text-primary)' }}
-                    itemStyle={{ color: 'var(--text-primary)' }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Archivo, sans-serif', fontWeight: 600 }}
+                    itemStyle={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}
                   />
                   <Line 
                     type="monotone" 
@@ -303,8 +300,8 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
         </div>
 
         {/* Category Breakdown */}
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
+        <div className="card animate-in" style={{ animationDelay: '0.35s' }}>
+          <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
             Spending by Category
           </h3>
           
@@ -317,29 +314,33 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryChartData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" horizontal={false} />
-                  <XAxis 
+                  <XAxis
                     type="number"
                     stroke="var(--text-muted)"
                     fontSize={12}
+                    fontFamily="JetBrains Mono, monospace"
                     tickFormatter={(value) => `$${value}`}
                   />
-                  <YAxis 
+                  <YAxis
                     type="category"
                     dataKey="name"
                     stroke="var(--text-muted)"
                     fontSize={12}
+                    fontFamily="Archivo, sans-serif"
+                    fontWeight={600}
                     width={100}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value) => [`$${value}/mo`, 'Spending']}
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '8px',
-                      boxShadow: 'var(--shadow-elevated)'
+                      border: '2px solid var(--border-default)',
+                      borderRadius: '12px',
+                      boxShadow: 'var(--shadow-elevated)',
+                      fontFamily: 'JetBrains Mono, monospace'
                     }}
-                    labelStyle={{ color: 'var(--text-primary)' }}
-                    itemStyle={{ color: 'var(--text-primary)' }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Archivo, sans-serif', fontWeight: 600 }}
+                    itemStyle={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}
                   />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                     {categoryChartData.map((entry, index) => (
@@ -394,10 +395,10 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    <p className="font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
                       {formatCurrency(item.monthlyAmount)}/mo
                     </p>
-                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
                       {formatCurrency(item.amount, item.currency)} {item.billing_cycle}
                     </p>
                   </div>
@@ -425,10 +426,10 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      Total Monthly Savings
+                    <p className="label" style={{ color: 'var(--accent-green)' }}>
+                      TOTAL MONTHLY SAVINGS
                     </p>
-                    <p className="text-2xl font-bold mt-1" style={{ color: 'var(--accent-green)' }}>
+                    <p className="text-2xl font-bold font-mono mt-1" style={{ color: 'var(--accent-green)' }}>
                       {formatCurrency(monthlySavings)}
                     </p>
                   </div>
@@ -458,7 +459,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-sm" style={{ color: 'var(--accent-green)' }}>
+                      <p className="font-semibold font-mono text-sm" style={{ color: 'var(--accent-green)' }}>
                         +{formatCurrency(item.monthlyAmount)}/mo
                       </p>
                     </div>

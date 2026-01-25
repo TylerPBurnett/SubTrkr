@@ -308,7 +308,6 @@ function App() {
     { id: 'bills' as const, label: 'Bills', icon: Receipt },
     { id: 'subscriptions' as const, label: 'Subscriptions', icon: CreditCard },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
-    { id: 'settings' as const, label: 'Settings', icon: SettingsIcon },
   ];
 
   // Auth loading state
@@ -375,7 +374,7 @@ function App() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
       {/* Sidebar */}
-      <aside className="sidebar w-64 flex flex-col">
+      <aside className="sidebar w-64 h-screen flex flex-col">
         <div className="p-6">
           <h1
             className="text-xl font-bold flex items-center gap-2"
@@ -386,14 +385,19 @@ function App() {
           </h1>
         </div>
 
-        <nav className="flex-1 px-3">
-          {navItems.map((item) => (
+        <nav className="flex-1 px-3 overflow-auto">
+          {navItems.map((item, index) => (
             <button
               key={item.id}
               onClick={() => setView(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
+              className={`stagger-item w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
                 view === item.id ? 'nav-item-active font-medium' : 'nav-item'
               }`}
+              style={{
+                animationDelay: `${index * 0.05}s`,
+                borderLeft: view === item.id ? '4px solid var(--brand-primary)' : '4px solid transparent',
+                paddingLeft: view === item.id ? 'calc(1rem - 4px)' : '1rem'
+              }}
             >
               <item.icon className="w-5 h-5" />
               {item.label}
@@ -401,31 +405,65 @@ function App() {
           ))}
         </nav>
 
-        <div className="p-4" style={{ borderTop: '1px solid var(--border-default)' }}>
+        <div className="p-4 flex items-center gap-2" style={{ borderTop: '1px solid var(--border-default)' }}>
+          {/* Theme Toggle Icon Button */}
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl btn-secondary"
+            className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary transition-all duration-200"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+            }}
           >
-            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            <div style={{
+              transition: 'transform 0.3s var(--ease-spring)',
+              transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
+            }}>
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </div>
+          </button>
+
+          {/* Settings Icon Button */}
+          <button
+            onClick={() => setView('settings')}
+            className="flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200"
+            style={{
+              backgroundColor: view === 'settings' ? 'var(--brand-primary)' : 'var(--bg-hover)',
+              color: view === 'settings' ? 'var(--text-inverse)' : 'var(--text-secondary)',
+              borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent'
+            }}
+            onMouseEnter={(e) => {
+              if (view !== 'settings') {
+                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (view !== 'settings') {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              }
+            }}
+          >
+            <SettingsIcon className="w-5 h-5" />
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="main-content flex-1 overflow-auto">
+      <main className="main-content flex-1 h-screen overflow-auto">
         <div className="p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <h2 className="text-3xl" style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 {view === 'dashboard' && 'Dashboard'}
                 {view === 'bills' && 'Bills'}
                 {view === 'subscriptions' && 'Subscriptions'}
                 {view === 'analytics' && 'Analytics'}
                 {view === 'settings' && 'Settings'}
               </h2>
-              <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+              <p className="mt-2 text-base" style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '-0.01em' }}>
                 {view === 'dashboard' && 'Your spending overview at a glance'}
                 {view === 'bills' && 'Manage your recurring bills and utilities'}
                 {view === 'subscriptions' && 'Manage all your recurring subscriptions'}
