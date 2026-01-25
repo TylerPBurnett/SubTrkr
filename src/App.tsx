@@ -375,15 +375,14 @@ function App() {
     <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
       {/* Sidebar */}
       <aside className="sidebar w-64 h-screen flex flex-col">
-        <div className="p-6">
-          <h1
-            className="text-xl font-bold flex items-center gap-2"
-            style={{ color: 'var(--brand-text)' }}
-          >
-            <CreditCard className="w-6 h-6" />
-            SubTrkr
-          </h1>
-        </div>
+        {/* Draggable title bar area */}
+        <div
+          data-tauri-drag-region
+          className="h-12 shrink-0"
+          style={{
+            WebkitAppRegion: 'drag'
+          } as React.CSSProperties}
+        />
 
         <nav className="flex-1 px-3 overflow-auto">
           {navItems.map((item, index) => (
@@ -451,10 +450,20 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="main-content flex-1 h-screen overflow-auto">
-        <div className="p-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+      <main className="main-content flex-1 h-screen flex flex-col">
+        {/* Draggable title bar area for main content */}
+        <div
+          data-tauri-drag-region
+          className="h-12 shrink-0"
+          style={{
+            WebkitAppRegion: 'drag'
+          } as React.CSSProperties}
+        />
+
+        <div className="flex-1 overflow-auto">
+          <div className="p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-3xl" style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 {view === 'dashboard' && 'Dashboard'}
@@ -524,6 +533,7 @@ function App() {
           {view === 'settings' && (
             <Settings categories={categories} onCategoriesChange={loadData} />
           )}
+          </div>
         </div>
       </main>
 
