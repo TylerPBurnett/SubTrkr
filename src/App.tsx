@@ -305,8 +305,8 @@ function App() {
 
   const navItems = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'bills' as const, label: 'Bills', icon: Receipt },
     { id: 'subscriptions' as const, label: 'Subscriptions', icon: CreditCard },
+    { id: 'bills' as const, label: 'Bills', icon: Receipt },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
   ];
 
