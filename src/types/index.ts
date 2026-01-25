@@ -1,5 +1,6 @@
 export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 export type ItemType = 'subscription' | 'bill';
+export type ItemStatus = 'active' | 'paused' | 'cancelled' | 'archived';
 
 export interface Category {
   id: string;
@@ -21,7 +22,13 @@ export interface Item {
   start_date: string;
   notes: string | null;
   url: string | null;
-  is_active: boolean;
+  is_active: boolean; // DEPRECATED - use status instead
+  status: ItemStatus;
+  paused_at: string | null;
+  paused_until: string | null;
+  cancelled_at: string | null;
+  cancellation_date: string | null;
+  archived_at: string | null;
   reminder_days: number;
   item_type: ItemType;
   created_at: string;
@@ -34,6 +41,26 @@ export interface Payment {
   amount: number;
   paid_at: string;
   created_at: string;
+}
+
+export interface StatusHistory {
+  id: string;
+  item_id: string;
+  user_id: string;
+  status: ItemStatus;
+  reason: string | null;
+  notes: string | null;
+  changed_at: string;
+}
+
+export interface StatusChangeData {
+  action: 'pause' | 'cancel' | 'resume' | 'reactivate';
+  pauseUntil?: string; // Optional date for auto-resume (YYYY-MM-DD format)
+  pausedOn?: string; // Retroactive date when item was paused (YYYY-MM-DD format)
+  cancelledOn?: string; // Retroactive date when item was cancelled (YYYY-MM-DD format)
+  resumedOn?: string; // Retroactive date when item was resumed (YYYY-MM-DD format)
+  reason?: string;
+  notes?: string;
 }
 
 // Extended types for UI

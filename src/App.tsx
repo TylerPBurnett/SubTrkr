@@ -11,7 +11,7 @@ import {
   Sun,
   WifiOff,
 } from 'lucide-react';
-import type { ItemWithCategory, Category, ItemType } from './types';
+import type { ItemWithCategory, Category, ItemType, StatusChangeData } from './types';
 import {
   getItems,
   getCategories,
@@ -20,6 +20,9 @@ import {
   deleteItem,
   toggleItemActive,
   advancePastDueItems,
+  archivePastCancellations,
+  resumePausedItems,
+  executeStatusChange,
 } from './services/database';
 import { supabase } from './services/supabase';
 import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
@@ -30,6 +33,7 @@ import ItemForm from './components/ItemForm';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import AuthScreen from './components/AuthScreen';
+import StatusChangeDialog from './components/StatusChangeDialog';
 
 type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
 type Theme = 'light' | 'dark';
@@ -47,6 +51,10 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [formItemType, setFormItemType] = useState<ItemType>('subscription');
   const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
+  const [statusChangeDialog, setStatusChangeDialog] = useState<{
+    item: ItemWithCategory;
+    action: StatusChangeData['action'];
+  } | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('subtrkr-theme');
     return saved === 'light' || saved === 'dark' ? saved : 'dark';
@@ -56,8 +64,12 @@ function App() {
 
   const loadData = useCallback(async () => {
     try {
-      // Advance any past-due billing dates before loading
-      await advancePastDueItems();
+      // Run background maintenance jobs
+      await Promise.all([
+        advancePastDueItems(),
+        archivePastCancellations(),
+        resumePausedItems(),
+      ]);
 
       const [itemsData, cats] = await Promise.all([getItems(), getCategories()]);
       setItems(itemsData);
@@ -171,6 +183,32 @@ function App() {
     }
   }, [error]);
 
+  // Daily background jobs (runs every 24 hours)
+  useEffect(() => {
+    if (!session) return;
+
+    const runDailyJobs = async () => {
+      try {
+        const [archived, resumed, advanced] = await Promise.all([
+          archivePastCancellations(),
+          resumePausedItems(),
+          advancePastDueItems(),
+        ]);
+        if (archived > 0 || resumed > 0 || advanced > 0) {
+          console.log(`Daily jobs: ${archived} archived, ${resumed} resumed, ${advanced} advanced`);
+          loadData(); // Reload data if any changes were made
+        }
+      } catch (error) {
+        console.error('Daily jobs failed:', error);
+      }
+    };
+
+    // Run once per day (86400000ms = 24 hours)
+    const interval = setInterval(runDailyJobs, 86400000);
+
+    return () => clearInterval(interval);
+  }, [session, loadData]);
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
@@ -222,6 +260,30 @@ function App() {
       console.error('Failed to update item:', err);
       setError('Failed to update item. Please try again.');
     }
+  };
+
+  const handleStatusChange = async (itemId: string, action: StatusChangeData['action']) => {
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    setStatusChangeDialog({ item, action });
+  };
+
+  const handleStatusChangeConfirm = async (data: StatusChangeData) => {
+    if (!statusChangeDialog) return;
+
+    setError(null);
+    try {
+      await executeStatusChange(statusChangeDialog.item.id, data);
+      setStatusChangeDialog(null);
+    } catch (err) {
+      console.error('Failed to change status:', err);
+      setError('Failed to change status. Please try again.');
+    }
+  };
+
+  const handleStatusChangeCancel = () => {
+    setStatusChangeDialog(null);
   };
 
   const handleEdit = (item: ItemWithCategory) => {
@@ -404,6 +466,7 @@ function App() {
               onEdit={handleEdit}
               onDelete={handleDeleteItem}
               onToggleActive={handleToggleActive}
+              onStatusChange={handleStatusChange}
               onAddNew={() => handleAddNew('bill')}
             />
           )}
@@ -415,6 +478,7 @@ function App() {
               onEdit={handleEdit}
               onDelete={handleDeleteItem}
               onToggleActive={handleToggleActive}
+              onStatusChange={handleStatusChange}
               onAddNew={() => handleAddNew('subscription')}
             />
           )}
@@ -455,6 +519,17 @@ function App() {
             editingItem ? (data) => handleUpdateItem(editingItem.id, data) : handleCreateItem
           }
           onClose={handleCloseForm}
+        />
+      )}
+
+      {/* Status Change Dialog */}
+      {statusChangeDialog && (
+        <StatusChangeDialog
+          isOpen={true}
+          item={statusChangeDialog.item}
+          action={statusChangeDialog.action}
+          onConfirm={handleStatusChangeConfirm}
+          onCancel={handleStatusChangeCancel}
         />
       )}
     </div>

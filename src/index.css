@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Archivo:wght@400;500;600;700;800;900&display=swap');
 
 /* ============================================
    SEMANTIC DESIGN TOKENS (CSS Custom Properties)
@@ -18,24 +19,26 @@
   --bg-input: #ffffff;
   --bg-hover: #f5f5f5;
   --bg-active: #e5e5e5;
-  
+  --bg-default: #fafafa;
+
   /* Text */
   --text-primary: #171717;
   --text-secondary: #525252;
   --text-muted: #a3a3a3;
   --text-inverse: #ffffff;
-  
+
   /* Borders */
   --border-default: #e5e5e5;
   --border-muted: #f5f5f5;
   --border-strong: #d4d4d4;
-  
+
   /* Brand */
   --brand-primary: #22c55e;
   --brand-primary-hover: #16a34a;
+  --brand-primary-light: rgba(34, 197, 94, 0.15);
   --brand-muted: #f0fdf4;
   --brand-text: #166534;
-  
+
   /* Accent colors for categories/stats */
   --accent-blue: #3b82f6;
   --accent-blue-muted: #dbeafe;
@@ -47,16 +50,18 @@
   --accent-red-muted: #fee2e2;
   --accent-emerald: #10b981;
   --accent-emerald-muted: #d1fae5;
+  --accent-green: #10b981;
+  --accent-green-muted: #d1fae5;
   --accent-pink: #ec4899;
   --accent-cyan: #06b6d4;
   --accent-gray: #6b7280;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.12);
   --shadow-brand: 0 4px 14px -3px rgba(34, 197, 94, 0.35);
-  
+
   /* Focus ring */
   --ring-offset: #ffffff;
 }
@@ -70,24 +75,26 @@
   --bg-input: #262626;
   --bg-hover: #262626;
   --bg-active: #333333;
-  
+  --bg-default: #1a1a1a;
+
   /* Text */
   --text-primary: #fafafa;
   --text-secondary: #a3a3a3;
   --text-muted: #525252;
   --text-inverse: #171717;
-  
+
   /* Borders */
   --border-default: #2e2e2e;
   --border-muted: #262626;
   --border-strong: #404040;
-  
+
   /* Brand */
   --brand-primary: #22c55e;
   --brand-primary-hover: #4ade80;
+  --brand-primary-light: rgba(34, 197, 94, 0.15);
   --brand-muted: rgba(34, 197, 94, 0.15);
   --brand-text: #4ade80;
-  
+
   /* Accent colors (slightly adjusted for dark bg) */
   --accent-blue: #60a5fa;
   --accent-blue-muted: rgba(59, 130, 246, 0.2);
@@ -99,16 +106,18 @@
   --accent-red-muted: rgba(239, 68, 68, 0.2);
   --accent-emerald: #34d399;
   --accent-emerald-muted: rgba(16, 185, 129, 0.2);
+  --accent-green: #34d399;
+  --accent-green-muted: rgba(16, 185, 129, 0.2);
   --accent-pink: #f472b6;
   --accent-cyan: #22d3ee;
   --accent-gray: #9ca3af;
-  
+
   /* Shadows (subtler in dark mode) */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
   --shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.4);
   --shadow-brand: 0 4px 14px -3px rgba(34, 197, 94, 0.25);
-  
+
   /* Focus ring */
   --ring-offset: #171717;
 }
@@ -118,11 +127,13 @@
    ============================================ */
 @theme {
   /* Typography */
-  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
   /* Animations */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* ============================================
@@ -139,18 +150,29 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   transition: background-color 0.2s ease, color 0.2s ease;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
-/* Headings use display font */
+/* Headings use display font with bold weights */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+h1 { font-weight: 800; }
+h2 { font-weight: 800; }
+
+/* Monospace for data/numbers */
+.font-mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
 }
 
 /* Smooth transitions for interactive elements */
 button, a, input, select, textarea {
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out-expo);
 }
 
 /* Focus states */
@@ -170,7 +192,12 @@ button, a, input, select, textarea {
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
   border: 1px solid var(--border-muted);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-1px);
 }
 
 /* Sidebar */
@@ -189,17 +216,27 @@ button, a, input, select, textarea {
 /* Input fields */
 .input {
   background-color: var(--bg-input);
-  border: 1px solid var(--border-default);
+  border: 2px solid var(--border-default);
   color: var(--text-primary);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.input:hover {
+  border-color: var(--border-strong);
 }
 
 .input:focus {
   border-color: var(--brand-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
 }
 
 .input::placeholder {
   color: var(--text-muted);
+  font-family: var(--font-body);
+  font-weight: 400;
 }
 
 /* Buttons */
@@ -207,36 +244,57 @@ button, a, input, select, textarea {
   background-color: var(--brand-primary);
   color: var(--text-inverse);
   box-shadow: var(--shadow-brand);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: all 0.2s var(--ease-out-expo);
 }
 
 .btn-primary:hover {
   background-color: var(--brand-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -4px rgba(34, 197, 94, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
   background-color: var(--bg-hover);
   color: var(--text-secondary);
+  font-weight: 600;
+  border: 2px solid var(--border-default);
+  transition: all 0.2s var(--ease-out-expo);
 }
 
 .btn-secondary:hover {
   background-color: var(--bg-active);
   color: var(--text-primary);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
 }
 
 /* Nav items */
 .nav-item {
   color: var(--text-secondary);
-  transition: all 0.2s ease;
+  font-weight: 600;
+  transition: all 0.2s var(--ease-out-expo);
 }
 
 .nav-item:hover {
   background-color: var(--bg-hover);
   color: var(--text-primary);
+  transform: translateX(2px);
 }
 
 .nav-item-active {
   background-color: var(--brand-muted);
   color: var(--brand-text);
+  font-weight: 700;
 }
 
 /* Dropdown menus */
@@ -244,6 +302,18 @@ button, a, input, select, textarea {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
   box-shadow: var(--shadow-elevated);
+  animation: dropdownSlide 0.2s var(--ease-out-expo);
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Text utilities */
@@ -259,12 +329,31 @@ button, a, input, select, textarea {
   color: var(--text-muted);
 }
 
+/* Label styling */
+.label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+/* Badge component */
+.badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.5rem;
+  letter-spacing: 0;
+}
+
 /* ============================================
    SCROLLBAR STYLING
    ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -274,13 +363,18 @@ button, a, input, select, textarea {
 ::-webkit-scrollbar-thumb {
   background-color: var(--border-strong);
   border-radius: 9999px;
+  border: 2px solid var(--bg-base);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--text-muted);
 }
 
-/* Animations */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Shake animation */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
@@ -298,21 +392,77 @@ button, a, input, select, textarea {
 }
 
 .animate-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.3s var(--ease-out-expo);
 }
+
+/* Slide up stagger animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-item {
+  animation: slideUp 0.4s var(--ease-out-expo) backwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: 0.05s; }
+.stagger-item:nth-child(2) { animation-delay: 0.1s; }
+.stagger-item:nth-child(3) { animation-delay: 0.15s; }
+.stagger-item:nth-child(4) { animation-delay: 0.2s; }
+.stagger-item:nth-child(5) { animation-delay: 0.25s; }
+.stagger-item:nth-child(6) { animation-delay: 0.3s; }
 
 /* Zoom in animation */
 @keyframes zoomIn95 {
-  from { 
+  from {
     opacity: 0;
     transform: scale(0.95);
   }
-  to { 
+  to {
     opacity: 1;
     transform: scale(1);
   }
 }
 
 .zoom-in-95 {
-  animation: zoomIn95 0.2s ease-out;
+  animation: zoomIn95 0.25s var(--ease-out-expo);
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse 2s var(--ease-out-expo) infinite;
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--bg-hover) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
 }

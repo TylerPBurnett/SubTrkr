@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { 
+import {
   Search,
   Filter,
   MoreVertical,
@@ -7,14 +7,16 @@ import {
   Trash2,
   Pause,
   Play,
+  XCircle,
+  RotateCcw,
   ExternalLink,
   CreditCard,
   Receipt
 } from 'lucide-react';
-import type { ItemWithCategory, Category, BillingCycle, ItemType } from '../types';
+import type { ItemWithCategory, Category, BillingCycle, ItemType, StatusChangeData } from '../types';
 import ConfirmDialog from './ui/ConfirmDialog';
 import EmptyState from './ui/EmptyState';
-import { formatDisplayDate } from '../utils/dates';
+import { formatDisplayDate, formatShortDate } from '../utils/dates';
 
 interface ItemListProps {
   items: ItemWithCategory[];
@@ -22,7 +24,8 @@ interface ItemListProps {
   itemType?: ItemType; // If provided, filters to this type
   onEdit: (item: ItemWithCategory) => void;
   onDelete: (id: string) => void;
-  onToggleActive: (id: string) => void;
+  onToggleActive: (id: string) => void; // DEPRECATED: kept for compatibility
+  onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onAddNew?: () => void;
 }
 
@@ -48,11 +51,14 @@ export default function ItemList({
   onEdit,
   onDelete,
   onToggleActive,
+  onStatusChange,
   onAddNew,
 }: ItemListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showInactive, setShowInactive] = useState(true);
+  const [showPaused, setShowPaused] = useState(true);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -83,13 +89,19 @@ export default function ItemList({
       if (selectedCategory !== 'all' && item.category_id !== selectedCategory) {
         return false;
       }
-      // Active filter
-      if (!showInactive && !item.is_active) {
+      // Status filter
+      if (item.status === 'paused' && !showPaused) {
+        return false;
+      }
+      if (item.status === 'cancelled' && !showCancelled) {
+        return false;
+      }
+      if (item.status === 'archived' && !showArchived) {
         return false;
       }
       return true;
     });
-  }, [typeFilteredItems, searchQuery, selectedCategory, showInactive]);
+  }, [typeFilteredItems, searchQuery, selectedCategory, showPaused, showCancelled, showArchived]);
 
   const handleMenuToggle = (id: string) => {
     setOpenMenuId(openMenuId === id ? null : id);
@@ -154,12 +166,34 @@ export default function ItemList({
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
+            checked={showPaused}
+            onChange={(e) => setShowPaused(e.target.checked)}
             className="w-4 h-4 rounded accent-[var(--brand-primary)]"
             style={{ borderColor: 'var(--border-default)' }}
           />
-          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Show inactive</span>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Show paused</span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showCancelled}
+            onChange={(e) => setShowCancelled(e.target.checked)}
+            className="w-4 h-4 rounded accent-[var(--brand-primary)]"
+            style={{ borderColor: 'var(--border-default)' }}
+          />
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Show cancelled</span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="w-4 h-4 rounded accent-[var(--brand-primary)]"
+            style={{ borderColor: 'var(--border-default)' }}
+          />
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Show archived</span>
         </label>
       </div>
 
@@ -183,20 +217,48 @@ export default function ItemList({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredItems.map(item => (
+          {filteredItems.map(item => {
+            // Determine opacity and styling based on status
+            const statusStyles = {
+              active: '',
+              paused: 'opacity-70',
+              cancelled: 'opacity-50',
+              archived: 'opacity-40',
+            };
+
+            return (
             <div
               key={item.id}
-              className={`card relative group ${
-                !item.is_active ? 'opacity-60' : ''
-              }`}
+              className={`card relative group ${statusStyles[item.status]}`}
+              style={
+                item.status === 'cancelled' || item.status === 'archived'
+                  ? { filter: 'grayscale(0.3)' }
+                  : undefined
+              }
             >
               {/* Status badge */}
-              {!item.is_active && (
-                <div 
+              {item.status === 'paused' && (
+                <div
                   className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
+                  style={{ backgroundColor: 'var(--accent-amber-muted)', color: 'var(--accent-amber)' }}
                 >
-                  Paused
+                  Paused {item.paused_until && `until ${formatShortDate(item.paused_until)}`}
+                </div>
+              )}
+              {item.status === 'cancelled' && (
+                <div
+                  className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
+                  style={{ backgroundColor: 'var(--accent-red-muted)', color: 'var(--accent-red)' }}
+                >
+                  Cancelled {item.cancellation_date && formatShortDate(item.cancellation_date)}
+                </div>
+              )}
+              {item.status === 'archived' && (
+                <div
+                  className="absolute top-4 right-4 px-2 py-1 rounded-lg text-xs font-medium"
+                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                >
+                  Archived
                 </div>
               )}
 
@@ -254,31 +316,127 @@ export default function ItemList({
                           <Pencil className="w-4 h-4" />
                           Edit
                         </button>
-                        <button
-                          onClick={() => handleAction(() => onToggleActive(item.id))}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                          style={{ color: 'var(--text-secondary)' }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                          }}
-                        >
-                          {item.is_active ? (
-                            <>
+
+                        {/* Status-aware actions */}
+                        {item.status === 'active' && onStatusChange && (
+                          <>
+                            <button
+                              onClick={() => handleAction(() => onStatusChange(item.id, 'pause'))}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                              }}
+                            >
                               <Pause className="w-4 h-4" />
                               Pause
-                            </>
-                          ) : (
-                            <>
+                            </button>
+                            <button
+                              onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                              }}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Cancel
+                            </button>
+                          </>
+                        )}
+
+                        {item.status === 'paused' && onStatusChange && (
+                          <>
+                            <button
+                              onClick={() => handleAction(() => onStatusChange(item.id, 'resume'))}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                              }}
+                            >
                               <Play className="w-4 h-4" />
                               Resume
-                            </>
-                          )}
-                        </button>
+                            </button>
+                            <button
+                              onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                              }}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Cancel
+                            </button>
+                          </>
+                        )}
+
+                        {(item.status === 'cancelled' || item.status === 'archived') && onStatusChange && (
+                          <button
+                            onClick={() => handleAction(() => onStatusChange(item.id, 'reactivate'))}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                            style={{ color: 'var(--accent-green)' }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--accent-green-muted)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            Reactivate
+                          </button>
+                        )}
+
+                        {/* Fallback for old onToggleActive prop */}
+                        {!onStatusChange && (
+                          <button
+                            onClick={() => handleAction(() => onToggleActive(item.id))}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                              e.currentTarget.style.color = 'var(--text-primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
+                          >
+                            {item.is_active ? (
+                              <>
+                                <Pause className="w-4 h-4" />
+                                Pause
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4" />
+                                Resume
+                              </>
+                            )}
+                          </button>
+                        )}
                         {item.url && (
                           <a
                             href={item.url}
@@ -340,7 +498,8 @@ export default function ItemList({
                 </span>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

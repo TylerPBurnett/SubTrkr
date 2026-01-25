@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { 
-  TrendingUp, 
-  Calendar, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Calendar,
   CreditCard,
   Receipt,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Category, ItemWithCategory, SpendingByCategory } from '../types';
-import { 
-  calculateMonthlySpending, 
+import {
+  calculateMonthlySpending,
   calculateYearlySpending,
+  calculateMonthlySavings,
   getSpendingByCategory,
-  getUpcomingItems 
+  getUpcomingItems
 } from '../services/database';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
 
@@ -37,6 +40,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
+  const [monthlySavings, setMonthlySavings] = useState(0);
   const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
   const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
   
@@ -46,14 +50,16 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
   // Load stats when items or filter changes
   useEffect(() => {
     async function loadStats() {
-      const [monthly, yearly, byCategory, upcoming] = await Promise.all([
+      const [monthly, yearly, savings, byCategory, upcoming] = await Promise.all([
         Promise.resolve(calculateMonthlySpending(items, typeFilter)),
         Promise.resolve(calculateYearlySpending(items, typeFilter)),
+        Promise.resolve(calculateMonthlySavings(items, typeFilter)),
         Promise.resolve(getSpendingByCategory(items, categories, typeFilter)),
         getUpcomingItems(items, 7, typeFilter),
       ]);
       setMonthlySpending(monthly);
       setYearlySpending(yearly);
+      setMonthlySavings(savings);
       setSpendingByCategory(byCategory);
       setUpcomingItems(upcoming);
     }
@@ -62,8 +68,9 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
-  const activeCount = filteredItems.filter(s => s.is_active).length;
-  const totalCount = filteredItems.length;
+  const activeCount = filteredItems.filter(s => s.status === 'active').length;
+  const pausedCount = filteredItems.filter(s => s.status === 'paused').length;
+  const cancelledCount = filteredItems.filter(s => s.status === 'cancelled').length;
 
   const chartData = spendingByCategory.map(item => ({
     name: item.category.name,
@@ -108,7 +115,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
@@ -119,6 +126,23 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
             </div>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
               <TrendingUp className="w-6 h-6" style={{ color: 'var(--brand-primary)' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Monthly Savings</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--accent-green)' }}>
+                {formatCurrency(monthlySavings)}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                From {cancelledCount} cancelled
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-green-muted)' }}>
+              <TrendingDown className="w-6 h-6" style={{ color: 'var(--accent-green)' }} />
             </div>
           </div>
         </div>
@@ -144,7 +168,12 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                 {filterTab === 'bill' ? 'Active Bills' : filterTab === 'subscription' ? 'Active Subscriptions' : 'Active Items'}
               </p>
               <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                {activeCount} <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>/ {totalCount}</span>
+                {activeCount}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                {pausedCount > 0 && `${pausedCount} paused`}
+                {pausedCount > 0 && cancelledCount > 0 && ' / '}
+                {cancelledCount > 0 && `${cancelledCount} cancelled`}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
@@ -183,7 +212,10 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
           ) : (
             <div className="space-y-3">
               {upcomingItems.slice(0, 5).map(item => {
-                const daysUntil = getDaysUntil(item.next_billing_date);
+                const isPaused = item.status === 'paused' && item.paused_until;
+                const targetDate = isPaused ? item.paused_until! : item.next_billing_date;
+                const daysUntil = getDaysUntil(targetDate);
+
                 return (
                   <button
                     key={item.id}
@@ -193,7 +225,12 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <div 
+                    {isPaused && (
+                      <div className="absolute top-2 left-2">
+                        <RotateCcw className="w-4 h-4" style={{ color: 'var(--accent-amber)' }} />
+                      </div>
+                    )}
+                    <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
                       style={{ backgroundColor: item.category?.color || '#6b7280' }}
                     >
@@ -202,17 +239,21 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                     <div className="flex-1 text-left">
                       <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {formatCurrency(item.amount, item.currency)} · {item.billing_cycle}
+                        {isPaused ? (
+                          <>Resumes on {formatShortDate(targetDate)}</>
+                        ) : (
+                          <>{formatCurrency(item.amount, item.currency)} · {item.billing_cycle}</>
+                        )}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium" style={{ 
+                      <p className="text-sm font-medium" style={{
                         color: daysUntil <= 1 ? 'var(--accent-red)' : daysUntil <= 3 ? 'var(--accent-amber)' : 'var(--text-secondary)'
                       }}>
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatShortDate(item.next_billing_date)}
+                        {isPaused ? 'Auto-resume' : formatShortDate(item.next_billing_date)}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />

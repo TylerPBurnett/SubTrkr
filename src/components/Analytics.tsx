@@ -13,12 +13,13 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Receipt, CreditCard } from 'lucide-react';
 import type { Category, ItemWithCategory, SpendingByCategory, ItemType } from '../types';
-import { 
+import {
   calculateMonthlySpending,
   calculateYearlySpending,
-  getSpendingByCategory 
+  calculateMonthlySavings,
+  getSpendingByCategory
 } from '../services/database';
-import { parseLocalDate } from '../utils/dates';
+import { parseLocalDate, formatDisplayDate } from '../utils/dates';
 
 type FilterTab = 'all' | ItemType;
 
@@ -55,6 +56,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
+  const [monthlySavings, setMonthlySavings] = useState(0);
   const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
 
   // Filter items by type
@@ -65,9 +67,10 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
 
   useEffect(() => {
     async function loadStats() {
-      const [monthly, yearly, byCategory] = await Promise.all([
+      const [monthly, yearly, savings, byCategory] = await Promise.all([
         calculateMonthlySpending(filteredItems),
         calculateYearlySpending(filteredItems),
+        calculateMonthlySavings(filteredItems),
         Promise.resolve(
           getSpendingByCategory(
             filteredItems,
@@ -78,41 +81,67 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
       ]);
       setMonthlySpending(monthly);
       setYearlySpending(yearly);
+      setMonthlySavings(savings);
       setSpendingByCategory(byCategory);
     }
     loadStats();
   }, [filteredItems, categories, activeTab]);
 
-  // Monthly trend data (last 6 months) derived from item start dates
+  // Monthly trend data (last 6 months) - includes historical data for cancelled items
   const monthlyTrendData = useMemo(() => {
     const months: { month: string; amount: number }[] = [];
     const now = new Date();
-    
+
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
       const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' });
 
       const amount = filteredItems.reduce((total, item) => {
-        if (!item.is_active) return total;
         const startDate = parseLocalDate(item.start_date);
+
+        // Skip if item hadn't started yet
         if (startDate > monthEnd) return total;
+
+        // For cancelled/archived items, check if they were active during this month
+        if (item.status === 'cancelled' || item.status === 'archived') {
+          if (item.cancellation_date) {
+            const cancelDate = parseLocalDate(item.cancellation_date);
+            // If cancelled before the month started, don't include
+            if (cancelDate < monthStart) return total;
+          }
+        }
+
+        // Item was active during this month period
         return total + getMonthlyAmount(item);
       }, 0);
 
       months.push({ month: monthName, amount: Math.round(amount) });
     }
-    
+
     return months;
   }, [filteredItems]);
 
-  // Top items by cost (monthly normalized)
+  // Top items by cost (monthly normalized) - active only
   const topItems = useMemo(() => {
     return filteredItems
-      .filter(s => s.is_active)
+      .filter(s => s.status === 'active')
       .map((item) => ({ ...item, monthlyAmount: getMonthlyAmount(item) }))
       .sort((a, b) => b.monthlyAmount - a.monthlyAmount)
       .slice(0, 5);
+  }, [filteredItems]);
+
+  // Cancelled items for insights
+  const cancelledItems = useMemo(() => {
+    return filteredItems
+      .filter(s => s.status === 'cancelled' || s.status === 'archived')
+      .map((item) => ({ ...item, monthlyAmount: getMonthlyAmount(item) }))
+      .sort((a, b) => {
+        // Sort by cancellation date, most recent first
+        const dateA = a.cancelled_at ? new Date(a.cancelled_at) : new Date(0);
+        const dateB = b.cancelled_at ? new Date(b.cancelled_at) : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
   }, [filteredItems]);
 
   // Calculate trend (compare current to previous month)
@@ -168,7 +197,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card">
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
             Monthly Average
@@ -192,6 +221,18 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
 
         <div className="card">
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            Monthly Savings
+          </p>
+          <p className="text-3xl font-bold" style={{ color: 'var(--accent-green)' }}>
+            {formatCurrency(monthlySavings)}
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            {cancelledItems.length} cancelled
+          </p>
+        </div>
+
+        <div className="card">
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
             Yearly Total
           </p>
           <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -204,7 +245,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
             Active {itemTypeLabel}
           </p>
           <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {filteredItems.filter(s => s.is_active).length}
+            {filteredItems.filter(s => s.status === 'active').length}
           </p>
         </div>
       </div>
@@ -312,56 +353,121 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
         </div>
       </div>
 
-      {/* Top Items */}
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-          Most Expensive {itemTypeLabel}
-        </h3>
-        
-        {topItems.length === 0 ? (
-          <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
-            No active {itemTypeLabel.toLowerCase()}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {topItems.map((item, index) => (
-              <div 
-                key={item.id}
-                className="flex items-center gap-4 p-3 rounded-xl transition-colors"
-                style={{ backgroundColor: 'transparent' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <div 
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
-                >
-                  {index + 1}
-                </div>
+      {/* Top Items & Cancellation Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Items */}
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Most Expensive {itemTypeLabel}
+          </h3>
+
+          {topItems.length === 0 ? (
+            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
+              No active {itemTypeLabel.toLowerCase()}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topItems.map((item, index) => (
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
-                  style={{ backgroundColor: item.category?.color || '#6b7280' }}
+                  key={item.id}
+                  className="flex items-center gap-4 p-3 rounded-xl transition-colors"
+                  style={{ backgroundColor: 'transparent' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  {item.name.charAt(0).toUpperCase()}
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                    style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                  >
+                    {index + 1}
+                  </div>
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
+                    style={{ backgroundColor: item.category?.color || '#6b7280' }}
+                  >
+                    {item.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {item.category?.name || 'Uncategorized'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {formatCurrency(item.monthlyAmount)}/mo
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {formatCurrency(item.amount, item.currency)} {item.billing_cycle}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {item.category?.name || 'Uncategorized'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {formatCurrency(item.monthlyAmount)}/mo
-                  </p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {formatCurrency(item.amount, item.currency)} {item.billing_cycle}
-                  </p>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Cancellation Insights */}
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Cancellation History
+          </h3>
+
+          {cancelledItems.length === 0 ? (
+            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
+              No cancelled {itemTypeLabel.toLowerCase()} yet
+            </div>
+          ) : (
+            <>
+              <div
+                className="mb-4 p-4 rounded-xl"
+                style={{ backgroundColor: 'var(--accent-green-muted)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Total Monthly Savings
+                    </p>
+                    <p className="text-2xl font-bold mt-1" style={{ color: 'var(--accent-green)' }}>
+                      {formatCurrency(monthlySavings)}
+                    </p>
+                  </div>
+                  <TrendingDown className="w-8 h-8" style={{ color: 'var(--accent-green)' }} />
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {cancelledItems.slice(0, 10).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ backgroundColor: 'var(--bg-hover)' }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium opacity-70"
+                      style={{ backgroundColor: item.category?.color || '#6b7280' }}
+                    >
+                      {item.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                        {item.name}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Cancelled {item.cancelled_at && formatDisplayDate(item.cancelled_at)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-sm" style={{ color: 'var(--accent-green)' }}>
+                        +{formatCurrency(item.monthlyAmount)}/mo
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

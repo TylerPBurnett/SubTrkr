@@ -7,6 +7,9 @@ import type {
   SpendingByCategory,
   BillingCycle,
   ItemType,
+  ItemStatus,
+  StatusHistory,
+  StatusChangeData,
 } from '../types';
 import {
   formatISODate,
@@ -15,6 +18,7 @@ import {
   isDueWithinDays,
   calculateNextBillingDate as calcNextBillingDate,
   getNextFutureBillingDate,
+  parseLocalDate,
 } from '../utils/dates';
 
 // Helper to get current user ID
@@ -113,7 +117,7 @@ export async function getItems(type?: ItemType): Promise<ItemWithCategory[]> {
 
 export async function getActiveItems(type?: ItemType): Promise<ItemWithCategory[]> {
   const items = await getItems(type);
-  return items.filter((s) => s.is_active === true);
+  return items.filter((s) => s.status === 'active');
 }
 
 export async function getItemById(
@@ -213,6 +217,7 @@ export async function deleteItem(id: string): Promise<void> {
 }
 
 export async function toggleItemActive(id: string): Promise<void> {
+  // DEPRECATED: Use executeStatusChange instead
   const userId = await getUserId();
   const item = await getItemById(id, userId);
   if (!item) return;
@@ -234,6 +239,217 @@ export async function toggleItemActive(id: string): Promise<void> {
       .eq('user_id', userId);
     if (error) throw error;
   }
+}
+
+// ============ Status Management ============
+
+function getTargetStatus(action: StatusChangeData['action'], currentStatus: ItemStatus): ItemStatus {
+  const transitions: Record<string, ItemStatus> = {
+    'active-pause': 'paused',
+    'active-cancel': 'cancelled',
+    'paused-resume': 'active',
+    'paused-cancel': 'cancelled',
+    'cancelled-reactivate': 'active',
+    'archived-reactivate': 'active',
+  };
+
+  const key = `${currentStatus}-${action}`;
+  const newStatus = transitions[key];
+
+  if (!newStatus) {
+    throw new Error(`Invalid status transition: ${currentStatus} -> ${action}`);
+  }
+
+  return newStatus;
+}
+
+export async function executeStatusChange(
+  itemId: string,
+  data: StatusChangeData
+): Promise<void> {
+  const userId = await getUserId();
+  const item = await getItemById(itemId, userId);
+  if (!item) throw new Error('Item not found');
+
+  const newStatus = getTargetStatus(data.action, item.status);
+  const now = new Date().toISOString();
+  const today = formatISODate(getToday());
+
+  // Prepare update data based on new status
+  const updateData: Record<string, unknown> = {
+    status: newStatus,
+  };
+
+  switch (newStatus) {
+    case 'paused':
+      // Use retroactive date if provided, otherwise use now
+      if (data.pausedOn) {
+        const pausedDate = parseLocalDate(data.pausedOn);
+        updateData.paused_at = pausedDate.toISOString();
+      } else {
+        updateData.paused_at = now;
+      }
+      updateData.paused_until = data.pauseUntil || null;
+      break;
+
+    case 'cancelled':
+      // Use retroactive date if provided, otherwise use now/today
+      if (data.cancelledOn) {
+        const cancelledDate = parseLocalDate(data.cancelledOn);
+        updateData.cancelled_at = cancelledDate.toISOString();
+        updateData.cancellation_date = data.cancelledOn; // Store as YYYY-MM-DD
+      } else {
+        updateData.cancelled_at = now;
+        updateData.cancellation_date = today;
+      }
+      break;
+
+    case 'active':
+      // Resume: clear pause fields and recalculate next billing date
+      updateData.paused_at = null;
+      updateData.paused_until = null;
+      updateData.cancelled_at = null;
+      updateData.cancellation_date = null;
+      updateData.archived_at = null;
+
+      // If resumed on a past date, calculate next billing from that date
+      // Otherwise calculate from current next_billing_date
+      if (data.resumedOn) {
+        updateData.next_billing_date = getNextFutureBillingDate(data.resumedOn, item.billing_cycle);
+      } else {
+        updateData.next_billing_date = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
+      }
+      break;
+  }
+
+  // Update item status
+  const { error: updateError } = await supabase
+    .from('items')
+    .update(updateData)
+    .eq('id', itemId)
+    .eq('user_id', userId);
+
+  if (updateError) throw updateError;
+
+  // Record status change in history
+  const { error: historyError } = await supabase
+    .from('item_status_history')
+    .insert({
+      item_id: itemId,
+      user_id: userId,
+      status: newStatus,
+      reason: data.reason || null,
+      notes: data.notes || null,
+    });
+
+  if (historyError) throw historyError;
+}
+
+export function calculateMonthlySavings(items: ItemWithCategory[], type?: ItemType): number {
+  const filtered = items.filter((item) => {
+    if (item.status !== 'cancelled' && item.status !== 'archived') return false;
+    if (type && item.item_type !== type) return false;
+    return true;
+  });
+
+  return filtered.reduce((total, item) => {
+    let monthlyAmount = item.amount;
+
+    switch (item.billing_cycle) {
+      case 'weekly':
+        monthlyAmount = (item.amount * 52) / 12;
+        break;
+      case 'monthly':
+        monthlyAmount = item.amount;
+        break;
+      case 'quarterly':
+        monthlyAmount = item.amount / 3;
+        break;
+      case 'yearly':
+        monthlyAmount = item.amount / 12;
+        break;
+    }
+
+    return total + monthlyAmount;
+  }, 0);
+}
+
+export async function archivePastCancellations(): Promise<number> {
+  const todayStr = formatISODate(getToday());
+  const userId = await getUserId();
+
+  // Find cancelled items where cancellation_date < today
+  const { data: itemsToArchive, error: fetchError } = await supabase
+    .from('items')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'cancelled')
+    .lt('cancellation_date', todayStr);
+
+  if (fetchError) throw fetchError;
+  if (!itemsToArchive || itemsToArchive.length === 0) return 0;
+
+  const now = new Date().toISOString();
+  let archivedCount = 0;
+
+  for (const item of itemsToArchive) {
+    const { error: updateError } = await supabase
+      .from('items')
+      .update({
+        status: 'archived',
+        archived_at: now
+      })
+      .eq('id', item.id)
+      .eq('user_id', userId);
+
+    if (!updateError) archivedCount++;
+  }
+
+  return archivedCount;
+}
+
+export async function resumePausedItems(): Promise<number> {
+  const todayStr = formatISODate(getToday());
+  const userId = await getUserId();
+
+  // Find paused items where paused_until <= today
+  const { data: itemsToResume, error: fetchError } = await supabase
+    .from('items')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'paused')
+    .not('paused_until', 'is', null)
+    .lte('paused_until', todayStr);
+
+  if (fetchError) throw fetchError;
+  if (!itemsToResume || itemsToResume.length === 0) return 0;
+
+  let resumedCount = 0;
+
+  for (const item of itemsToResume) {
+    try {
+      await executeStatusChange(item.id, { action: 'resume' });
+      resumedCount++;
+    } catch (error) {
+      console.error(`Failed to resume item ${item.id}:`, error);
+    }
+  }
+
+  return resumedCount;
+}
+
+export async function getStatusHistory(itemId: string): Promise<StatusHistory[]> {
+  const userId = await getUserId();
+
+  const { data, error } = await supabase
+    .from('item_status_history')
+    .select('*')
+    .eq('item_id', itemId)
+    .eq('user_id', userId)
+    .order('changed_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 }
 
 // ============ Payments ============
@@ -272,7 +488,7 @@ export async function recordPayment(
 
 export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemType): number {
   const filtered = items.filter((item) => {
-    if (!item.is_active) return false;
+    if (item.status !== 'active') return false;
     if (type && item.item_type !== type) return false;
     return true;
   });
@@ -301,7 +517,7 @@ export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemT
 
 export function calculateYearlySpending(items: ItemWithCategory[], type?: ItemType): number {
   const filtered = items.filter((item) => {
-    if (!item.is_active) return false;
+    if (item.status !== 'active') return false;
     if (type && item.item_type !== type) return false;
     return true;
   });
@@ -347,7 +563,7 @@ export function getSpendingByCategory(
   });
 
   items.forEach((item) => {
-    if (!item.is_active) return;
+    if (item.status !== 'active') return;
     if (type && item.item_type !== type) return;
     if (!item.category_id) return;
 
@@ -384,14 +600,26 @@ export async function getUpcomingItems(
   type?: ItemType
 ): Promise<ItemWithCategory[]> {
   const filtered = items.filter((item) => {
-    if (!item.is_active) return false;
     if (type && item.item_type !== type) return false;
-    return isDueWithinDays(item.next_billing_date, days);
+
+    // Include active items with upcoming billing dates
+    if (item.status === 'active' && isDueWithinDays(item.next_billing_date, days)) {
+      return true;
+    }
+
+    // Include paused items with upcoming resume dates
+    if (item.status === 'paused' && item.paused_until && isDueWithinDays(item.paused_until, days)) {
+      return true;
+    }
+
+    return false;
   });
 
   return filtered.sort((a, b) => {
-    const daysA = getDaysUntil(a.next_billing_date);
-    const daysB = getDaysUntil(b.next_billing_date);
+    const dateA = a.status === 'paused' && a.paused_until ? a.paused_until : a.next_billing_date;
+    const dateB = b.status === 'paused' && b.paused_until ? b.paused_until : b.next_billing_date;
+    const daysA = getDaysUntil(dateA);
+    const daysB = getDaysUntil(dateB);
     return daysA - daysB;
   });
 }
@@ -406,7 +634,7 @@ export async function advancePastDueItems(): Promise<number> {
     .from('items')
     .select('*')
     .eq('user_id', userId)
-    .eq('is_active', true)
+    .eq('status', 'active')
     .lt('next_billing_date', todayStr);
 
   if (error) throw error;
