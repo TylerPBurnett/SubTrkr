@@ -16,6 +16,7 @@ import {
 import type { ItemWithCategory, Category, BillingCycle, ItemType, StatusChangeData } from '../types';
 import ConfirmDialog from './ui/ConfirmDialog';
 import EmptyState from './ui/EmptyState';
+import ServiceLogo from './ui/ServiceLogo';
 import { formatDisplayDate, formatShortDate } from '../utils/dates';
 
 interface ItemListProps {
@@ -379,7 +380,17 @@ export default function ItemList({
               )}
 
               {/* Header */}
-              <div className="flex items-start gap-4 mb-4">
+              <div className="flex items-start gap-3 mb-4">
+                {/* Logo */}
+                <ServiceLogo
+                  logoUrl={item.logo_url}
+                  name={item.name}
+                  size="md"
+                  itemType={item.item_type}
+                  categoryName={item.category?.name}
+                  categoryColor={item.category?.color}
+                />
+
                 <div className="flex-1 min-w-0">
                   <h3 className="font-mono font-semibold text-lg truncate" style={{ color: 'var(--text-primary)' }}>
                     {item.name}

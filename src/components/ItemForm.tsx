@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { X, AlertCircle, Receipt, CreditCard } from 'lucide-react';
 import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType } from '../types';
 import { getNextFutureBillingDate, formatISODate, getToday } from '../utils/dates';
+import ServiceAutocomplete from './ui/ServiceAutocomplete';
+import { getServiceLogoUrl, type KnownService } from '../data/knownServices';
+import { getLogoUrl } from '../config/logoApi';
 
 interface ItemFormProps {
   item?: ItemWithCategory | null;
@@ -19,6 +22,7 @@ interface ItemFormProps {
     start_date: string;
     notes?: string;
     url?: string;
+    logo_url?: string;
     reminder_days?: number;
   }) => void;
   onClose: () => void;
@@ -67,6 +71,7 @@ export default function ItemForm({
       start_date: today,
       notes: '',
       url: '',
+      logo_url: '',
       reminder_days: 3,
       item_type: itemType,
     };
@@ -88,6 +93,7 @@ export default function ItemForm({
         start_date: item.start_date.split('T')[0],
         notes: item.notes || '',
         url: item.url || '',
+        logo_url: item.logo_url || '',
         reminder_days: item.reminder_days,
         item_type: item.item_type,
       });
@@ -160,6 +166,7 @@ export default function ItemForm({
       start_date: formData.start_date,
       notes: formData.notes.trim() || undefined,
       url: formData.url.trim() || undefined,
+      logo_url: formData.logo_url || undefined,
       reminder_days: formData.reminder_days,
     });
   };
@@ -173,7 +180,7 @@ export default function ItemForm({
     
     setFormData(prev => {
       const updated = { ...prev, [name]: processedValue };
-      
+
       // Recalculate next_billing_date when scheduling fields change
       if (name === 'start_date') {
         // User is correcting when they started → recalculate from new start_date
@@ -187,13 +194,45 @@ export default function ItemForm({
           today,
           updated.billing_cycle as BillingCycle
         );
+      } else if (name === 'url' && !prev.logo_url) {
+        // Auto-generate logo from URL if no logo is already set
+        try {
+          const urlObj = new URL(value);
+          const domain = urlObj.hostname.replace(/^www\./, '');
+          updated.logo_url = getLogoUrl(domain);
+        } catch {
+          // Invalid URL, don't set logo
+        }
       }
-      
+
       return updated;
     });
     
     if (errors[name as keyof ItemFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleServiceSelect = (service: KnownService) => {
+    // Find matching category
+    const categoryMatch = filteredCategories.find(
+      cat => cat.name.toLowerCase() === service.suggestedCategory?.toLowerCase()
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      name: service.name,
+      amount: service.defaultPrice.toString(),
+      currency: service.defaultCurrency,
+      billing_cycle: service.defaultBillingCycle,
+      category_id: categoryMatch?.id || prev.category_id,
+      logo_url: getServiceLogoUrl(service),
+      url: `https://${service.domain}`,
+    }));
+
+    // Clear name error if present
+    if (errors.name) {
+      setErrors(prev => ({ ...prev, name: undefined }));
     }
   };
 
@@ -278,21 +317,20 @@ export default function ItemForm({
               <label className="label block mb-1.5">
                 {labels.singular} Name *
               </label>
-              <input
-                type="text"
-                name="name"
+              <ServiceAutocomplete
                 value={formData.name}
-                onChange={handleChange}
+                itemType={itemType}
+                onChange={(value) => {
+                  setFormData(prev => ({ ...prev, name: value }));
+                  if (errors.name) {
+                    setErrors(prev => ({ ...prev, name: undefined }));
+                  }
+                }}
+                onServiceSelect={handleServiceSelect}
                 placeholder={labels.namePlaceholder}
-                className="input w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2"
-                style={{ 
-                  borderColor: errors.name ? 'var(--accent-red)' : 'var(--border-default)',
-                  '--tw-ring-color': 'var(--brand-primary)'
-                } as React.CSSProperties}
+                error={errors.name}
+                autoFocus={!isEditing}
               />
-              {errors.name && (
-                <p className="mt-1 text-sm" style={{ color: 'var(--accent-red)' }}>{errors.name}</p>
-              )}
             </div>
 
             {/* Amount & Currency */}

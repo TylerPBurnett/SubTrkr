@@ -20,6 +20,7 @@ import {
   getSpendingByCategory
 } from '../services/database';
 import { parseLocalDate, formatDisplayDate } from '../utils/dates';
+import ServiceLogo from './ui/ServiceLogo';
 
 type FilterTab = 'all' | ItemType;
 
@@ -382,12 +383,14 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                   >
                     {index + 1}
                   </div>
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
-                    style={{ backgroundColor: item.category?.color || '#6b7280' }}
-                  >
-                    {item.name.charAt(0).toUpperCase()}
-                  </div>
+                  <ServiceLogo
+                    logoUrl={item.logo_url}
+                    name={item.name}
+                    size="md"
+                    itemType={item.item_type}
+                    categoryName={item.category?.name}
+                    categoryColor={item.category?.color}
+                  />
                   <div className="flex-1">
                     <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -444,12 +447,15 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                     className="flex items-center gap-3 p-3 rounded-xl"
                     style={{ backgroundColor: 'var(--bg-hover)' }}
                   >
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium opacity-70"
-                      style={{ backgroundColor: item.category?.color || '#6b7280' }}
-                    >
-                      {item.name.charAt(0).toUpperCase()}
-                    </div>
+                    <ServiceLogo
+                      logoUrl={item.logo_url}
+                      name={item.name}
+                      size="md"
+                      itemType={item.item_type}
+                      categoryName={item.category?.name}
+                      categoryColor={item.category?.color}
+                      className="opacity-70"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                         {item.name}

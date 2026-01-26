@@ -17,6 +17,7 @@ import {
   getUpcomingItems
 } from '../services/database';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
+import ServiceLogo from './ui/ServiceLogo';
 
 interface DashboardProps {
   items: ItemWithCategory[];
@@ -271,12 +272,14 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                         <RotateCcw className="w-4 h-4" style={{ color: 'var(--accent-amber)' }} />
                       </div>
                     )}
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium shrink-0"
-                      style={{ backgroundColor: item.category?.color || '#6b7280' }}
-                    >
-                      {item.name.charAt(0).toUpperCase()}
-                    </div>
+                    <ServiceLogo
+                      logoUrl={item.logo_url}
+                      name={item.name}
+                      size="md"
+                      itemType={item.item_type}
+                      categoryName={item.category?.name}
+                      categoryColor={item.category?.color}
+                    />
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>

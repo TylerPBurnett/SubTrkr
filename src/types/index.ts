@@ -22,6 +22,7 @@ export interface Item {
   start_date: string;
   notes: string | null;
   url: string | null;
+  logo_url: string | null;
   is_active: boolean; // DEPRECATED - use status instead
   status: ItemStatus;
   paused_at: string | null;
@@ -96,6 +97,7 @@ export interface ItemFormData {
   start_date: string;
   notes: string;
   url: string;
+  logo_url: string;
   reminder_days: number;
   item_type: ItemType;
 }

@@ -149,6 +149,7 @@ export async function createItem(data: {
   start_date: string;
   notes?: string;
   url?: string;
+  logo_url?: string;
   reminder_days?: number;
 }): Promise<Item> {
   const userId = await getUserId();
@@ -166,6 +167,7 @@ export async function createItem(data: {
       start_date: data.start_date,
       notes: data.notes || null,
       url: data.url || null,
+      logo_url: data.logo_url || null,
       reminder_days: data.reminder_days ?? 3,
     })
     .select()
@@ -192,6 +194,7 @@ export async function updateItem(
     'start_date',
     'notes',
     'url',
+    'logo_url',
     'is_active',
     'reminder_days',
   ] as const;
