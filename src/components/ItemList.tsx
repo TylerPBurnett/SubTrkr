@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
   Search,
-  Filter,
   MoreVertical,
   Pencil,
   Trash2,
@@ -13,6 +12,7 @@ import {
   CreditCard,
   Receipt
 } from 'lucide-react';
+import SearchFilterToolbar from './SearchFilterToolbar';
 import type { ItemWithCategory, Category, BillingCycle, ItemType, StatusChangeData } from '../types';
 import ConfirmDialog from './ui/ConfirmDialog';
 import EmptyState from './ui/EmptyState';
@@ -59,8 +59,6 @@ export default function ItemList({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showPaused, setShowPaused] = useState(true);
   const [showCancelled, setShowCancelled] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -137,154 +135,25 @@ export default function ItemList({
 
   return (
     <div className="space-y-6">
-      {/* Unified Search & Filter Component */}
-      <div className="relative flex-1 max-w-2xl">
-        {/* Search Bar Container */}
-        <div
-          className="flex items-center gap-2 px-4 py-3 rounded-xl transition-all"
-          style={{
-            backgroundColor: 'var(--bg-card)',
-            boxShadow: searchFocused ? '0 0 0 3px var(--brand-muted)' : 'var(--shadow-card)'
-          }}
-        >
-          {/* Search Input */}
-          <input
-            type="text"
-            placeholder={`Search ${labels.plural}...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            className="flex-1 bg-transparent outline-none border-none focus:outline-none focus:ring-0"
-            style={{
-              color: 'var(--text-primary)',
-              fontFamily: 'Archivo, sans-serif',
-              boxShadow: 'none'
-            }}
-          />
-
-          {/* Filter Icon Button (Circular) */}
-          <button
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0"
-            style={{
-              backgroundColor: 'var(--bg-hover)',
-              color: 'var(--text-secondary)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-              e.currentTarget.style.color = 'var(--text-primary)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          >
-            <Filter className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Filters Dropdown */}
-        {filtersOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setFiltersOpen(false)}
-            />
-            <div
-              className="dropdown absolute right-0 top-full mt-2 w-72 rounded-xl p-4 z-20"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                boxShadow: 'var(--shadow-elevated)'
-              }}
-            >
-              {/* Category Filter */}
-              <div className="mb-4">
-                <label className="label block mb-2">CATEGORY</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="input w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
-                  style={{
-                    '--tw-ring-color': 'var(--brand-primary)',
-                    borderColor: 'var(--border-default)'
-                  } as React.CSSProperties}
-                >
-                  <option value="all">All Categories</option>
-                  {filteredCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Filters */}
-              <div className="space-y-3">
-                <label className="label block mb-2">STATUS</label>
-
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={showPaused}
-                    onChange={(e) => setShowPaused(e.target.checked)}
-                    className="w-4 h-4 rounded transition-all"
-                    style={{
-                      accentColor: 'var(--brand-primary)',
-                      borderColor: 'var(--border-default)'
-                    }}
-                  />
-                  <span className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
-                    Show paused
-                  </span>
-                </label>
-
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={showCancelled}
-                    onChange={(e) => setShowCancelled(e.target.checked)}
-                    className="w-4 h-4 rounded transition-all"
-                    style={{
-                      accentColor: 'var(--brand-primary)',
-                      borderColor: 'var(--border-default)'
-                    }}
-                  />
-                  <span className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
-                    Show cancelled
-                  </span>
-                </label>
-              </div>
-
-              {/* Clear Filters Button */}
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setShowPaused(true);
-                    setShowCancelled(false);
-                  }}
-                  className="w-full mt-4 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                  style={{
-                    backgroundColor: 'var(--bg-hover)',
-                    color: 'var(--text-secondary)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+      {/* Search & Filter Toolbar */}
+      <SearchFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={`Search ${labels.plural}...`}
+        categories={filteredCategories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        showPaused={showPaused}
+        onShowPausedChange={setShowPaused}
+        showCancelled={showCancelled}
+        onShowCancelledChange={setShowCancelled}
+        activeFilterCount={activeFilterCount}
+        onClearFilters={() => {
+          setSelectedCategory('all');
+          setShowPaused(true);
+          setShowCancelled(false);
+        }}
+      />
 
       {/* Item List */}
       {typeFilteredItems.length === 0 ? (
@@ -598,8 +467,8 @@ export default function ItemList({
 
               {/* Amount */}
               <div className="mb-4">
-                <p className="font-mono font-bold" style={{
-                  fontSize: '1.75rem',
+                <p className="font-mono font-semibold" style={{
+                  fontSize: '1.5rem',
                   letterSpacing: '-0.01em',
                   color: 'var(--text-primary)'
                 }}>
