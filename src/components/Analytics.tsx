@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -53,7 +53,7 @@ function getMonthlyAmount(item: ItemWithCategory): number {
   }
 }
 
-export default function Analytics({ items, categories }: AnalyticsProps) {
+function Analytics({ items, categories }: AnalyticsProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
@@ -372,10 +372,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
               {topItems.map((item, index) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-4 p-3 rounded-xl transition-colors"
-                  style={{ backgroundColor: 'transparent' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  className="flex items-center gap-4 p-3 rounded-xl transition-colors interactive-hover-bg"
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
@@ -479,3 +476,5 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
     </div>
   );
 }
+
+export default memo(Analytics);

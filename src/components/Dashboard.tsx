@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import {
   TrendingUp,
   Calendar,
@@ -35,7 +35,7 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
   }).format(amount);
 }
 
-export default function Dashboard({ items, categories, onEdit }: DashboardProps) {
+function Dashboard({ items, categories, onEdit }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
@@ -89,22 +89,11 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
           <button
             key={tab.id}
             onClick={() => setFilterTab(tab.id)}
-            className="px-4 py-2 rounded-lg text-sm transition-colors"
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors filter-tab ${
+              filterTab === tab.id ? 'filter-tab-active' : ''
+            }`}
             style={{
-              backgroundColor: filterTab === tab.id ? 'var(--brand-primary)' : 'var(--bg-hover)',
-              color: filterTab === tab.id ? 'var(--text-inverse)' : 'var(--text-secondary)',
-              fontWeight: 700,
               letterSpacing: '-0.01em'
-            }}
-            onMouseEnter={(e) => {
-              if (filterTab !== tab.id) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (filterTab !== tab.id) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              }
             }}
           >
             {tab.label}
@@ -253,18 +242,9 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                   <button
                     key={item.id}
                     onClick={() => onEdit(item)}
-                    className="stagger-item w-full flex items-center gap-4 p-3 rounded-xl transition-all group"
+                    className="stagger-item w-full flex items-center gap-4 p-3 rounded-xl transition-all group interactive-hover-bg hover:scale-101"
                     style={{
-                      backgroundColor: 'transparent',
                       animationDelay: `${index * 0.05}s`
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                      e.currentTarget.style.transform = 'scale(1.01)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
                     {isPaused && (
@@ -376,3 +356,5 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
     </div>
   );
 }
+
+export default memo(Dashboard);

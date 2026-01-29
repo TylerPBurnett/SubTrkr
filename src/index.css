@@ -364,6 +364,89 @@ button, a, input, select, textarea {
   font-weight: 700;
 }
 
+/* Interactive elements with hover states */
+.interactive-hover {
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.interactive-hover:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.interactive-hover-bg {
+  background-color: transparent;
+  transition: background-color 0.2s var(--ease-out-expo);
+}
+
+.interactive-hover-bg:hover {
+  background-color: var(--bg-hover);
+}
+
+.interactive-hover-danger {
+  color: var(--accent-red);
+  transition: background-color 0.2s var(--ease-out-expo);
+}
+
+.interactive-hover-danger:hover {
+  background-color: var(--accent-red-muted);
+}
+
+.interactive-hover-success {
+  color: var(--accent-green);
+  transition: background-color 0.2s var(--ease-out-expo);
+}
+
+.interactive-hover-success:hover {
+  background-color: var(--accent-green-muted);
+}
+
+/* Menu items */
+.menu-item {
+  color: var(--text-secondary);
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.menu-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.menu-item-success {
+  color: var(--accent-green);
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.menu-item-success:hover {
+  background-color: var(--accent-green-muted);
+}
+
+.menu-item-danger {
+  color: var(--accent-red);
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.menu-item-danger:hover {
+  background-color: var(--accent-red-muted);
+}
+
+/* Filter tabs */
+.filter-tab {
+  transition: all 0.2s var(--ease-out-expo);
+  background-color: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.filter-tab:hover:not(.filter-tab-active) {
+  background-color: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.filter-tab-active {
+  background-color: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
 /* Dropdown menus */
 .dropdown {
   background-color: var(--bg-surface);

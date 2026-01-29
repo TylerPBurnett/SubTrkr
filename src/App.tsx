@@ -27,6 +27,7 @@ import {
 import { supabase } from './services/supabase';
 import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
 import { checkAndNotifyUpcomingRenewals } from './services/notifications';
+import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
 import ItemForm from './components/ItemForm';
@@ -408,13 +409,7 @@ function App() {
           {/* Theme Toggle Icon Button */}
           <button
             onClick={toggleTheme}
-            className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary transition-all duration-200"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-            }}
+            className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg"
           >
             <div style={{
               transition: 'transform 0.3s var(--ease-spring)',
@@ -427,21 +422,13 @@ function App() {
           {/* Settings Icon Button */}
           <button
             onClick={() => setView('settings')}
-            className="flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200"
+            className={`flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
+              view === 'settings' ? 'bg-brand-primary text-text-inverse' : 'interactive-hover'
+            }`}
             style={{
               backgroundColor: view === 'settings' ? 'var(--brand-primary)' : 'var(--bg-hover)',
               color: view === 'settings' ? 'var(--text-inverse)' : 'var(--text-secondary)',
               borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent'
-            }}
-            onMouseEnter={(e) => {
-              if (view !== 'settings') {
-                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (view !== 'settings') {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              }
             }}
           >
             <SettingsIcon className="w-5 h-5" />
@@ -584,4 +571,12 @@ function App() {
   );
 }
 
-export default App;
+function AppWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export default AppWithErrorBoundary;

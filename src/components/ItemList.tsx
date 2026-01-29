@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search,
@@ -48,7 +48,7 @@ const billingCycleLabels: Record<BillingCycle, string> = {
   yearly: 'Yearly',
 };
 
-export default function ItemList({
+function ItemList({
   items,
   categories,
   itemType,
@@ -219,10 +219,8 @@ export default function ItemList({
           event.stopPropagation();
           handleMenuToggle(item.id);
         }}
-        className="p-2 rounded-lg transition-colors"
+        className="p-2 rounded-lg transition-colors interactive-hover-bg"
         style={{ color: 'var(--text-muted)' }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
       >
         <MoreVertical className="w-5 h-5" />
       </button>
@@ -236,16 +234,7 @@ export default function ItemList({
           >
             <button
               onClick={() => handleAction(() => onEdit(item))}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
+              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
             >
               <Pencil className="w-4 h-4" />
               Edit
@@ -256,30 +245,14 @@ export default function ItemList({
               <>
                 <button
                   onClick={() => handleAction(() => onStatusChange(item.id, 'convert'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                  style={{ color: 'var(--accent-green)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--accent-green-muted)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item-success"
                 >
                   <Check className="w-4 h-4" />
                   Convert to Paid
                 </button>
                 <button
                   onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
                 >
                   <XCircle className="w-4 h-4" />
                   Cancel Trial
@@ -291,32 +264,14 @@ export default function ItemList({
               <>
                 <button
                   onClick={() => handleAction(() => onStatusChange(item.id, 'pause'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
                 >
                   <Pause className="w-4 h-4" />
                   Pause
                 </button>
                 <button
                   onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
                 >
                   <XCircle className="w-4 h-4" />
                   Cancel
@@ -328,32 +283,14 @@ export default function ItemList({
               <>
                 <button
                   onClick={() => handleAction(() => onStatusChange(item.id, 'resume'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
                 >
                   <Play className="w-4 h-4" />
                   Resume
                 </button>
                 <button
                   onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
                 >
                   <XCircle className="w-4 h-4" />
                   Cancel
@@ -364,14 +301,7 @@ export default function ItemList({
             {(item.status === 'cancelled' || item.status === 'archived') && onStatusChange && (
               <button
                 onClick={() => handleAction(() => onStatusChange(item.id, 'reactivate'))}
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                style={{ color: 'var(--accent-green)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--accent-green-muted)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item-success"
               >
                 <RotateCcw className="w-4 h-4" />
                 Reactivate
@@ -382,16 +312,7 @@ export default function ItemList({
             {!onStatusChange && (
               <button
                 onClick={() => handleAction(() => onToggleActive(item.id))}
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
               >
                 {item.is_active ? (
                   <>
@@ -412,16 +333,7 @@ export default function ItemList({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setOpenMenuId(null)}
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
               >
                 <ExternalLink className="w-4 h-4" />
                 Visit Website
@@ -430,10 +342,7 @@ export default function ItemList({
             <hr style={{ borderColor: 'var(--border-default)' }} className="my-1" />
             <button
               onClick={() => handleDeleteClick(item)}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
-              style={{ color: 'var(--accent-red)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-red-muted)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item-danger"
             >
               <Trash2 className="w-4 h-4" />
               Delete
@@ -555,17 +464,11 @@ export default function ItemList({
             <button
               type="button"
               onClick={() => setBulkDeleteConfirmOpen(true)}
-              className="flex items-center gap-2 h-9 px-3 rounded-lg border-2 text-xs font-semibold transition-colors"
+              className="flex items-center gap-2 h-9 px-3 rounded-lg border-2 text-xs font-semibold transition-colors interactive-hover-danger"
               style={{
                 backgroundColor: 'var(--bg-input)',
                 borderColor: 'var(--accent-red-muted)',
                 color: 'var(--accent-red)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--accent-red-muted)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-input)';
               }}
             >
               <Trash2 className="w-4 h-4" />
@@ -810,7 +713,7 @@ export default function ItemList({
                           <motion.tr
                             layout
                             key={item.id}
-                            className={`stagger-item transition-colors cursor-pointer ${statusStyles[item.status]}`}
+                            className={`stagger-item transition-colors cursor-pointer interactive-hover-bg ${statusStyles[item.status]}`}
                             style={{
                               borderBottom: '1px solid var(--border-muted)',
                               filter:
@@ -820,12 +723,6 @@ export default function ItemList({
                               animationDelay: `${index * 0.03}s`,
                             }}
                             onClick={() => onEdit(item)}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                            }}
                           >
                             <td className="pl-4 pr-2 py-3" onClick={(event) => event.stopPropagation()}>
                               <Checkbox
@@ -925,3 +822,5 @@ export default function ItemList({
     </div>
   );
 }
+
+export default memo(ItemList);
