@@ -1,4 +1,6 @@
-import { useState, useMemo, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useItemFilters } from '@/hooks/useItemFilters';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search,
@@ -68,15 +70,8 @@ function ItemList({
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const viewStorageKey = `subtrkr-item-view-${itemType ?? 'all'}`;
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    const saved = localStorage.getItem(viewStorageKey);
-    return saved === 'list' ? 'list' : 'grid';
-  });
+  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>(viewStorageKey, 'grid');
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(() => new Set());
-
-  useEffect(() => {
-    localStorage.setItem(viewStorageKey, viewMode);
-  }, [viewMode, viewStorageKey]);
 
   useEffect(() => {
     if (viewMode !== 'grid' || selectedItemIds.size === 0) {
@@ -92,31 +87,20 @@ function ItemList({
     icon: itemType === 'bill' ? Receipt : CreditCard,
   };
 
-  // Filter items by type first, then apply other filters
-  const typeFilteredItems = useMemo(() => {
-    return itemType ? items.filter(item => item.item_type === itemType) : items;
-  }, [items, itemType]);
+  // Filter items using custom hook
+  const { typeFilteredItems, filteredItems, activeFilterCount: hookActiveFilterCount } = useItemFilters({
+    items,
+    itemType,
+    searchQuery,
+    selectedCategory,
+    showActives,
+    showTrials,
+    showPaused,
+    showCancelled,
+  });
 
   // Filter categories by type
-  const filteredCategories = useMemo(() => {
-    return itemType ? categories.filter(cat => cat.category_type === itemType) : categories;
-  }, [categories, itemType]);
-
-  const filteredItems = useMemo(() => {
-    return typeFilteredItems.filter((item) => {
-      const matchesSearch =
-        !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory =
-        selectedCategory === 'all' || item.category_id === selectedCategory;
-      const matchesStatus =
-        (item.status === 'active' && showActives) ||
-        (item.status === 'trial' && showTrials) ||
-        (item.status === 'paused' && showPaused) ||
-        ((item.status === 'cancelled' || item.status === 'archived') && showCancelled);
-
-      return matchesSearch && matchesCategory && matchesStatus;
-    });
-  }, [typeFilteredItems, searchQuery, selectedCategory, showActives, showTrials, showPaused, showCancelled]);
+  const filteredCategories = itemType ? categories.filter(cat => cat.category_type === itemType) : categories;
 
   useEffect(() => {
     if (selectedItemIds.size === 0) {
@@ -136,17 +120,6 @@ function ItemList({
       setSelectedItemIds(next);
     }
   }, [filteredItems, selectedItemIds]);
-
-  // Count active filters for badge
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (selectedCategory !== 'all') count++;
-    if (!showActives) count++;
-    if (!showTrials) count++;
-    if (!showPaused) count++;
-    if (!showCancelled) count++;
-    return count;
-  }, [selectedCategory, showActives, showTrials, showPaused, showCancelled]);
 
   const selectedVisibleItems = useMemo(() => {
     if (selectedItemIds.size === 0) {
@@ -438,7 +411,7 @@ function ItemList({
         onShowPausedChange={setShowPaused}
         showCancelled={showCancelled}
         onShowCancelledChange={setShowCancelled}
-        activeFilterCount={activeFilterCount}
+        activeFilterCount={hookActiveFilterCount}
         onClearFilters={() => {
           setSelectedCategory('all');
           setShowActives(true);

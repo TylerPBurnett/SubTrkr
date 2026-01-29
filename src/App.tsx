@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocalStorage } from './hooks/useLocalStorage';
 import type { Session } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
@@ -56,10 +57,7 @@ function App() {
     item: ItemWithCategory;
     action: StatusChangeData['action'];
   } | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('subtrkr-theme');
-    return saved === 'light' || saved === 'dark' ? saved : 'dark';
-  });
+  const [theme, setTheme] = useLocalStorage<Theme>('subtrkr-theme', 'dark');
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -170,10 +168,9 @@ function App() {
     };
   }, []);
 
-  // Theme switching via data-theme attribute + localStorage persistence
+  // Theme switching via data-theme attribute
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('subtrkr-theme', theme);
   }, [theme]);
 
   // Clear error after 5 seconds
