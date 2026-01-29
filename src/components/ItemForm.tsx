@@ -11,10 +11,11 @@ import {
   Link,
   FileText,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  CircleDot
 } from 'lucide-react';
-import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType } from '../types';
-import { getNextFutureBillingDate, formatISODate, getToday } from '../utils/dates';
+import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType, ItemStatus } from '@/types';
+import { getNextFutureBillingDate, formatISODate, getToday, formatDisplayDate } from '../utils/dates';
 import ServiceAutocomplete from './ui/ServiceAutocomplete';
 import ServiceLogo from './ui/ServiceLogo';
 import { getServiceLogoUrl, type KnownService } from '../data/knownServices';
@@ -38,6 +39,8 @@ interface ItemFormProps {
     url?: string;
     logo_url?: string;
     reminder_days?: number;
+    status?: ItemStatus;
+    trial_end_date?: string;
   }) => void;
   onClose: () => void;
 }
@@ -93,6 +96,8 @@ export default function ItemForm({
       logo_url: '',
       reminder_days: 3,
       item_type: itemType,
+      status: 'active',
+      trial_end_date: '',
     };
   });
 
@@ -116,6 +121,8 @@ export default function ItemForm({
         logo_url: item.logo_url || '',
         reminder_days: item.reminder_days,
         item_type: item.item_type,
+        status: item.status,
+        trial_end_date: item.trial_end_date || '',
       });
       // Show optional fields if they have data
       if (item.notes || item.url) {
@@ -132,8 +139,11 @@ export default function ItemForm({
     }
 
     const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
+    const minAmount = formData.status === 'trial' ? 0 : 0.01;
+    if (isNaN(amount) || amount < 0) {
       newErrors.amount = 'Enter a valid amount';
+    } else if (amount < minAmount) {
+      newErrors.amount = 'Amount must be greater than 0 for paid subscriptions';
     }
 
     if (!formData.next_billing_date) {
@@ -190,6 +200,8 @@ export default function ItemForm({
       url: formData.url.trim() || undefined,
       logo_url: formData.logo_url || undefined,
       reminder_days: formData.reminder_days,
+      status: formData.status,
+      trial_end_date: formData.trial_end_date || undefined,
     });
   };
 
@@ -570,6 +582,67 @@ export default function ItemForm({
                 )}
               </div>
             </div>
+
+            {/* Status Selection */}
+            {!isEditing && (
+              <div className="stagger-item" style={{ animationDelay: '0.175s' }}>
+                <label className="flex items-center gap-2 mb-2">
+                  <CircleDot className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
+                  <span className="label">Initial Status</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, status: 'active' }))}
+                    className="p-3 rounded-xl text-sm font-medium transition-all text-center"
+                    style={{
+                      backgroundColor: formData.status === 'active' ? 'var(--accent-green)' : 'var(--bg-hover)',
+                      color: formData.status === 'active' ? 'white' : 'var(--text-secondary)',
+                      border: `2px solid ${formData.status === 'active' ? 'var(--accent-green)' : 'transparent'}`,
+                    }}
+                  >
+                    Active (Paid)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, status: 'trial' }))}
+                    className="p-3 rounded-xl text-sm font-medium transition-all text-center"
+                    style={{
+                      backgroundColor: formData.status === 'trial' ? 'var(--accent-blue)' : 'var(--bg-hover)',
+                      color: formData.status === 'trial' ? 'white' : 'var(--text-secondary)',
+                      border: `2px solid ${formData.status === 'trial' ? 'var(--accent-blue)' : 'transparent'}`,
+                    }}
+                  >
+                    Trial (Free)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Trial End Date - Only show if status is trial */}
+            {formData.status === 'trial' && (
+              <div className="stagger-item" style={{ animationDelay: '0.18s' }}>
+                <label className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-4 h-4" style={{ color: 'var(--accent-blue)' }} />
+                  <span className="label">Trial Ends</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Optional</span>
+                </label>
+                <input
+                  type="date"
+                  name="trial_end_date"
+                  value={formData.trial_end_date || ''}
+                  onChange={handleChange}
+                  min={today}
+                  className="input w-full px-4 py-3 rounded-xl"
+                  placeholder="When does the trial expire?"
+                />
+                <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                  {formData.trial_end_date
+                    ? `Trial expires on ${formatDisplayDate(formData.trial_end_date)}`
+                    : 'Leave empty for ongoing trials'}
+                </p>
+              </div>
+            )}
 
             {/* Dates */}
             <div className="stagger-item grid grid-cols-2 gap-4" style={{ animationDelay: '0.2s' }}>

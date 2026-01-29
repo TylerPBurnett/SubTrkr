@@ -1,11 +1,9 @@
 import { Search, Filter, X, LayoutGrid, List } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Category } from '../types';
+import type { Category } from '@/types';
 
 // Refined select item styles
 const selectItemStyles = `
@@ -35,6 +33,10 @@ interface SearchFilterToolbarProps {
   onCategoryChange: (categoryId: string) => void;
 
   // Status filters
+  showActives: boolean;
+  onShowActivesChange: (show: boolean) => void;
+  showTrials: boolean;
+  onShowTrialsChange: (show: boolean) => void;
   showPaused: boolean;
   onShowPausedChange: (show: boolean) => void;
   showCancelled: boolean;
@@ -59,6 +61,10 @@ export default function SearchFilterToolbar({
   categories,
   selectedCategory,
   onCategoryChange,
+  showActives,
+  onShowActivesChange,
+  showTrials,
+  onShowTrialsChange,
   showPaused,
   onShowPausedChange,
   showCancelled,
@@ -94,7 +100,6 @@ export default function SearchFilterToolbar({
           onChange={(e) => onSearchChange(e.target.value)}
           className="flex-1 h-full px-2.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none"
           style={{
-            fontFamily: 'Archivo, sans-serif',
             fontWeight: 500,
             color: 'var(--text-primary)',
             boxShadow: 'none',
@@ -124,14 +129,16 @@ export default function SearchFilterToolbar({
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className="flex items-center justify-center px-3 h-full relative transition-colors focus:outline-none focus-visible:outline-none"
-              style={{ color: 'var(--text-secondary)', boxShadow: 'none' }}
+              className="flex items-center justify-center px-3 h-full transition-colors focus:outline-none focus-visible:outline-none"
+              style={{
+                color: 'var(--text-secondary)',
+                backgroundColor: 'transparent',
+                boxShadow: 'none'
+              }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                 e.currentTarget.style.color = 'var(--text-primary)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
                 e.currentTarget.style.color = 'var(--text-secondary)';
               }}
             >
@@ -250,6 +257,62 @@ export default function SearchFilterToolbar({
                 </label>
                 <div className="space-y-2">
                   <label
+                    htmlFor="show-actives"
+                    className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
+                    style={{
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Checkbox
+                      id="show-actives"
+                      checked={showActives}
+                      onCheckedChange={(checked) => onShowActivesChange(checked as boolean)}
+                    />
+                    <span
+                      className="text-[13px] font-medium transition-colors flex-1"
+                      style={{
+                        color: 'var(--text-secondary)',
+                        letterSpacing: '-0.005em',
+                      }}
+                    >
+                      Show actives
+                    </span>
+                  </label>
+                  <label
+                    htmlFor="show-trials"
+                    className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
+                    style={{
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Checkbox
+                      id="show-trials"
+                      checked={showTrials}
+                      onCheckedChange={(checked) => onShowTrialsChange(checked as boolean)}
+                    />
+                    <span
+                      className="text-[13px] font-medium transition-colors flex-1"
+                      style={{
+                        color: 'var(--text-secondary)',
+                        letterSpacing: '-0.005em',
+                      }}
+                    >
+                      Show trials
+                    </span>
+                  </label>
+                  <label
                     htmlFor="show-paused"
                     className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
                     style={{
@@ -347,63 +410,60 @@ export default function SearchFilterToolbar({
           style={{ backgroundColor: 'var(--border-default)' }}
         />
 
-        {/* View Mode Toggle - Grid */}
-        <button
-          type="button"
-          onClick={() => onViewModeChange('grid')}
-          className="flex items-center justify-center h-full px-2.5 transition-colors focus:outline-none focus-visible:outline-none"
+        {/* View Mode Segmented Toggle */}
+        <div
+          className="relative flex items-center h-7 p-0.5 rounded-md overflow-hidden"
           style={{
-            color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            backgroundColor: viewMode === 'grid' ? 'var(--bg-active)' : 'transparent',
-            boxShadow: 'none',
+            backgroundColor: 'var(--bg-input)',
           }}
-          onMouseEnter={(e) => {
-            if (viewMode !== 'grid') {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              e.currentTarget.style.color = 'var(--text-primary)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (viewMode !== 'grid') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }
-          }}
-          aria-label="Grid view"
-          title="Grid view"
-          aria-pressed={viewMode === 'grid'}
         >
-          <LayoutGrid className="size-4" />
-        </button>
-
-        {/* View Mode Toggle - List */}
-        <button
-          type="button"
-          onClick={() => onViewModeChange('list')}
-          className="flex items-center justify-center h-full px-2.5 transition-colors focus:outline-none focus-visible:outline-none"
-          style={{
-            color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            backgroundColor: viewMode === 'list' ? 'var(--bg-active)' : 'transparent',
-            boxShadow: 'none',
-          }}
-          onMouseEnter={(e) => {
-            if (viewMode !== 'list') {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              e.currentTarget.style.color = 'var(--text-primary)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (viewMode !== 'list') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }
-          }}
-          aria-label="List view"
-          title="List view"
-          aria-pressed={viewMode === 'list'}
-        >
-          <List className="size-4" />
-        </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange('grid')}
+            className="relative z-10 flex items-center justify-center w-7 h-6 rounded-sm transition-colors focus:outline-none focus-visible:outline-none hover:text-[var(--text-primary)]"
+            style={{
+              color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            }}
+            aria-label="Grid view"
+            title="Grid view"
+            aria-pressed={viewMode === 'grid'}
+          >
+            {viewMode === 'grid' && (
+              <motion.span
+                layoutId="view-toggle-pill"
+                className="absolute inset-0 rounded-sm"
+                style={{
+                  backgroundColor: 'var(--bg-active)',
+                }}
+                transition={{ type: 'spring', stiffness: 520, damping: 38, mass: 0.55 }}
+              />
+            )}
+            <LayoutGrid className="size-4 relative z-10" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange('list')}
+            className="relative z-10 flex items-center justify-center w-7 h-6 rounded-sm transition-colors focus:outline-none focus-visible:outline-none hover:text-[var(--text-primary)]"
+            style={{
+              color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            }}
+            aria-label="List view"
+            title="List view"
+            aria-pressed={viewMode === 'list'}
+          >
+            {viewMode === 'list' && (
+              <motion.span
+                layoutId="view-toggle-pill"
+                className="absolute inset-0 rounded-sm"
+                style={{
+                  backgroundColor: 'var(--bg-active)',
+                }}
+                transition={{ type: 'spring', stiffness: 520, damping: 38, mass: 0.55 }}
+              />
+            )}
+            <List className="size-4 relative z-10" />
+          </button>
+        </div>
       </div>
 
       {/* Extensibility slot for bulk actions */}

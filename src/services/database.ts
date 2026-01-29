@@ -10,7 +10,7 @@ import type {
   ItemStatus,
   StatusHistory,
   StatusChangeData,
-} from '../types';
+} from '@/types';
 import {
   formatISODate,
   getToday,
@@ -151,25 +151,37 @@ export async function createItem(data: {
   url?: string;
   logo_url?: string;
   reminder_days?: number;
+  status?: ItemStatus;
+  trial_end_date?: string;
 }): Promise<Item> {
   const userId = await getUserId();
+
+  const insertData: any = {
+    user_id: userId,
+    name: data.name,
+    amount: data.amount,
+    currency: data.currency,
+    billing_cycle: data.billing_cycle,
+    item_type: data.item_type,
+    category_id: data.category_id || null,
+    next_billing_date: data.next_billing_date,
+    start_date: data.start_date,
+    notes: data.notes || null,
+    url: data.url || null,
+    logo_url: data.logo_url || null,
+    reminder_days: data.reminder_days ?? 3,
+    status: data.status || 'active',
+  };
+
+  // Set trial-specific fields if status is trial
+  if (data.status === 'trial') {
+    insertData.trial_started_at = new Date().toISOString();
+    insertData.trial_end_date = data.trial_end_date || null;
+  }
+
   const { data: item, error } = await supabase
     .from('items')
-    .insert({
-      user_id: userId,
-      name: data.name,
-      amount: data.amount,
-      currency: data.currency,
-      billing_cycle: data.billing_cycle,
-      item_type: data.item_type,
-      category_id: data.category_id || null,
-      next_billing_date: data.next_billing_date,
-      start_date: data.start_date,
-      notes: data.notes || null,
-      url: data.url || null,
-      logo_url: data.logo_url || null,
-      reminder_days: data.reminder_days ?? 3,
-    })
+    .insert(insertData)
     .select()
     .single();
   if (error) throw error;
@@ -254,6 +266,9 @@ function getTargetStatus(action: StatusChangeData['action'], currentStatus: Item
     'paused-cancel': 'cancelled',
     'cancelled-reactivate': 'active',
     'archived-reactivate': 'active',
+    'trial-convert': 'active',
+    'trial-cancel': 'cancelled',
+    'trial-pause': 'paused',
   };
 
   const key = `${currentStatus}-${action}`;
@@ -284,6 +299,13 @@ export async function executeStatusChange(
   };
 
   switch (newStatus) {
+    case 'trial':
+      updateData.trial_started_at = now;
+      if (data.trialEndDate) {
+        updateData.trial_end_date = data.trialEndDate;
+      }
+      break;
+
     case 'paused':
       // Use retroactive date if provided, otherwise use now
       if (data.pausedOn) {
@@ -308,19 +330,34 @@ export async function executeStatusChange(
       break;
 
     case 'active':
-      // Resume: clear pause fields and recalculate next billing date
+      // Resume: clear all non-active status fields
       updateData.paused_at = null;
       updateData.paused_until = null;
       updateData.cancelled_at = null;
       updateData.cancellation_date = null;
       updateData.archived_at = null;
+      updateData.trial_started_at = null;
+      updateData.trial_end_date = null;
 
-      // If resumed on a past date, calculate next billing from that date
-      // Otherwise calculate from current next_billing_date
-      if (data.resumedOn) {
-        updateData.next_billing_date = getNextFutureBillingDate(data.resumedOn, item.billing_cycle);
+      // Calculate next billing date
+      if (data.convertedOn) {
+        // Converting from trial - use conversion date
+        updateData.next_billing_date = getNextFutureBillingDate(
+          data.convertedOn,
+          item.billing_cycle
+        );
+      } else if (data.resumedOn) {
+        // Resuming from pause
+        updateData.next_billing_date = getNextFutureBillingDate(
+          data.resumedOn,
+          item.billing_cycle
+        );
       } else {
-        updateData.next_billing_date = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
+        // Default: advance from current next_billing_date
+        updateData.next_billing_date = getNextFutureBillingDate(
+          item.next_billing_date,
+          item.billing_cycle
+        );
       }
       break;
   }
@@ -349,11 +386,11 @@ export async function executeStatusChange(
 }
 
 export function calculateMonthlySavings(items: ItemWithCategory[], type?: ItemType): number {
-  const filtered = items.filter((item) => {
-    if (item.status !== 'cancelled' && item.status !== 'archived') return false;
-    if (type && item.item_type !== type) return false;
-    return true;
-  });
+  const filtered = items.filter(
+    (item) =>
+      (item.status === 'cancelled' || item.status === 'archived') &&
+      (!type || item.item_type === type)
+  );
 
   return filtered.reduce((total, item) => {
     let monthlyAmount = item.amount;
@@ -490,11 +527,11 @@ export async function recordPayment(
 // ============ Analytics (pure calculations - unchanged except is_active checks) ============
 
 export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemType): number {
-  const filtered = items.filter((item) => {
-    if (item.status !== 'active') return false;
-    if (type && item.item_type !== type) return false;
-    return true;
-  });
+  const filtered = items.filter(
+    (item) =>
+      (item.status === 'active' || item.status === 'trial') &&
+      (!type || item.item_type === type)
+  );
 
   return filtered.reduce((total, item) => {
     let monthlyAmount = item.amount;
@@ -519,11 +556,11 @@ export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemT
 }
 
 export function calculateYearlySpending(items: ItemWithCategory[], type?: ItemType): number {
-  const filtered = items.filter((item) => {
-    if (item.status !== 'active') return false;
-    if (type && item.item_type !== type) return false;
-    return true;
-  });
+  const filtered = items.filter(
+    (item) =>
+      (item.status === 'active' || item.status === 'trial') &&
+      (!type || item.item_type === type)
+  );
 
   return filtered.reduce((total, item) => {
     let yearlyAmount = item.amount;
@@ -566,7 +603,7 @@ export function getSpendingByCategory(
   });
 
   items.forEach((item) => {
-    if (item.status !== 'active') return;
+    if (item.status !== 'active' && item.status !== 'trial') return;
     if (type && item.item_type !== type) return;
     if (!item.category_id) return;
 
@@ -603,19 +640,12 @@ export async function getUpcomingItems(
   type?: ItemType
 ): Promise<ItemWithCategory[]> {
   const filtered = items.filter((item) => {
-    if (type && item.item_type !== type) return false;
+    const activeDue = item.status === 'active' && isDueWithinDays(item.next_billing_date, days);
+    const pausedUntil = item.paused_until;
+    const pausedDue =
+      item.status === 'paused' && pausedUntil ? isDueWithinDays(pausedUntil, days) : false;
 
-    // Include active items with upcoming billing dates
-    if (item.status === 'active' && isDueWithinDays(item.next_billing_date, days)) {
-      return true;
-    }
-
-    // Include paused items with upcoming resume dates
-    if (item.status === 'paused' && item.paused_until && isDueWithinDays(item.paused_until, days)) {
-      return true;
-    }
-
-    return false;
+    return (!type || item.item_type === type) && (activeDue || pausedDue);
   });
 
   return filtered.sort((a, b) => {

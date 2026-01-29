@@ -12,7 +12,7 @@ import {
   Cell
 } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Receipt, CreditCard } from 'lucide-react';
-import type { Category, ItemWithCategory, SpendingByCategory, ItemType } from '../types';
+import type { Category, ItemWithCategory, SpendingByCategory, ItemType } from '@/types';
 import {
   calculateMonthlySpending,
   calculateYearlySpending,
@@ -264,7 +264,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                     dataKey="month"
                     stroke="var(--text-muted)"
                     fontSize={12}
-                    fontFamily="Archivo, sans-serif"
+                    fontFamily="Inter, -apple-system, sans-serif"
                     fontWeight={600}
                     style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
                   />
@@ -283,7 +283,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                       boxShadow: 'var(--shadow-elevated)',
                       fontFamily: 'JetBrains Mono, monospace'
                     }}
-                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Archivo, sans-serif', fontWeight: 600 }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600 }}
                     itemStyle={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}
                   />
                   <Line 
@@ -327,7 +327,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                     dataKey="name"
                     stroke="var(--text-muted)"
                     fontSize={12}
-                    fontFamily="Archivo, sans-serif"
+                    fontFamily="Inter, -apple-system, sans-serif"
                     fontWeight={600}
                     width={100}
                   />
@@ -340,7 +340,7 @@ export default function Analytics({ items, categories }: AnalyticsProps) {
                       boxShadow: 'var(--shadow-elevated)',
                       fontFamily: 'JetBrains Mono, monospace'
                     }}
-                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Archivo, sans-serif', fontWeight: 600 }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600 }}
                     itemStyle={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}
                   />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
