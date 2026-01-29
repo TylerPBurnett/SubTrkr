@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, lazy, useTransition } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -32,10 +32,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
 import ItemForm from './components/ItemForm';
-import Analytics from './components/Analytics';
-import Settings from './components/Settings';
 import AuthScreen from './components/AuthScreen';
 import StatusChangeDialog from './components/StatusChangeDialog';
+import { LazyComponentFallback } from './components/LazyComponentFallback';
+
+// Lazy load heavier components for code splitting
+const Analytics = lazy(() => import('./components/Analytics'));
+const Settings = lazy(() => import('./components/Settings'));
 
 type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
 type Theme = 'light' | 'dark';
@@ -45,6 +48,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [view, setView] = useState<View>('dashboard');
+  const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -386,7 +390,7 @@ function App() {
           {navItems.map((item, index) => (
             <button
               key={item.id}
-              onClick={() => setView(item.id)}
+              onClick={() => startTransition(() => setView(item.id))}
               className={`stagger-item w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
                 view === item.id ? 'nav-item-active font-medium' : 'nav-item'
               }`}
@@ -418,7 +422,7 @@ function App() {
 
           {/* Settings Icon Button */}
           <button
-            onClick={() => setView('settings')}
+            onClick={() => startTransition(() => setView('settings'))}
             className={`flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
               view === 'settings' ? 'bg-brand-primary text-text-inverse' : 'interactive-hover'
             }`}
@@ -444,7 +448,7 @@ function App() {
           } as React.CSSProperties}
         />
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
           <div className="p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -513,9 +517,15 @@ function App() {
               onAddNew={() => handleAddNew('subscription')}
             />
           )}
-          {view === 'analytics' && <Analytics items={items} categories={categories} />}
+          {view === 'analytics' && (
+            <Suspense fallback={<LazyComponentFallback />}>
+              <Analytics items={items} categories={categories} />
+            </Suspense>
+          )}
           {view === 'settings' && (
-            <Settings categories={categories} onCategoriesChange={loadData} />
+            <Suspense fallback={<LazyComponentFallback />}>
+              <Settings categories={categories} onCategoriesChange={loadData} />
+            </Suspense>
           )}
           </div>
         </div>

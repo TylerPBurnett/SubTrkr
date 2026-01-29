@@ -210,9 +210,9 @@ function Analytics({ items, categories }: AnalyticsProps) {
                      trend.direction === 'down' ? 'var(--accent-emerald)' :
                      'var(--text-muted)'
             }}>
-              {trend.direction === 'up' && <TrendingUp className="w-4 h-4" />}
-              {trend.direction === 'down' && <TrendingDown className="w-4 h-4" />}
-              {trend.direction === 'flat' && <Minus className="w-4 h-4" />}
+              {trend.direction === 'up' ? <TrendingUp className="w-4 h-4" /> : null}
+              {trend.direction === 'down' ? <TrendingDown className="w-4 h-4" /> : null}
+              {trend.direction === 'flat' ? <Minus className="w-4 h-4" /> : null}
               <span>{trend.percentage.toFixed(1)}%</span>
             </div>
           </div>

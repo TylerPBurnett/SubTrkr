@@ -377,7 +377,7 @@ function ItemList({
         }}
       >
         {statusMeta.label}
-        {statusMeta.date && <span className="opacity-80">· {statusMeta.date}</span>}
+        {statusMeta.date ? <span className="opacity-80">· {statusMeta.date}</span> : null}
       </span>
     );
   };
