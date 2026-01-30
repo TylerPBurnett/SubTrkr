@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import SearchFilterToolbar from './SearchFilterToolbar';
 import { Checkbox } from './ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import type { ItemWithCategory, Category, BillingCycle, ItemType, StatusChangeData } from '@/types';
 import ConfirmDialog from './ui/ConfirmDialog';
 import EmptyState from './ui/EmptyState';
@@ -66,7 +67,6 @@ function ItemList({
   const [showTrials, setShowTrials] = useState(true);
   const [showPaused, setShowPaused] = useState(true);
   const [showCancelled, setShowCancelled] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const viewStorageKey = `subtrkr-item-view-${itemType ?? 'all'}`;
@@ -132,17 +132,7 @@ function ItemList({
   const allVisibleSelected = filteredItems.length > 0 && selectedCount === filteredItems.length;
   const someVisibleSelected = selectedCount > 0 && selectedCount < filteredItems.length;
 
-  const handleMenuToggle = (id: string) => {
-    setOpenMenuId(openMenuId === id ? null : id);
-  };
-
-  const handleAction = (action: () => void) => {
-    action();
-    setOpenMenuId(null);
-  };
-
   const handleDeleteClick = (item: ItemWithCategory) => {
-    setOpenMenuId(null);
     setDeleteConfirm({ id: item.id, name: item.name });
   };
 
@@ -187,142 +177,190 @@ function ItemList({
 
   const renderActionsMenu = (item: ItemWithCategory) => (
     <div className="relative" onClick={(event) => event.stopPropagation()}>
-      <button
-        onClick={(event) => {
-          event.stopPropagation();
-          handleMenuToggle(item.id);
-        }}
-        className="p-2 rounded-lg transition-colors interactive-hover-bg"
-        style={{ color: 'var(--text-muted)' }}
-      >
-        <MoreVertical className="w-5 h-5" />
-      </button>
-
-      {openMenuId === item.id && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-          <div
-            className="dropdown absolute right-0 top-full mt-1 w-48 rounded-xl py-1 z-20"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
             onClick={(event) => event.stopPropagation()}
+            className="p-2 rounded-lg transition-colors interactive-hover-bg"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label="Actions"
           >
-            <button
-              onClick={() => handleAction(() => onEdit(item))}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
+            <MoreVertical className="w-5 h-5" />
+          </button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align="end"
+          className="w-[200px]"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-strong)',
+            boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong)',
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <DropdownMenuItem
+            onClick={() => onEdit(item)}
+            className="gap-2.5 menu-item"
+            style={{
+              color: 'var(--text-secondary)',
+              letterSpacing: '-0.005em',
+            }}
+          >
+            <Pencil className="w-4 h-4" />
+            Edit
+          </DropdownMenuItem>
+
+          {/* Status-aware actions */}
+          {item.status === 'trial' && onStatusChange && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, 'convert')}
+                className="gap-2.5 menu-item-success"
+                style={{ letterSpacing: '-0.005em' }}
+              >
+                <Check className="w-4 h-4" />
+                Convert to Paid
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, 'cancel')}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel Trial
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {item.status === 'active' && onStatusChange && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, 'pause')}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                <Pause className="w-4 h-4" />
+                Pause
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, 'cancel')}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {item.status === 'paused' && onStatusChange && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, 'resume')}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                <Play className="w-4 h-4" />
+                Resume
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, 'cancel')}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {(item.status === 'cancelled' || item.status === 'archived') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'reactivate')}
+              className="gap-2.5 menu-item-success"
+              style={{ letterSpacing: '-0.005em' }}
             >
-              <Pencil className="w-4 h-4" />
-              Edit
-            </button>
+              <RotateCcw className="w-4 h-4" />
+              Reactivate
+            </DropdownMenuItem>
+          )}
 
-            {/* Status-aware actions */}
-            {item.status === 'trial' && onStatusChange && (
-              <>
-                <button
-                  onClick={() => handleAction(() => onStatusChange(item.id, 'convert'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item-success"
-                >
-                  <Check className="w-4 h-4" />
-                  Convert to Paid
-                </button>
-                <button
-                  onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Cancel Trial
-                </button>
-              </>
-            )}
-
-            {item.status === 'active' && onStatusChange && (
-              <>
-                <button
-                  onClick={() => handleAction(() => onStatusChange(item.id, 'pause'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
-                >
+          {/* Fallback for old onToggleActive prop */}
+          {!onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onToggleActive(item.id)}
+              className="gap-2.5 menu-item"
+              style={{
+                color: 'var(--text-secondary)',
+                letterSpacing: '-0.005em',
+              }}
+            >
+              {item.is_active ? (
+                <>
                   <Pause className="w-4 h-4" />
                   Pause
-                </button>
-                <button
-                  onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Cancel
-                </button>
-              </>
-            )}
-
-            {item.status === 'paused' && onStatusChange && (
-              <>
-                <button
-                  onClick={() => handleAction(() => onStatusChange(item.id, 'resume'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
-                >
+                </>
+              ) : (
+                <>
                   <Play className="w-4 h-4" />
                   Resume
-                </button>
-                <button
-                  onClick={() => handleAction(() => onStatusChange(item.id, 'cancel'))}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Cancel
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </DropdownMenuItem>
+          )}
 
-            {(item.status === 'cancelled' || item.status === 'archived') && onStatusChange && (
-              <button
-                onClick={() => handleAction(() => onStatusChange(item.id, 'reactivate'))}
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item-success"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reactivate
-              </button>
-            )}
-
-            {/* Fallback for old onToggleActive prop */}
-            {!onStatusChange && (
-              <button
-                onClick={() => handleAction(() => onToggleActive(item.id))}
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
-              >
-                {item.is_active ? (
-                  <>
-                    <Pause className="w-4 h-4" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Resume
-                  </>
-                )}
-              </button>
-            )}
-            {item.url && (
+          {item.url && (
+            <DropdownMenuItem
+              asChild
+              className="gap-2.5 menu-item"
+              style={{
+                color: 'var(--text-secondary)',
+                letterSpacing: '-0.005em',
+              }}
+            >
               <a
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setOpenMenuId(null)}
-                className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item"
               >
                 <ExternalLink className="w-4 h-4" />
                 Visit Website
               </a>
-            )}
-            <hr style={{ borderColor: 'var(--border-default)' }} className="my-1" />
-            <button
-              onClick={() => handleDeleteClick(item)}
-              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors menu-item-danger"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
-        </>
-      )}
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuSeparator
+            style={{
+              background: 'var(--border-default)',
+            }}
+          />
+
+          <DropdownMenuItem
+            onClick={() => handleDeleteClick(item)}
+            className="gap-2.5 menu-item-danger"
+            style={{ letterSpacing: '-0.005em' }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 
@@ -643,7 +681,7 @@ function ItemList({
                     <thead
                       style={{
                         backgroundColor: 'var(--bg-default)',
-                        color: 'var(--text-muted)',
+                        color: '#ffffff',
                         borderBottom: '1px solid var(--border-default)',
                       }}
                     >
@@ -658,22 +696,22 @@ function ItemList({
                             onClick={(event) => event.stopPropagation()}
                           />
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                           Company
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                           Renews
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                           Recurrence
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                           Cost
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-sm font-semibold uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
@@ -686,7 +724,7 @@ function ItemList({
                           <motion.tr
                             layout
                             key={item.id}
-                            className={`stagger-item transition-colors cursor-pointer interactive-hover-bg ${statusStyles[item.status]}`}
+                            className={`stagger-item group cursor-pointer ${statusStyles[item.status]}`}
                             style={{
                               borderBottom: '1px solid var(--border-muted)',
                               filter:
@@ -694,10 +732,22 @@ function ItemList({
                                   ? 'grayscale(0.3)'
                                   : undefined,
                               animationDelay: `${index * 0.03}s`,
+                              transition: 'all 0.15s var(--ease-out-expo)',
+                              position: 'relative',
                             }}
                             onClick={() => onEdit(item)}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                              if (item.status === 'active') {
+                                e.currentTarget.style.boxShadow = `inset 3px 0 0 ${categoryColor}`;
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
                           >
-                            <td className="pl-4 pr-2 py-3" onClick={(event) => event.stopPropagation()}>
+                            <td className="pl-5 pr-3 py-4" onClick={(event) => event.stopPropagation()}>
                               <Checkbox
                                 checked={selectedItemIds.has(item.id)}
                                 onCheckedChange={(checked) => handleSelectItemChange(item.id, checked)}
@@ -705,8 +755,8 @@ function ItemList({
                                 onClick={(event) => event.stopPropagation()}
                               />
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3 min-w-[240px]">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3.5 min-w-[240px]">
                                 <ServiceLogo
                                   logoUrl={item.logo_url}
                                   name={item.name}
@@ -715,48 +765,75 @@ function ItemList({
                                   categoryName={item.category?.name}
                                   categoryColor={item.category?.color}
                                 />
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <button
                                     type="button"
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       onEdit(item);
                                     }}
-                                    className="block w-full text-left font-mono font-semibold text-sm truncate transition-colors hover:underline focus-visible:outline-none"
-                                    style={{ color: 'var(--text-primary)' }}
+                                    className="block w-full text-left font-mono font-semibold truncate transition-all focus-visible:outline-none group-hover:translate-x-0.5"
+                                    style={{
+                                      color: 'var(--text-primary)',
+                                      fontSize: '0.875rem',
+                                      letterSpacing: '-0.01em',
+                                    }}
                                     aria-label={`Edit ${item.name}`}
                                   >
                                     {item.name}
                                   </button>
                                   <div
-                                    className="flex items-center gap-2 text-xs"
-                                    style={{ color: 'var(--text-secondary)' }}
+                                    className="flex items-center gap-1.5 mt-0.5"
+                                    style={{
+                                      color: 'var(--text-secondary)',
+                                      fontSize: '0.75rem',
+                                    }}
                                   >
-                                    <span className="inline-flex items-center gap-1">
-                                      <span
-                                        className="w-2 h-2 rounded-full"
-                                        style={{ backgroundColor: categoryColor }}
-                                      />
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full"
+                                      style={{
+                                        backgroundColor: categoryColor,
+                                        boxShadow: `0 0 0 2px ${categoryColor}20`,
+                                      }}
+                                    />
+                                    <span className="font-medium">
                                       {item.category?.name || 'Uncategorized'}
                                     </span>
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3 font-mono" style={{ color: 'var(--text-primary)' }}>
+                            <td
+                              className="px-5 py-4 font-mono font-medium"
+                              style={{
+                                color: 'var(--text-primary)',
+                                fontSize: '0.8125rem',
+                                letterSpacing: '-0.01em',
+                              }}
+                            >
                               {formatDisplayDate(item.next_billing_date)}
                             </td>
-                            <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                            <td
+                              className="px-5 py-4 font-medium"
+                              style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.8125rem',
+                              }}
+                            >
                               {billingCycleLabels[item.billing_cycle]}
                             </td>
                             <td
-                              className="px-4 py-3 font-mono font-semibold"
-                              style={{ color: 'var(--text-primary)' }}
+                              className="px-5 py-4 font-mono font-bold"
+                              style={{
+                                color: 'var(--text-primary)',
+                                fontSize: '0.9375rem',
+                                letterSpacing: '-0.02em',
+                              }}
                             >
                               {formatCurrency(item.amount, item.currency)}
                             </td>
-                            <td className="px-4 py-3">{renderStatusPill(item)}</td>
-                            <td className="px-4 py-3 text-right">{renderActionsMenu(item)}</td>
+                            <td className="px-5 py-4">{renderStatusPill(item)}</td>
+                            <td className="px-5 py-4 text-right">{renderActionsMenu(item)}</td>
                           </motion.tr>
                         );
                       })}

@@ -13,9 +13,15 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, SetValue<T
   const [value, setValue] = useState<T>(() => {
     try {
       const item = localStorage.getItem(key);
-      return item ? (JSON.parse(item) as T) : defaultValue;
-    } catch {
-      console.warn(`Failed to read localStorage key "${key}":`, key);
+      if (!item) return defaultValue;
+
+      // Try to parse as JSON
+      return JSON.parse(item) as T;
+    } catch (error) {
+      // If parse fails, clear the corrupted value and use default
+      console.warn(`Failed to read localStorage key "${key}":`, error);
+      console.warn(`Clearing corrupted value and using default`);
+      localStorage.removeItem(key);
       return defaultValue;
     }
   });

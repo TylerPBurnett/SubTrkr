@@ -1,6 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tw-animate-css";
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 /* ============================================
    SEMANTIC DESIGN TOKENS (CSS Custom Properties)
@@ -452,13 +452,28 @@ button, a, input, select, textarea {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
   box-shadow: var(--shadow-elevated);
-  animation: dropdownSlide 0.2s var(--ease-out-expo);
+  animation: dropdownSlideDown 0.2s var(--ease-out-expo);
 }
 
-@keyframes dropdownSlide {
+.dropdown[data-placement="top"] {
+  animation: dropdownSlideUp 0.2s var(--ease-out-expo);
+}
+
+@keyframes dropdownSlideDown {
   from {
     opacity: 0;
     transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdownSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
   to {
     opacity: 1;

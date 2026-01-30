@@ -8,16 +8,16 @@ import type { Category } from '@/types';
 // Refined select item styles
 const selectItemStyles = `
   .refined-select-item[data-highlighted] {
-    background-color: var(--bg-hover) !important;
+    background-color: var(--accent-green-muted) !important;
     color: var(--text-primary) !important;
   }
   .refined-select-item[data-state="checked"] {
-    background-color: var(--bg-active) !important;
-    color: var(--text-primary) !important;
+    background-color: var(--accent-green-muted) !important;
+    color: var(--accent-green) !important;
   }
   .refined-select-item[data-state="checked"] svg {
-    color: var(--text-primary) !important;
-    opacity: 0.6;
+    color: var(--accent-green) !important;
+    opacity: 0.8;
   }
 `;
 
