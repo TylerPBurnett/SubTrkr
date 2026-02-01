@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, CheckCircle, Shield, Sparkles } from 'lucide-react';
+import appIcon from '../../src-tauri/assets/icon.svg';
 import { signUp, signIn, signInWithOtp, verifyOtp } from '../services/auth';
 
 type AuthMode = 'signin' | 'signup' | 'otp' | 'verify-otp';
@@ -12,17 +13,19 @@ export default function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleEmailPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setIsLoading(true);
 
     try {
       if (mode === 'signup') {
         await signUp(email, password);
         setError(null);
-        alert('Check your email to confirm your account!');
+        setSuccessMessage('Check your email to confirm your account!');
       } else {
         await signIn(email, password);
       }
@@ -64,23 +67,24 @@ export default function AuthScreen() {
   };
 
   const renderOtpMode = () => (
-    <form onSubmit={handleSendOtp} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-          Email
+    <form onSubmit={handleSendOtp} className="space-y-5">
+      <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
+        <label className="label mb-2 flex items-center gap-2">
+          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          Email Address
         </label>
-        <div className="relative">
-          <Mail
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
-            style={{ color: 'var(--text-muted)' }}
-          />
+        <div className="relative group">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="input w-full pl-10 pr-4 py-2 rounded-lg"
-            placeholder="Enter your email"
+            className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.9375rem'
+            }}
+            placeholder="your@email.com"
             disabled={isLoading}
           />
         </div>
@@ -88,53 +92,69 @@ export default function AuthScreen() {
 
       {error && (
         <div
-          className="p-3 rounded-lg text-sm"
-          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--accent-red)' }}
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
+          style={{
+            backgroundColor: 'var(--accent-red-muted)',
+            color: 'var(--accent-red)',
+            border: '1px solid var(--accent-red)'
+          }}
         >
-          {error}
+          <div className="w-1 h-full absolute left-0 top-0 bottom-0 rounded-l-lg" style={{ backgroundColor: 'var(--accent-red)' }} />
+          <span className="ml-2">{error}</span>
         </div>
       )}
 
       <button
         type="submit"
         disabled={isLoading}
-        className="btn-primary w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        className="btn-primary w-full py-3.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2.5 stagger-item"
+        style={{ animationDelay: '0.1s' }}
       >
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Sending...
+            <span className="tracking-tight">Sending code...</span>
           </>
         ) : (
-          'Send Code'
+          <>
+            <Sparkles className="w-4 h-4" />
+            <span className="tracking-tight">Send Magic Code</span>
+          </>
         )}
       </button>
 
       <button
         type="button"
         onClick={() => setMode('signin')}
-        className="btn-secondary w-full py-2 rounded-lg text-sm"
+        className="btn-secondary w-full py-2.5 rounded-lg text-sm transition-all duration-200 stagger-item"
+        style={{ animationDelay: '0.15s' }}
       >
-        Back to sign in
+        <span className="tracking-tight">← Back to sign in</span>
       </button>
     </form>
   );
 
   const renderVerifyOtpMode = () => (
-    <form onSubmit={handleVerifyOtp} className="space-y-4">
+    <form onSubmit={handleVerifyOtp} className="space-y-5">
       {otpSent && (
         <div
-          className="p-3 rounded-lg text-sm flex items-center gap-2"
-          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--accent-green)' }}
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2.5 stagger-item"
+          style={{
+            animationDelay: '0.05s',
+            backgroundColor: 'var(--brand-muted)',
+            color: 'var(--brand-primary)',
+            border: '1px solid var(--brand-primary)'
+          }}
         >
-          <CheckCircle className="w-4 h-4" />
-          Check your email for the 6-digit code
+          <CheckCircle className="w-5 h-5 flex-shrink-0" />
+          <span className="font-medium tracking-tight">Check your email for the 6-digit code</span>
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-          6-Digit Code
+      <div className="stagger-item" style={{ animationDelay: '0.1s' }}>
+        <label className="label mb-3 flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          Verification Code
         </label>
         <input
           type="text"
@@ -142,33 +162,48 @@ export default function AuthScreen() {
           onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
           required
           maxLength={6}
-          className="input w-full px-4 py-2 rounded-lg text-center text-2xl tracking-widest"
-          placeholder="000000"
+          className="input w-full px-4 py-4 rounded-lg text-center transition-all duration-200"
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '2rem',
+            letterSpacing: '0.5em',
+            fontWeight: 700
+          }}
+          placeholder="••••••"
           disabled={isLoading}
         />
       </div>
 
       {error && (
         <div
-          className="p-3 rounded-lg text-sm"
-          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--accent-red)' }}
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
+          style={{
+            backgroundColor: 'var(--accent-red-muted)',
+            color: 'var(--accent-red)',
+            border: '1px solid var(--accent-red)'
+          }}
         >
-          {error}
+          <div className="w-1 h-full absolute left-0 top-0 bottom-0 rounded-l-lg" style={{ backgroundColor: 'var(--accent-red)' }} />
+          <span className="ml-2">{error}</span>
         </div>
       )}
 
       <button
         type="submit"
         disabled={isLoading || otpCode.length !== 6}
-        className="btn-primary w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        className="btn-primary w-full py-3.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2.5 stagger-item"
+        style={{ animationDelay: '0.15s' }}
       >
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Verifying...
+            <span className="tracking-tight">Verifying...</span>
           </>
         ) : (
-          'Verify Code'
+          <>
+            <CheckCircle className="w-4 h-4" />
+            <span className="tracking-tight">Verify & Sign In</span>
+          </>
         )}
       </button>
 
@@ -179,94 +214,122 @@ export default function AuthScreen() {
           setOtpCode('');
           setOtpSent(false);
         }}
-        className="btn-secondary w-full py-2 rounded-lg text-sm"
+        className="btn-secondary w-full py-2.5 rounded-lg text-sm transition-all duration-200 stagger-item"
+        style={{ animationDelay: '0.2s' }}
       >
-        Resend code
+        <span className="tracking-tight">Resend code</span>
       </button>
     </form>
   );
 
   const renderEmailPasswordMode = () => (
-    <form onSubmit={handleEmailPassword} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-          Email
+    <form onSubmit={handleEmailPassword} className="space-y-5">
+      <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
+        <label className="label mb-2 flex items-center gap-2">
+          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          Email Address
         </label>
-        <div className="relative">
-          <Mail
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
-            style={{ color: 'var(--text-muted)' }}
-          />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="input w-full pl-10 pr-4 py-2 rounded-lg"
-            placeholder="Enter your email"
-            disabled={isLoading}
-          />
-        </div>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.9375rem'
+          }}
+          placeholder="your@email.com"
+          disabled={isLoading}
+        />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+      <div className="stagger-item" style={{ animationDelay: '0.1s' }}>
+        <label className="label mb-2 flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
           Password
         </label>
-        <div className="relative">
-          <Lock
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"
-            style={{ color: 'var(--text-muted)' }}
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            className="input w-full pl-10 pr-4 py-2 rounded-lg"
-            placeholder="Enter your password"
-            disabled={isLoading}
-          />
-        </div>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+          className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.9375rem'
+          }}
+          placeholder="••••••••"
+          disabled={isLoading}
+        />
       </div>
+
+      {successMessage && (
+        <div
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2.5 animate-in"
+          style={{
+            backgroundColor: 'var(--brand-muted)',
+            color: 'var(--brand-primary)',
+            border: '1px solid var(--brand-primary)'
+          }}
+        >
+          <CheckCircle className="w-5 h-5 flex-shrink-0" />
+          <span className="font-medium tracking-tight">{successMessage}</span>
+        </div>
+      )}
 
       {error && (
         <div
-          className="p-3 rounded-lg text-sm"
-          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--accent-red)' }}
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
+          style={{
+            backgroundColor: 'var(--accent-red-muted)',
+            color: 'var(--accent-red)',
+            border: '1px solid var(--accent-red)'
+          }}
         >
-          {error}
+          <div className="w-1 h-full absolute left-0 top-0 bottom-0 rounded-l-lg" style={{ backgroundColor: 'var(--accent-red)' }} />
+          <span className="ml-2">{error}</span>
         </div>
       )}
 
       <button
         type="submit"
         disabled={isLoading}
-        className="btn-primary w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        className="btn-primary w-full py-3.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2.5 stagger-item"
+        style={{ animationDelay: '0.15s' }}
       >
         {isLoading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            {mode === 'signup' ? 'Creating account...' : 'Signing in...'}
+            <span className="tracking-tight">
+              {mode === 'signup' ? 'Creating account...' : 'Signing in...'}
+            </span>
           </>
-        ) : mode === 'signup' ? (
-          'Create Account'
         ) : (
-          'Sign In'
+          <>
+            <Shield className="w-4 h-4" />
+            <span className="tracking-tight">
+              {mode === 'signup' ? 'Create Account' : 'Sign In'}
+            </span>
+          </>
         )}
       </button>
 
-      <div className="relative my-6">
+      <div className="relative my-6 stagger-item" style={{ animationDelay: '0.2s' }}>
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full" style={{ borderTop: '1px solid var(--border-default)' }} />
+          <div className="w-full" style={{ borderTop: '2px solid var(--border-muted)' }} />
         </div>
-        <div className="relative flex justify-center text-sm">
+        <div className="relative flex justify-center text-xs font-semibold tracking-wider">
           <span
-            className="px-2"
-            style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)' }}
+            className="px-3 py-1 rounded-full"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-muted)',
+              border: '2px solid var(--border-muted)'
+            }}
           >
-            or
+            OR
           </span>
         </div>
       </div>
@@ -274,20 +337,21 @@ export default function AuthScreen() {
       <button
         type="button"
         onClick={() => setMode('otp')}
-        className="btn-secondary w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        className="btn-secondary w-full py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2.5 stagger-item"
+        style={{ animationDelay: '0.25s' }}
       >
-        <Mail className="w-4 h-4" />
-        Sign in with email code
+        <Sparkles className="w-4 h-4" />
+        <span className="tracking-tight">Sign in with magic code</span>
       </button>
 
-      <div className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+      <div className="text-center text-sm stagger-item" style={{ animationDelay: '0.3s', color: 'var(--text-secondary)' }}>
         {mode === 'signin' ? (
           <>
             Don't have an account?{' '}
             <button
               type="button"
               onClick={() => setMode('signup')}
-              className="font-medium"
+              className="font-bold tracking-tight transition-colors duration-200"
               style={{ color: 'var(--brand-primary)' }}
             >
               Sign up
@@ -299,7 +363,7 @@ export default function AuthScreen() {
             <button
               type="button"
               onClick={() => setMode('signin')}
-              className="font-medium"
+              className="font-bold tracking-tight transition-colors duration-200"
               style={{ color: 'var(--brand-primary)' }}
             >
               Sign in
@@ -316,24 +380,71 @@ export default function AuthScreen() {
       style={{ backgroundColor: 'var(--bg-base)' }}
     >
       <div
-        className="w-full max-w-md card p-8"
+        className="w-full max-w-md card animate-in"
         style={{
           backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border-default)',
+          border: '2px solid var(--border-default)',
+          overflow: 'hidden'
         }}
       >
+        {/* Gradient header bar with shimmer */}
+        <div
+          className="relative h-2 mb-8 -mx-6 -mt-6"
+          style={{
+            background: 'linear-gradient(90deg, var(--brand-primary) 0%, var(--brand-primary-hover) 100%)',
+            boxShadow: '0 4px 14px -3px rgba(34, 197, 94, 0.35)'
+          }}
+        >
+          <div
+            className="shimmer absolute inset-0"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)'
+            }}
+          />
+        </div>
+
+        {/* Brand icon */}
+        <div className="flex justify-center mb-6">
+          <div
+            className="p-4 rounded-2xl"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              border: '2px solid var(--border-default)',
+              boxShadow: 'var(--shadow-card)'
+            }}
+          >
+            <img src={appIcon} alt="SubTrkr logo" className="w-10 h-10" />
+          </div>
+        </div>
+
+        {/* Header text */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h1
+            className="font-bold mb-2"
+            style={{
+              color: 'var(--text-primary)',
+              fontSize: '2.25rem',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1
+            }}
+          >
             SubTrkr
           </h1>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <p
+            className="text-sm font-medium tracking-tight"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Track your subscriptions and bills
           </p>
         </div>
 
-        {mode === 'otp' && renderOtpMode()}
-        {mode === 'verify-otp' && renderVerifyOtpMode()}
-        {(mode === 'signin' || mode === 'signup') && renderEmailPasswordMode()}
+        {/* Form container with padding */}
+        <div className="px-6 pb-6">
+          {mode === 'otp' && renderOtpMode()}
+          {mode === 'verify-otp' && renderVerifyOtpMode()}
+          {(mode === 'signin' || mode === 'signup') && renderEmailPasswordMode()}
+        </div>
       </div>
     </div>
   );
