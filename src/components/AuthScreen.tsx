@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, CheckCircle, Shield, Sparkles } from 'lucide-react';
+import { Mail, Lock, Loader2, CheckCircle, Shield, Sparkles, Eye, EyeOff, KeyRound } from 'lucide-react';
 import appIcon from '../../src-tauri/assets/icon.svg';
-import { signUp, signIn, signInWithOtp, verifyOtp } from '../services/auth';
+import { signUp, signIn, signInWithOtp, verifyOtp, resetPassword } from '../services/auth';
 
-type AuthMode = 'signin' | 'signup' | 'otp' | 'verify-otp';
+type AuthMode = 'signin' | 'signup' | 'otp' | 'verify-otp' | 'reset-password';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>('signin');
@@ -14,6 +14,31 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Password strength calculator
+  const getPasswordStrength = (pwd: string): { score: number; label: string; color: string } => {
+    if (!pwd) return { score: 0, label: '', color: '' };
+
+    let score = 0;
+
+    // Length checks
+    if (pwd.length >= 8) score += 1;
+    if (pwd.length >= 12) score += 1;
+
+    // Character variety
+    if (/[a-z]/.test(pwd)) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score += 1;
+
+    if (score <= 2) return { score, label: 'Weak', color: 'var(--accent-red)' };
+    if (score <= 4) return { score, label: 'Medium', color: 'var(--accent-amber)' };
+    return { score, label: 'Strong', color: 'var(--brand-primary)' };
+  };
+
+  const passwordStrength = mode === 'signup' ? getPasswordStrength(password) : null;
 
   const handleEmailPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +91,22 @@ export default function AuthScreen() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
+
+    try {
+      await resetPassword(email);
+      setSuccessMessage('Check your email for password reset instructions!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const renderOtpMode = () => (
     <form onSubmit={handleSendOtp} className="space-y-5">
       <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
@@ -77,8 +118,12 @@ export default function AuthScreen() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError(null);
+            }}
             required
+            autoFocus
             className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
             style={{
               fontFamily: 'JetBrains Mono, monospace',
@@ -159,9 +204,13 @@ export default function AuthScreen() {
         <input
           type="text"
           value={otpCode}
-          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={(e) => {
+            setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+            setError(null);
+          }}
           required
           maxLength={6}
+          autoFocus
           className="input w-full px-4 py-4 rounded-lg text-center transition-all duration-200"
           style={{
             fontFamily: 'JetBrains Mono, monospace',
@@ -222,6 +271,91 @@ export default function AuthScreen() {
     </form>
   );
 
+  const renderResetPasswordMode = () => (
+    <form onSubmit={handleResetPassword} className="space-y-5">
+      <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
+        <label className="label mb-2 flex items-center gap-2">
+          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          Email Address
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError(null);
+            setSuccessMessage(null);
+          }}
+          required
+          autoFocus
+          className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.9375rem'
+          }}
+          placeholder="your@email.com"
+          disabled={isLoading}
+        />
+      </div>
+
+      {successMessage && (
+        <div
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2.5 animate-in"
+          style={{
+            backgroundColor: 'var(--brand-muted)',
+            color: 'var(--brand-primary)',
+            border: '1px solid var(--brand-primary)'
+          }}
+        >
+          <CheckCircle className="w-5 h-5 flex-shrink-0" />
+          <span className="font-medium tracking-tight">{successMessage}</span>
+        </div>
+      )}
+
+      {error && (
+        <div
+          className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
+          style={{
+            backgroundColor: 'var(--accent-red-muted)',
+            color: 'var(--accent-red)',
+            border: '1px solid var(--accent-red)'
+          }}
+        >
+          <div className="w-1 h-full absolute left-0 top-0 bottom-0 rounded-l-lg" style={{ backgroundColor: 'var(--accent-red)' }} />
+          <span className="ml-2">{error}</span>
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="btn-primary w-full py-3.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2.5 stagger-item"
+        style={{ animationDelay: '0.1s' }}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="tracking-tight">Sending reset link...</span>
+          </>
+        ) : (
+          <>
+            <KeyRound className="w-4 h-4" />
+            <span className="tracking-tight">Send Reset Link</span>
+          </>
+        )}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setMode('signin')}
+        className="btn-secondary w-full py-2.5 rounded-lg text-sm transition-all duration-200 stagger-item"
+        style={{ animationDelay: '0.15s' }}
+      >
+        <span className="tracking-tight">← Back to sign in</span>
+      </button>
+    </form>
+  );
+
   const renderEmailPasswordMode = () => (
     <form onSubmit={handleEmailPassword} className="space-y-5">
       <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
@@ -232,8 +366,13 @@ export default function AuthScreen() {
         <input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError(null);
+            setSuccessMessage(null);
+          }}
           required
+          autoFocus
           className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
           style={{
             fontFamily: 'JetBrains Mono, monospace',
@@ -249,21 +388,53 @@ export default function AuthScreen() {
           <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
           Password
         </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-          className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.9375rem'
-          }}
-          placeholder="••••••••"
-          disabled={isLoading}
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError(null);
+              setSuccessMessage(null);
+            }}
+            required
+            minLength={6}
+            className="input w-full px-4 py-2.5 pr-12 rounded-lg transition-all duration-200"
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.9375rem'
+            }}
+            placeholder="••••••••"
+            disabled={isLoading}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? (
+              <EyeOff className="w-5 h-5 hover:opacity-70" />
+            ) : (
+              <Eye className="w-5 h-5 hover:opacity-70" />
+            )}
+          </button>
+        </div>
       </div>
+
+      {mode === 'signin' && (
+        <div className="stagger-item -mt-2" style={{ animationDelay: '0.12s' }}>
+          <button
+            type="button"
+            onClick={() => setMode('reset-password')}
+            className="text-sm font-semibold tracking-tight transition-colors duration-200"
+            style={{ color: 'var(--brand-primary)' }}
+          >
+            Forgot password?
+          </button>
+        </div>
+      )}
 
       {successMessage && (
         <div
@@ -443,6 +614,7 @@ export default function AuthScreen() {
         <div className="px-6 pb-6">
           {mode === 'otp' && renderOtpMode()}
           {mode === 'verify-otp' && renderVerifyOtpMode()}
+          {mode === 'reset-password' && renderResetPasswordMode()}
           {(mode === 'signin' || mode === 'signup') && renderEmailPasswordMode()}
         </div>
       </div>
