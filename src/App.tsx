@@ -35,6 +35,7 @@ import ItemForm from './components/ItemForm';
 import AuthScreen from './components/AuthScreen';
 import StatusChangeDialog from './components/StatusChangeDialog';
 import { LazyComponentFallback } from './components/LazyComponentFallback';
+import EmailVerificationBanner from './components/EmailVerificationBanner';
 
 // Lazy load heavier components for code splitting
 const Analytics = lazy(() => import('./components/Analytics'));
@@ -62,6 +63,7 @@ function App() {
     action: StatusChangeData['action'];
   } | null>(null);
   const [theme, setTheme] = useLocalStorage<Theme>('subtrkr-theme', 'dark');
+  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -447,6 +449,14 @@ function App() {
             WebkitAppRegion: 'drag'
           } as React.CSSProperties}
         />
+
+        {/* Email verification banner */}
+        {session?.user && !session.user.email_confirmed_at && !emailBannerDismissed && (
+          <EmailVerificationBanner
+            email={session.user.email || ''}
+            onDismiss={() => setEmailBannerDismissed(true)}
+          />
+        )}
 
         <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
           <div className="p-8">
