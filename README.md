@@ -210,7 +210,7 @@ Check out the [issues](https://github.com/yourusername/SubTrkr/issues) to get st
 
 ## 📄 License
 
-MIT © [Your Name]
+MIT © TylerPBurnett
 
 ---
 
