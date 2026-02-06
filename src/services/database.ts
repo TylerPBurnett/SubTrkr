@@ -644,13 +644,23 @@ export async function getUpcomingItems(
     const pausedUntil = item.paused_until;
     const pausedDue =
       item.status === 'paused' && pausedUntil ? isDueWithinDays(pausedUntil, days) : false;
+    const trialExpiring =
+      item.status === 'trial' && item.trial_end_date
+        ? isDueWithinDays(item.trial_end_date, days)
+        : false;
 
-    return (!type || item.item_type === type) && (activeDue || pausedDue);
+    return (!type || item.item_type === type) && (activeDue || pausedDue || trialExpiring);
   });
 
   return filtered.sort((a, b) => {
-    const dateA = a.status === 'paused' && a.paused_until ? a.paused_until : a.next_billing_date;
-    const dateB = b.status === 'paused' && b.paused_until ? b.paused_until : b.next_billing_date;
+    let dateA = a.next_billing_date;
+    if (a.status === 'paused' && a.paused_until) dateA = a.paused_until;
+    if (a.status === 'trial' && a.trial_end_date) dateA = a.trial_end_date;
+
+    let dateB = b.next_billing_date;
+    if (b.status === 'paused' && b.paused_until) dateB = b.paused_until;
+    if (b.status === 'trial' && b.trial_end_date) dateB = b.trial_end_date;
+
     const daysA = getDaysUntil(dateA);
     const daysB = getDaysUntil(dateB);
     return daysA - daysB;
@@ -692,4 +702,70 @@ export function advanceNextBillingDate(item: Item): string {
 
 export function calculateNextBillingDate(dateStr: string, billingCycle: BillingCycle): string {
   return calcNextBillingDate(dateStr, billingCycle);
+}
+
+// ============ Trial Management ============
+
+export async function getExpiringTrials(days: number = 7): Promise<ItemWithCategory[]> {
+  const userId = await getUserId();
+  const todayStr = formatISODate(getToday());
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + days);
+  const futureDateStr = formatISODate(futureDate);
+
+  const { data, error } = await supabase
+    .from('items')
+    .select('*, category:categories(*)')
+    .eq('user_id', userId)
+    .eq('status', 'trial')
+    .not('trial_end_date', 'is', null)
+    .gte('trial_end_date', todayStr)
+    .lte('trial_end_date', futureDateStr)
+    .order('trial_end_date', { ascending: true });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    ...row,
+    category: row.category || undefined,
+  }));
+}
+
+export async function handleExpiredTrials(): Promise<number> {
+  const todayStr = formatISODate(getToday());
+  const userId = await getUserId();
+
+  // Find trials where trial_end_date has passed
+  const { data: expiredTrials, error: fetchError } = await supabase
+    .from('items')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'trial')
+    .not('trial_end_date', 'is', null)
+    .lt('trial_end_date', todayStr);
+
+  if (fetchError) throw fetchError;
+  if (!expiredTrials || expiredTrials.length === 0) return 0;
+
+  const now = new Date().toISOString();
+  let handledCount = 0;
+
+  // Mark expired trials by setting a flag field
+  // Users will need to manually convert or cancel these
+  for (const item of expiredTrials) {
+    // Record in status history that trial expired
+    const { error: historyError } = await supabase
+      .from('item_status_history')
+      .insert({
+        item_id: item.id,
+        user_id: userId,
+        status: 'trial',
+        reason: 'trial_expired',
+        notes: `Trial expired on ${item.trial_end_date}`,
+      });
+
+    if (!historyError) handledCount++;
+  }
+
+  return handledCount;
 }

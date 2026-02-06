@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 export interface AuthState {
   user: User | null;
@@ -52,23 +53,39 @@ export async function resetPassword(email: string) {
 }
 
 export async function signInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({
+  // For Tauri: Get OAuth URL without auto-redirect, then open in external browser
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: `${window.location.origin}`,
+      skipBrowserRedirect: true, // Don't redirect in webview
     },
   });
+
   if (error) throw error;
+
+  // Open OAuth URL in system browser (not webview)
+  if (data?.url) {
+    await openUrl(data.url);
+  }
 }
 
 export async function signInWithGitHub() {
-  const { error } = await supabase.auth.signInWithOAuth({
+  // For Tauri: Get OAuth URL without auto-redirect, then open in external browser
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
       redirectTo: `${window.location.origin}`,
+      skipBrowserRedirect: true, // Don't redirect in webview
     },
   });
+
   if (error) throw error;
+
+  // Open OAuth URL in system browser (not webview)
+  if (data?.url) {
+    await openUrl(data.url);
+  }
 }
 
 export async function resendVerificationEmail(email: string) {

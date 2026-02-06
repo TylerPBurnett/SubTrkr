@@ -23,11 +23,12 @@ import {
   advancePastDueItems,
   archivePastCancellations,
   resumePausedItems,
+  handleExpiredTrials,
   executeStatusChange,
 } from './services/database';
 import { supabase } from './services/supabase';
 import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
-import { checkAndNotifyUpcomingRenewals } from './services/notifications';
+import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './services/notifications';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
@@ -74,13 +75,19 @@ function App() {
         advancePastDueItems(),
         archivePastCancellations(),
         resumePausedItems(),
+        handleExpiredTrials(),
       ]);
 
       const [itemsData, cats] = await Promise.all([getItems(), getCategories()]);
       setItems(itemsData);
       setCategories(cats);
-      checkAndNotifyUpcomingRenewals(itemsData).catch((notifyError) => {
-        console.warn('Failed to send reminders:', notifyError);
+
+      // Send notifications for upcoming renewals and expiring trials
+      Promise.all([
+        checkAndNotifyUpcomingRenewals(itemsData),
+        checkAndNotifyExpiringTrials(itemsData),
+      ]).catch((notifyError) => {
+        console.warn('Failed to send notifications:', notifyError);
       });
     } catch (error) {
       console.error('Failed to load data:', error);

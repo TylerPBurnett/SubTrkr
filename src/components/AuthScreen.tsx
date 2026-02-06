@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, CheckCircle, Shield, Sparkles, Eye, EyeOff, KeyRound, Chrome, Github, AlertCircle, Clock } from 'lucide-react';
+import { Mail, Lock, Loader2, CheckCircle, Shield, Sparkles, Eye, EyeOff, KeyRound, Chrome, Github } from 'lucide-react';
 import appIcon from '../../src-tauri/assets/icon.svg';
 import { signUp, signIn, signInWithOtp, verifyOtp, resetPassword, signInWithGoogle, signInWithGitHub } from '../services/auth';
 
@@ -219,11 +219,18 @@ export default function AuthScreen() {
       } else {
         await signInWithGitHub();
       }
+      // Note: OAuth opens in browser, user may close without completing
+      // Keep loading state until they return or cancel
     } catch (err: any) {
       const { message } = getFriendlyError(err.message || `Failed to sign in with ${provider}`);
       setError(message);
       setSocialLoading(null);
     }
+  };
+
+  const handleCancelSocialAuth = () => {
+    setSocialLoading(null);
+    setError(null);
   };
 
   const renderOtpMode = () => (
@@ -888,10 +895,111 @@ export default function AuthScreen() {
 
         {/* Form container with padding - key triggers re-animation on mode change */}
         <div key={mode} className="px-6 pb-6 animate-in">
-          {mode === 'otp' && renderOtpMode()}
-          {mode === 'verify-otp' && renderVerifyOtpMode()}
-          {mode === 'reset-password' && renderResetPasswordMode()}
-          {(mode === 'signin' || mode === 'signup') && renderEmailPasswordMode()}
+          {/* Show waiting state when social auth is in progress */}
+          {socialLoading ? (
+            <div className="space-y-5 py-6">
+              <div className="flex justify-center">
+                <div
+                  className="p-4 rounded-2xl"
+                  style={{
+                    backgroundColor: socialLoading === 'google' ? '#4285F4' : '#24292e',
+                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)'
+                  }}
+                >
+                  {socialLoading === 'google' ? (
+                    <Chrome className="w-8 h-8" style={{ color: 'white' }} />
+                  ) : (
+                    <Github className="w-8 h-8" style={{ color: 'white' }} />
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <h3
+                  className="text-xl font-bold mb-2"
+                  style={{
+                    color: 'var(--text-primary)',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em'
+                  }}
+                >
+                  Waiting for {socialLoading === 'google' ? 'Google' : 'GitHub'} authentication
+                </h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Complete the sign-in process in your browser
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2">
+                <Loader2
+                  className="w-5 h-5 animate-spin"
+                  style={{ color: 'var(--brand-primary)' }}
+                />
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Authenticating...
+                </span>
+              </div>
+
+              {/* Prominent action buttons */}
+              <div className="space-y-3 pt-2">
+                <button
+                  onClick={handleCancelSocialAuth}
+                  className="btn-primary w-full py-3.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <span className="tracking-tight">← Back to sign-in options</span>
+                </button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full" style={{ borderTop: '1px solid var(--border-muted)' }} />
+                  </div>
+                  <div className="relative flex justify-center text-xs font-semibold">
+                    <span
+                      className="px-2 py-0.5 text-xs"
+                      style={{
+                        backgroundColor: 'var(--bg-card)',
+                        color: 'var(--text-muted)'
+                      }}
+                    >
+                      Wrong provider?
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSocialLoading(null);
+                    handleSocialAuth(socialLoading === 'google' ? 'github' : 'google');
+                  }}
+                  className="btn-secondary w-full py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  {socialLoading === 'google' ? (
+                    <>
+                      <Github className="w-4 h-4" />
+                      <span className="tracking-tight">Switch to GitHub instead</span>
+                    </>
+                  ) : (
+                    <>
+                      <Chrome className="w-4 h-4" />
+                      <span className="tracking-tight">Switch to Google instead</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <p className="text-xs text-center pt-2" style={{ color: 'var(--text-muted)' }}>
+                If the browser didn't open, check your pop-up settings
+              </p>
+            </div>
+          ) : (
+            <>
+              {mode === 'otp' && renderOtpMode()}
+              {mode === 'verify-otp' && renderVerifyOtpMode()}
+              {mode === 'reset-password' && renderResetPasswordMode()}
+              {(mode === 'signin' || mode === 'signup') && renderEmailPasswordMode()}
+            </>
+          )}
         </div>
       </div>
     </div>
