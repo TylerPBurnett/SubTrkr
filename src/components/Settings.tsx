@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense, lazy } from 'react';
 import { Plus, Pencil, X, Check, Receipt, CreditCard, User, LogOut } from 'lucide-react';
 import type { Category, ItemType } from '../types';
 import { createCategory, updateCategory, deleteCategory } from '../services/database';
 import { supabase } from '../services/supabase';
 import { signOut } from '../services/auth';
+
+const NotificationSettings = lazy(() => import('./NotificationSettings'));
 
 interface SettingsProps {
   categories: Category[];
@@ -324,6 +326,18 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
         'Organize your bills and utilities',
         <Receipt className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
       )}
+
+      {/* Notification Settings */}
+      <Suspense fallback={
+        <div className="card">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
+            <span style={{ color: 'var(--text-muted)' }}>Loading notification settings...</span>
+          </div>
+        </div>
+      }>
+        <NotificationSettings />
+      </Suspense>
 
       {/* Account */}
       <div className="card">

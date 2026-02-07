@@ -90,6 +90,46 @@ export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
 }
 
+// ============ Notifications ============
+
+export type NotificationChannelType = 'telegram' | 'discord' | 'slack';
+export type NotificationEventType = 'renewal_reminder' | 'trial_expiration';
+export type NotificationLogStatus = 'sent' | 'failed' | 'skipped';
+
+export interface NotificationChannel {
+  id: string;
+  user_id: string;
+  channel: NotificationChannelType;
+  enabled: boolean;
+  vault_secret_id: string | null;
+  secret_value: string | null;
+  metadata: Record<string, unknown>;
+  event_types: NotificationEventType[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationPreferences {
+  user_id: string;
+  default_reminder_days: number;
+  timezone: string;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationLogEntry {
+  id: string;
+  user_id: string;
+  channel: NotificationChannelType;
+  event_type: NotificationEventType;
+  item_id: string | null;
+  status: NotificationLogStatus;
+  error_message: string | null;
+  sent_at: string;
+}
+
 // Form types
 export interface ItemFormData {
   name: string;
