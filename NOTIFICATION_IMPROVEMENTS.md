@@ -4,35 +4,32 @@ This document outlines potential enhancements to the SubTrkr notification system
 
 ---
 
-## Quick Wins (Low Effort, High Impact)
+## ✅ Implemented Features
 
-### 1. Timezone-Aware Delivery
+### 1. Timezone-Aware Delivery (Implemented Feb 2026)
 
-**Problem:**
-Currently, all notifications are sent at 8am UTC regardless of user location. A user in Los Angeles gets notifications at midnight (8am UTC = 12am PST).
+**Status:** ✅ **COMPLETED**
 
-**Solution:**
-Use the existing `notification_preferences.timezone` column to schedule notifications at the user's local 8am.
+Notifications are now sent at 9 AM user's local time. The system runs hourly and filters users by timezone.
 
-**Implementation:**
-- Update `get_items_due_for_notification()` function to filter by user timezone
-- Or: Run cron job every hour (1am UTC, 2am UTC, etc.) and send to users where `timezone = current_hour`
-- Or: Use multiple cron jobs (one per major timezone group)
-
-**Effort:** ~2-3 hours
-**Impact:** Much better user experience, especially for international users
-
-**Example:**
-```sql
--- Current: everyone at 8am UTC
--- New: users get notifications at their local 8am
-SELECT * FROM items WHERE
-  next_billing_date - INTERVAL '1 day' * reminder_days <= NOW() AT TIME ZONE user_timezone
-```
+**See:** `TIMEZONE_IMPLEMENTATION.md` for full details.
 
 ---
 
-### 2. Per-Item Reminder Days
+### 2. Per-Item Reminder Days (Already Working)
+
+**Status:** ✅ **ALREADY IMPLEMENTED**
+
+The `items.reminder_days` column exists and is fully functional. Users can override the global `default_reminder_days` on a per-subscription basis.
+
+**To expose in UI:**
+Add "Reminder days" input field to SubscriptionForm component (optional field, shows "or use default: X days" placeholder).
+
+---
+
+## Quick Wins (Low Effort, High Impact)
+
+### 3. Quiet Hours
 
 **Problem:**
 One global `default_reminder_days` setting (e.g., 3 days) for all subscriptions. Users want different lead times:
@@ -380,11 +377,16 @@ Partner with bill negotiation services (Truebill, Rocket Money) for affiliate re
 
 ## Priority Recommendation
 
-If I had to pick **3 to do next**, based on user impact and effort:
+~~If I had to pick **3 to do next**, based on user impact and effort:~~
 
-1. **Per-item reminder days** (Quick Win #2) — 3-4 hours, huge flexibility gain
-2. **Timezone-aware delivery** (Quick Win #1) — 2-3 hours, everyone benefits
-3. **Smart annual subscription alerts** (Big Feature #6) — 8-10 hours, prevents costly surprises
+~~1. **Per-item reminder days** (Quick Win #2) — 3-4 hours, huge flexibility gain~~ ✅ **DONE**
+~~2. **Timezone-aware delivery** (Quick Win #1) — 2-3 hours, everyone benefits~~ ✅ **DONE**
+
+**Top 3 to do next** (Updated Feb 2026):
+
+1. **Quiet hours** (Quick Win #3) — 4-5 hours, quality-of-life improvement
+2. **Smart annual subscription alerts** (Big Feature #6) — 8-10 hours, prevents costly surprises
+3. **Daily digest mode** (Medium Effort #4) — 6-8 hours, high value for power users
 
 These three would make SubTrkr significantly more powerful without overwhelming complexity.
 

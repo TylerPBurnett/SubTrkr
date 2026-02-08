@@ -241,9 +241,10 @@ Your telegram notifications are working! You'll receive reminders here for upcom
 
 ## pg_cron Setup
 
-**Cron job:** `daily-notification-check`
-- **Schedule:** `0 8 * * *` (8am UTC daily)
+**Cron job:** `hourly-notification-check`
+- **Schedule:** `0 * * * *` (every hour)
 - **Action:** HTTP POST to `send-notifications` Edge Function
+- **Timezone-aware:** Only sends to users where local time is 9 AM
 - **Secrets stored in Vault:**
   - `project_url` — Supabase project URL
   - `anon_key` — Public anon key (for auth)
@@ -271,11 +272,15 @@ Your telegram notifications are working! You'll receive reminders here for upcom
 
 ---
 
+## Implemented Features
+
+✅ **Timezone-aware scheduling** — Notifications sent at 9 AM user's local time (Feb 2026)
+✅ **Per-item reminder overrides** — `items.reminder_days` column supports custom reminder days per subscription
+
 ## Future Improvements
 
 1. **Quiet hours** — respect `notification_preferences.quiet_hours_start/end`
-2. **Timezone-aware scheduling** — use `notification_preferences.timezone`
-3. **Rich messages** — Telegram supports buttons, images, etc.
-4. **Per-item reminder overrides** — custom `reminder_days` per subscription
-5. **Batch notifications** — daily digest instead of per-item messages
-6. **Batch dispatcher** — split into 1000-user batches for massive scale
+2. **Rich messages** — Telegram supports buttons, images, etc.
+3. **Batch notifications** — daily digest instead of per-item messages
+4. **Custom notification time** — allow users to choose their preferred time (6 AM - 12 PM)
+5. **Batch dispatcher** — split into 1000-user batches for massive scale
