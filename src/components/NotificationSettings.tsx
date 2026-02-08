@@ -98,8 +98,10 @@ export default function NotificationSettings() {
 
   // Telegram setup state (user-owned bot)
   const [telegramBotToken, setTelegramBotToken] = useState('');
-  const [telegramChatId, setTelegramChatId] = useState('');
-  const [telegramStep, setTelegramStep] = useState<1 | 2>(1); // Step 1: bot token, Step 2: chat_id
+  const [telegramBotName, setTelegramBotName] = useState('');
+  const [telegramStep, setTelegramStep] = useState<1 | 2>(1);
+  const [telegramVerifying, setTelegramVerifying] = useState(false);
+  const [telegramPolling, setTelegramPolling] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -154,26 +156,62 @@ export default function NotificationSettings() {
   };
 
   // === Telegram setup (user-owned bot) ===
-  const handleSaveTelegramBot = async () => {
-    if (!telegramBotToken.trim() || !telegramChatId.trim()) return;
-    setSaving(true);
+  const handleVerifyTelegramBot = async () => {
+    if (!telegramBotToken.trim()) return;
+    setTelegramVerifying(true);
     setError(null);
     try {
-      // Store bot token directly and chat_id in metadata
+      const resp = await fetch(`https://api.telegram.org/bot${telegramBotToken.trim()}/getMe`);
+      const data = await resp.json();
+      if (!data.ok) {
+        setError('Invalid bot token. Please check and try again.');
+        return;
+      }
+      setTelegramBotName(data.result.first_name || data.result.username);
+      setTelegramStep(2);
+    } catch {
+      setError('Could not verify bot token. Check your connection and try again.');
+    } finally {
+      setTelegramVerifying(false);
+    }
+  };
+
+  const handleDetectTelegramChat = async () => {
+    if (!telegramBotToken.trim()) return;
+    setTelegramPolling(true);
+    setError(null);
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${telegramBotToken.trim()}/getUpdates?limit=10`);
+      const data = await resp.json();
+      if (!data.ok || !data.result?.length) {
+        setError('No messages found. Make sure you sent /start to your bot, then try again.');
+        return;
+      }
+      // Find the most recent /start message's chat ID
+      const startMsg = data.result
+        .reverse()
+        .find((u: { message?: { text?: string } }) => u.message?.text === '/start');
+      const chatId = startMsg?.message?.chat?.id ?? data.result[0]?.message?.chat?.id;
+      if (!chatId) {
+        setError('Could not detect chat ID. Send /start to your bot and try again.');
+        return;
+      }
+      // Save directly
+      setSaving(true);
       await upsertNotificationChannel('telegram', {
         enabled: true,
         secret_value: telegramBotToken.trim(),
-        metadata: { chat_id: telegramChatId.trim() },
+        metadata: { chat_id: String(chatId), bot_name: telegramBotName },
       });
-
       setTelegramBotToken('');
-      setTelegramChatId('');
+      setTelegramBotName('');
       setTelegramStep(1);
       setSetupChannel(null);
       await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save Telegram bot');
+    } catch {
+      setError('Failed to connect Telegram bot.');
     } finally {
+      setTelegramPolling(false);
       setSaving(false);
     }
   };
@@ -182,7 +220,7 @@ export default function NotificationSettings() {
     setSetupChannel('telegram');
     setTelegramStep(1);
     setTelegramBotToken('');
-    setTelegramChatId('');
+    setTelegramBotName('');
   };
 
   // === Toggle channel ===
@@ -413,7 +451,7 @@ export default function NotificationSettings() {
         {/* Telegram setup flow (user-owned bot) */}
         {isSettingUp && type === 'telegram' && (
           <div className="mt-3 space-y-3">
-            {/* Step 1: Get bot token */}
+            {/* Step 1: Enter and verify bot token */}
             {telegramStep === 1 && (
               <div
                 className="p-3 rounded-lg text-sm space-y-3"
@@ -425,8 +463,8 @@ export default function NotificationSettings() {
                   </p>
                   <ol className="space-y-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <li>1. Open Telegram and search for <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>@BotFather</code></li>
-                    <li>2. Send <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>/newbot</code> and follow instructions</li>
-                    <li>3. Copy your bot token (looks like <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>123456:ABC-DEF...</code>)</li>
+                    <li>2. Send <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>/newbot</code> and follow the prompts</li>
+                    <li>3. Copy the bot token BotFather gives you</li>
                   </ol>
                 </div>
                 <input
@@ -440,22 +478,19 @@ export default function NotificationSettings() {
                 />
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      if (telegramBotToken.trim()) {
-                        setTelegramStep(2);
-                      }
-                    }}
-                    disabled={!telegramBotToken.trim()}
+                    onClick={handleVerifyTelegramBot}
+                    disabled={!telegramBotToken.trim() || telegramVerifying}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     style={{ backgroundColor: config.color, color: 'white' }}
                   >
-                    Next
+                    {telegramVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Verify Bot
                   </button>
                   <button
                     onClick={() => {
                       setSetupChannel(null);
                       setTelegramBotToken('');
-                      setTelegramChatId('');
+                      setTelegramBotName('');
                       setTelegramStep(1);
                     }}
                     className="btn-secondary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
@@ -466,41 +501,42 @@ export default function NotificationSettings() {
               </div>
             )}
 
-            {/* Step 2: Get chat_id */}
+            {/* Step 2: Send /start and auto-detect chat ID */}
             {telegramStep === 2 && (
               <div
                 className="p-3 rounded-lg text-sm space-y-3"
                 style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}
               >
+                <div
+                  className="flex items-center gap-2 p-2 rounded-lg"
+                  style={{ backgroundColor: 'var(--accent-green)' + '15', color: 'var(--accent-green)' }}
+                >
+                  <Check className="w-4 h-4" />
+                  <span className="text-xs font-medium">Bot verified: {telegramBotName}</span>
+                </div>
                 <div>
                   <p className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                    Step 2: Get Your Chat ID
+                    Step 2: Link Your Account
                   </p>
-                  <ol className="space-y-1 text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                    <li>1. Open Telegram and search for your bot (the one you just created)</li>
-                    <li>2. Send <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>/start</code> to your bot</li>
-                    <li>3. Then send <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>/id</code> to get your chat ID</li>
-                    <li>4. Or use <a href={`https://api.telegram.org/bot${telegramBotToken}/getUpdates`} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: config.color }}>this link</a> (look for chat ID in the response)</li>
+                  <ol className="space-y-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <li>1. Open Telegram and find your bot (<strong>{telegramBotName}</strong>)</li>
+                    <li>2. Send <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>/start</code> to it</li>
+                    <li>3. Come back here and click the button below</li>
                   </ol>
                 </div>
-                <input
-                  type="text"
-                  value={telegramChatId}
-                  onChange={(e) => setTelegramChatId(e.target.value)}
-                  placeholder="Paste your chat ID (e.g., 123456789)"
-                  className="input w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2"
-                  style={{ '--tw-ring-color': config.color } as React.CSSProperties}
-                  autoFocus
-                />
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleSaveTelegramBot}
-                    disabled={saving || !telegramChatId.trim()}
+                    onClick={handleDetectTelegramChat}
+                    disabled={telegramPolling || saving}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     style={{ backgroundColor: config.color, color: 'white' }}
                   >
-                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    Connect
+                    {telegramPolling || saving ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Link2 className="w-3.5 h-3.5" />
+                    )}
+                    {telegramPolling ? 'Detecting...' : saving ? 'Connecting...' : "I sent /start"}
                   </button>
                   <button
                     onClick={() => setTelegramStep(1)}
@@ -512,7 +548,7 @@ export default function NotificationSettings() {
                     onClick={() => {
                       setSetupChannel(null);
                       setTelegramBotToken('');
-                      setTelegramChatId('');
+                      setTelegramBotName('');
                       setTelegramStep(1);
                     }}
                     className="btn-secondary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
