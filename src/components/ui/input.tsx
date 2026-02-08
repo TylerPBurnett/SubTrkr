@@ -9,7 +9,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(
         // Base styles
-        "h-9 w-full rounded-lg border-2 bg-transparent px-3 py-1 text-sm",
+        "h-11 w-full rounded-lg border-2 bg-transparent px-3 py-2 text-sm",
         "font-mono font-medium",
         // Placeholder
         "placeholder:text-muted-foreground",

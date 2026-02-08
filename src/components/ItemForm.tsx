@@ -481,7 +481,7 @@ export default function ItemForm({
                     name="currency"
                     value={formData.currency}
                     onChange={handleChange}
-                    className="appearance-none px-3 py-3 rounded-xl font-mono font-semibold text-center cursor-pointer"
+                    className="appearance-none px-3 py-3 rounded-lg font-mono font-semibold text-center cursor-pointer"
                     style={{
                       backgroundColor: 'var(--bg-surface)',
                       border: '2px solid var(--border-default)',
@@ -504,7 +504,7 @@ export default function ItemForm({
                       placeholder="0.00"
                       step="0.01"
                       min="0"
-                      className="w-full px-4 py-3 rounded-xl font-mono text-right"
+                      className="w-full px-4 py-3 rounded-lg font-mono text-right"
                       style={{
                         backgroundColor: 'var(--bg-surface)',
                         border: `2px solid ${errors.amount ? 'var(--accent-red)' : 'var(--border-default)'}`,
@@ -521,7 +521,7 @@ export default function ItemForm({
                     name="billing_cycle"
                     value={formData.billing_cycle}
                     onChange={handleChange}
-                    className="appearance-none px-4 py-3 rounded-xl font-semibold cursor-pointer"
+                    className="appearance-none px-4 py-3 rounded-lg font-semibold cursor-pointer"
                     style={{
                       backgroundColor: 'var(--bg-surface)',
                       border: '2px solid var(--border-default)',

@@ -551,7 +551,7 @@ function ItemList({
                     {/* Status badge */}
                     {item.status === 'trial' && (
                       <div
-                        className="absolute bottom-16 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                         style={{
                           background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                           color: 'white',
@@ -564,7 +564,7 @@ function ItemList({
                     )}
                     {item.status === 'paused' && (
                       <div
-                        className="absolute bottom-16 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                         style={{
                           background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                           color: 'white',
@@ -577,7 +577,7 @@ function ItemList({
                     )}
                     {item.status === 'cancelled' && (
                       <div
-                        className="absolute bottom-16 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                         style={{
                           background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                           color: 'white',
@@ -590,7 +590,7 @@ function ItemList({
                     )}
                     {item.status === 'archived' && (
                       <div
-                        className="absolute bottom-16 right-4 px-3 py-1.5 rounded-lg text-xs font-bold font-mono"
+                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                         style={{
                           backgroundColor: 'var(--bg-hover)',
                           color: 'var(--text-muted)',
@@ -681,7 +681,7 @@ function ItemList({
                     <thead
                       style={{
                         backgroundColor: 'var(--bg-default)',
-                        color: '#ffffff',
+                        color: 'var(--text-primary)',
                         borderBottom: '1px solid var(--border-default)',
                       }}
                     >
