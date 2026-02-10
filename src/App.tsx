@@ -383,89 +383,90 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
-      {/* Sidebar */}
-      <aside className="sidebar w-64 h-screen flex flex-col">
-        {/* Draggable title bar area */}
-        <div
-          data-tauri-drag-region
-          className="h-12 shrink-0"
-          style={{
-            WebkitAppRegion: 'drag'
-          } as React.CSSProperties}
-        />
+    <div className="app-layout h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
+      <div className="app-shell flex w-full h-screen">
+        {/* Sidebar */}
+        <aside className="sidebar w-64 shrink-0 h-full flex flex-col">
+          {/* Draggable title bar area */}
+          <div
+            data-tauri-drag-region
+            className="h-12 shrink-0"
+            style={{
+              WebkitAppRegion: 'drag'
+            } as React.CSSProperties}
+          />
 
-        <nav className="flex-1 px-3 overflow-auto">
-          {navItems.map((item, index) => (
+          <nav className="flex-1 px-3 overflow-auto">
+            {navItems.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => startTransition(() => setView(item.id))}
+                className={`stagger-item w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
+                  view === item.id ? 'nav-item-active font-medium' : 'nav-item'
+                }`}
+                style={{
+                  animationDelay: `${index * 0.05}s`,
+                  borderLeft: view === item.id ? '4px solid var(--brand-primary)' : '4px solid transparent',
+                  paddingLeft: view === item.id ? 'calc(1rem - 4px)' : '1rem'
+                }}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="p-4 flex items-center gap-2" style={{ borderTop: '1px solid var(--shell-divider)' }}>
+            {/* Theme Toggle Icon Button */}
             <button
-              key={item.id}
-              onClick={() => startTransition(() => setView(item.id))}
-              className={`stagger-item w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
-                view === item.id ? 'nav-item-active font-medium' : 'nav-item'
+              onClick={toggleTheme}
+              className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg"
+            >
+              <div style={{
+                transition: 'transform 0.3s var(--ease-spring)',
+                transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
+              }}>
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </div>
+            </button>
+
+            {/* Settings Icon Button */}
+            <button
+              onClick={() => startTransition(() => setView('settings'))}
+              className={`flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
+                view === 'settings' ? 'bg-brand-primary text-text-inverse' : 'interactive-hover'
               }`}
               style={{
-                animationDelay: `${index * 0.05}s`,
-                borderLeft: view === item.id ? '4px solid var(--brand-primary)' : '4px solid transparent',
-                paddingLeft: view === item.id ? 'calc(1rem - 4px)' : '1rem'
+                backgroundColor: view === 'settings' ? 'var(--brand-primary)' : 'var(--bg-hover)',
+                color: view === 'settings' ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent'
               }}
             >
-              <item.icon className="w-5 h-5" />
-              {item.label}
+              <SettingsIcon className="w-5 h-5" />
             </button>
-          ))}
-        </nav>
+          </div>
+        </aside>
 
-        <div className="p-4 flex items-center gap-2" style={{ borderTop: '1px solid var(--border-default)' }}>
-          {/* Theme Toggle Icon Button */}
-          <button
-            onClick={toggleTheme}
-            className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg"
-          >
-            <div style={{
-              transition: 'transform 0.3s var(--ease-spring)',
-              transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
-            }}>
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </div>
-          </button>
-
-          {/* Settings Icon Button */}
-          <button
-            onClick={() => startTransition(() => setView('settings'))}
-            className={`flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
-              view === 'settings' ? 'bg-brand-primary text-text-inverse' : 'interactive-hover'
-            }`}
+        {/* Main Content */}
+        <main className="main-content flex-1 min-w-0 h-full flex flex-col">
+          {/* Draggable title bar area for main content */}
+          <div
+            data-tauri-drag-region
+            className="h-12 shrink-0"
             style={{
-              backgroundColor: view === 'settings' ? 'var(--brand-primary)' : 'var(--bg-hover)',
-              color: view === 'settings' ? 'var(--text-inverse)' : 'var(--text-secondary)',
-              borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent'
-            }}
-          >
-            <SettingsIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="main-content flex-1 h-screen flex flex-col">
-        {/* Draggable title bar area for main content */}
-        <div
-          data-tauri-drag-region
-          className="h-12 shrink-0"
-          style={{
-            WebkitAppRegion: 'drag'
-          } as React.CSSProperties}
-        />
-
-        {/* Email verification banner */}
-        {session?.user && !session.user.email_confirmed_at && !emailBannerDismissed && (
-          <EmailVerificationBanner
-            email={session.user.email || ''}
-            onDismiss={() => setEmailBannerDismissed(true)}
+              WebkitAppRegion: 'drag'
+            } as React.CSSProperties}
           />
-        )}
 
-        <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+          {/* Email verification banner */}
+          {session?.user && !session.user.email_confirmed_at && !emailBannerDismissed && (
+            <EmailVerificationBanner
+              email={session.user.email || ''}
+              onDismiss={() => setEmailBannerDismissed(true)}
+            />
+          )}
+
+          <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
           <div className="p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -545,8 +546,9 @@ function App() {
             </Suspense>
           )}
           </div>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
 
       {/* Error Toast */}
       {error && (
