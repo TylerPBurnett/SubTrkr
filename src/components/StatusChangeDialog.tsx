@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar } from 'lucide-react';
+import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar, Check } from 'lucide-react';
 import { addDays } from 'date-fns';
-import type { ItemWithCategory, StatusChangeData } from '../types';
+import type { ItemWithCategory, StatusChangeData } from '@/types';
 import { formatISODate, getToday, formatDisplayDate } from '../utils/dates';
 
 interface StatusChangeDialogProps {
   isOpen: boolean;
   item: ItemWithCategory;
-  action: 'pause' | 'cancel' | 'resume' | 'reactivate';
+  action: 'pause' | 'cancel' | 'resume' | 'reactivate' | 'convert';
   onConfirm: (data: StatusChangeData) => Promise<void>;
   onCancel: () => void;
 }
@@ -25,6 +25,7 @@ export default function StatusChangeDialog({
   const [pausedOn, setPausedOn] = useState(today);
   const [cancelledOn, setCancelledOn] = useState(today);
   const [resumedOn, setResumedOn] = useState(today);
+  const [convertedOn, setConvertedOn] = useState(today);
   const [pauseUntil, setPauseUntil] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -81,6 +82,15 @@ export default function StatusChangeDialog({
       textColor: '#10b981',
       message: 'Subscription reactivated. Billing cycle reinitiated from your specified date.',
     },
+    convert: {
+      icon: Check,
+      verb: 'Convert',
+      title: 'Convert Trial to Paid',
+      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      glowColor: 'rgba(16, 185, 129, 0.3)',
+      textColor: '#10b981',
+      message: 'Trial converted to paid subscription. Billing starts from your specified date.',
+    },
   };
 
   const currentConfig = config[action];
@@ -119,6 +129,15 @@ export default function StatusChangeDialog({
       }
     }
 
+    if (action === 'convert') {
+      if (convertedOn < itemStartDate) {
+        newErrors.push('Conversion date cannot be before subscription start');
+      }
+      if (convertedOn > today) {
+        newErrors.push('Conversion date cannot be in the future');
+      }
+    }
+
     setErrors(newErrors);
     return newErrors;
   };
@@ -149,6 +168,8 @@ export default function StatusChangeDialog({
         data.cancelledOn = cancelledOn;
       } else if (action === 'resume' || action === 'reactivate') {
         data.resumedOn = resumedOn;
+      } else if (action === 'convert') {
+        data.convertedOn = convertedOn;
       }
 
       await onConfirm(data);
@@ -553,6 +574,32 @@ export default function StatusChangeDialog({
                 />
                 <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                   Actual resume date → billing recalculates from {formatDisplayDate(resumedOn)}
+                </p>
+              </div>
+            )}
+
+            {action === 'convert' && (
+              <div className="mb-5 status-dialog-field">
+                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Converted On</span>
+                  <span style={{ color: currentConfig.textColor }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={convertedOn}
+                  onChange={(e) => setConvertedOn(e.target.value)}
+                  min={itemStartDate}
+                  max={today}
+                  className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                  style={{
+                    border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
+                    background: 'var(--bg-default)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  Date when trial converted to paid → billing starts from {formatDisplayDate(convertedOn)}
                 </p>
               </div>
             )}

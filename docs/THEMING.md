@@ -2,6 +2,8 @@
 
 This document explains the CSS custom properties theming system used in SubTrkr, enabling easy addition of new themes like Monokai, Gruvbox, Nord, etc.
 
+See also: [`THEME_EXTENSION_SUMMARY.md`](./THEME_EXTENSION_SUMMARY.md) for a concise future-theme checklist aligned with the current implementation.
+
 ## Overview
 
 SubTrkr uses **semantic design tokens** (CSS custom properties) for all colors. Instead of hardcoding colors like `#22c55e` throughout the codebase, we use purpose-based variables like `--brand-primary`. Themes override these variables.

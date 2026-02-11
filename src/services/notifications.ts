@@ -76,6 +76,38 @@ export async function sendRenewalReminder(
   });
 }
 
+export async function sendTrialExpiringReminder(
+  item: ItemWithCategory,
+  options?: { skipPermissionCheck?: boolean }
+): Promise<void> {
+  if (!options?.skipPermissionCheck) {
+    const hasPermission = await checkNotificationPermission();
+    if (!hasPermission) return;
+  }
+
+  if (!item.trial_end_date) return;
+
+  const daysUntil = getDaysUntil(item.trial_end_date);
+  const amount = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: item.currency,
+  }).format(item.amount);
+
+  let body: string;
+  if (daysUntil === 0) {
+    body = `${item.name} trial expires today! Convert to paid (${amount}/${item.billing_cycle}) or cancel.`;
+  } else if (daysUntil === 1) {
+    body = `${item.name} trial expires tomorrow. Convert to paid (${amount}/${item.billing_cycle}) or cancel.`;
+  } else {
+    body = `${item.name} trial expires in ${daysUntil} days. Full price: ${amount}/${item.billing_cycle}`;
+  }
+
+  await sendNotification({
+    title: 'Trial Expiring Soon',
+    body,
+  });
+}
+
 export async function checkAndNotifyUpcomingRenewals(
   items: ItemWithCategory[]
 ): Promise<void> {
@@ -99,6 +131,39 @@ export async function checkAndNotifyUpcomingRenewals(
     if (history[item.id] === todayKey) continue;
     await sendRenewalReminder(item, { skipPermissionCheck: true });
     history[item.id] = todayKey;
+    updated = true;
+  }
+
+  if (updated) {
+    saveReminderHistory(history);
+  }
+}
+
+export async function checkAndNotifyExpiringTrials(
+  items: ItemWithCategory[]
+): Promise<void> {
+  const trialsToNotify = items.filter((item) => {
+    if (item.status !== 'trial') return false;
+    if (!item.trial_end_date) return false;
+    const reminderDays = item.reminder_days ?? 3; // Default 3 days for trials
+    if (reminderDays <= 0) return false;
+    return shouldRemindToday(item.trial_end_date, reminderDays);
+  });
+
+  if (trialsToNotify.length === 0) return;
+
+  const hasPermission = await checkNotificationPermission();
+  if (!hasPermission) return;
+
+  const todayKey = formatISODate(getToday());
+  const history = loadReminderHistory();
+  let updated = false;
+
+  for (const item of trialsToNotify) {
+    const historyKey = `trial_${item.id}`; // Different key to avoid conflicts
+    if (history[historyKey] === todayKey) continue;
+    await sendTrialExpiringReminder(item, { skipPermissionCheck: true });
+    history[historyKey] = todayKey;
     updated = true;
   }
 

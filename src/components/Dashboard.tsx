@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import {
   TrendingUp,
   Calendar,
@@ -8,7 +8,7 @@ import {
   ChevronRight,
   RotateCcw
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { Category, ItemWithCategory, SpendingByCategory } from '../types';
 import {
   calculateMonthlySpending,
@@ -17,6 +17,8 @@ import {
   getUpcomingItems
 } from '../services/database';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
+import ServiceLogo from './ui/ServiceLogo';
+import SegmentedControl from './ui/SegmentedControl';
 
 interface DashboardProps {
   items: ItemWithCategory[];
@@ -34,7 +36,7 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
   }).format(amount);
 }
 
-export default function Dashboard({ items, categories, onEdit }: DashboardProps) {
+function Dashboard({ items, categories, onEdit }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [monthlySpending, setMonthlySpending] = useState(0);
   const [yearlySpending, setYearlySpending] = useState(0);
@@ -73,51 +75,21 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
     color: item.category.color
   }));
 
-  // Tab labels
-  const tabs: { id: FilterTab; label: string }[] = [
+  // Tab config
+  const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
     { id: 'all', label: 'All' },
-    { id: 'bill', label: 'Bills' },
-    { id: 'subscription', label: 'Subscriptions' },
+    { id: 'bill', label: 'Bills', icon: <Receipt className="w-3.5 h-3.5" /> },
+    { id: 'subscription', label: 'Subscriptions', icon: <CreditCard className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setFilterTab(tab.id)}
-            className="px-4 py-2 rounded-lg text-sm transition-colors"
-            style={{
-              backgroundColor: filterTab === tab.id ? 'var(--brand-primary)' : 'var(--bg-hover)',
-              color: filterTab === tab.id ? 'var(--text-inverse)' : 'var(--text-secondary)',
-              fontWeight: 700,
-              letterSpacing: '-0.01em'
-            }}
-            onMouseEnter={(e) => {
-              if (filterTab !== tab.id) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (filterTab !== tab.id) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              }
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={setFilterTab} />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Monthly Spending Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--brand-primary)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">MONTHLY SPENDING</p>
@@ -141,10 +113,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
         </div>
 
         {/* Yearly Spending Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--accent-purple)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">YEARLY SPENDING</p>
@@ -168,10 +137,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
         </div>
 
         {/* Active Items Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--accent-blue)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">
@@ -202,10 +168,7 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
         </div>
 
         {/* Due This Week Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--accent-amber)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-amber)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">DUE THIS WEEK</p>
@@ -252,18 +215,9 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                   <button
                     key={item.id}
                     onClick={() => onEdit(item)}
-                    className="stagger-item w-full flex items-center gap-4 p-3 rounded-xl transition-all group"
+                    className="stagger-item w-full flex items-center gap-4 p-3 rounded-xl transition-all group interactive-hover-bg hover:scale-101"
                     style={{
-                      backgroundColor: 'transparent',
                       animationDelay: `${index * 0.05}s`
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                      e.currentTarget.style.transform = 'scale(1.01)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
                     {isPaused && (
@@ -271,12 +225,14 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
                         <RotateCcw className="w-4 h-4" style={{ color: 'var(--accent-amber)' }} />
                       </div>
                     )}
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium shrink-0"
-                      style={{ backgroundColor: item.category?.color || '#6b7280' }}
-                    >
-                      {item.name.charAt(0).toUpperCase()}
-                    </div>
+                    <ServiceLogo
+                      logoUrl={item.logo_url}
+                      name={item.name}
+                      size="md"
+                      itemType={item.item_type}
+                      categoryName={item.category?.name}
+                      categoryColor={item.category?.color}
+                    />
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -319,35 +275,49 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
             </div>
           ) : (
             <div className="flex items-center gap-6">
-              <div className="w-40 h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value) => formatCurrency(value as number)}
-                      contentStyle={{
-                        backgroundColor: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '8px',
-                        boxShadow: 'var(--shadow-elevated)'
-                      }}
-                      labelStyle={{ color: 'var(--text-primary)' }}
-                      itemStyle={{ color: 'var(--text-primary)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="w-40 h-40 relative">
+                <PieChart width={160} height={160}>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    cornerRadius={4}
+                    dataKey="value"
+                    isAnimationActive={true}
+                    animationDuration={300}
+                    animationEasing="ease-out"
+                    className="chart-pie-sector"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [formatCurrency(value as number), '']}
+                    contentStyle={{
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: '10px',
+                      boxShadow: 'var(--shadow-elevated)',
+                      padding: '6px 10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: '12px',
+                    }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
+                    itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
+                    separator=""
+                  />
+                  {/* Center label */}
+                  <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
+                    MONTHLY
+                  </text>
+                  <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
+                    {formatCurrency(monthlySpending)}
+                  </text>
+                </PieChart>
               </div>
               
               <div className="flex-1 space-y-2">
@@ -373,3 +343,5 @@ export default function Dashboard({ items, categories, onEdit }: DashboardProps)
     </div>
   );
 }
+
+export default memo(Dashboard);
