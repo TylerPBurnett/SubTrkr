@@ -747,7 +747,6 @@ export async function handleExpiredTrials(): Promise<number> {
   if (fetchError) throw fetchError;
   if (!expiredTrials || expiredTrials.length === 0) return 0;
 
-  const now = new Date().toISOString();
   let handledCount = 0;
 
   // Mark expired trials by setting a flag field
