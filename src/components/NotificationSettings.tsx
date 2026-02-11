@@ -565,8 +565,8 @@ export default function NotificationSettings() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Notification Channels */}
+    <div className="space-y-8 animate-in">
+      {/* Unified Notifications Card — Channels + Preferences */}
       <div className="card">
         <div className="flex items-center gap-3 mb-6">
           <div
@@ -577,10 +577,10 @@ export default function NotificationSettings() {
           </div>
           <div>
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Notification Channels
+              Notifications
             </h3>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Get reminders via your favorite messaging apps
+              Manage channels and reminder preferences
             </p>
           </div>
         </div>
@@ -597,6 +597,8 @@ export default function NotificationSettings() {
           </div>
         )}
 
+        {/* Channels Sub-section */}
+        <div className="label mb-3">Channels</div>
         <div className="space-y-3">
           {/* Desktop notifications (always present) */}
           <div
@@ -668,27 +670,12 @@ export default function NotificationSettings() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Global Preferences */}
-      <div className="card">
-        <div className="flex items-center gap-3 mb-6">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: 'var(--bg-hover)' }}
-          >
-            <Clock className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Notification Preferences
-            </h3>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Configure when and how you receive reminders
-            </p>
-          </div>
-        </div>
+        {/* Divider */}
+        <div className="my-6" style={{ borderTop: '1px solid var(--border-default)' }} />
 
+        {/* Preferences Sub-section */}
+        <div className="label mb-3">Preferences</div>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -730,7 +717,7 @@ export default function NotificationSettings() {
         </div>
       </div>
 
-      {/* Notification History */}
+      {/* Notification History — separate collapsible card */}
       <div className="card">
         <button
           onClick={() => setShowLog(!showLog)}
