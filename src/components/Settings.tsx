@@ -13,72 +13,111 @@ interface SettingsProps {
 
 type SettingsTab = 'categories' | 'notifications' | 'account';
 
-const tabs: { key: SettingsTab; label: string; icon: React.ReactNode }[] = [
-  { key: 'categories', label: 'Categories', icon: <Tag className="w-4 h-4" /> },
-  { key: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
-  { key: 'account', label: 'Account', icon: <User className="w-4 h-4" /> },
+const TabIcons = {
+  categories: Tag,
+  notifications: Bell,
+  account: User,
+} as const;
+
+const tabs: { key: SettingsTab; label: string; Icon: typeof Tag }[] = [
+  { key: 'categories', label: 'Categories', Icon: TabIcons.categories },
+  { key: 'notifications', label: 'Notifications', Icon: TabIcons.notifications },
+  { key: 'account', label: 'Account', Icon: TabIcons.account },
 ];
 
 export default function Settings({ categories, onCategoriesChange }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('categories');
+  const [hoveredTab, setHoveredTab] = useState<SettingsTab | null>(null);
 
   return (
     <div className="max-w-2xl">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h2
-          className="text-3xl"
+      {/* Refined Tab Navigation */}
+      <div className="relative mb-10">
+        {/* Tab Bar Container with subtle depth */}
+        <div
+          className="relative inline-flex rounded-2xl p-1.5 gap-1"
           style={{
-            color: 'var(--text-primary)',
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
+            backgroundColor: 'var(--settings-tabs-bg)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid var(--settings-tabs-border)',
+            boxShadow: 'var(--settings-tabs-shadow)',
           }}
         >
-          Settings
-        </h2>
-        <p
-          className="mt-2 text-base"
-          style={{
-            color: 'var(--text-secondary)',
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Manage your categories, notifications, and account
-        </p>
-      </div>
+          {tabs.map((tab, index) => {
+            const Icon = tab.Icon;
+            const isActive = activeTab === tab.key;
+            const isHovered = hoveredTab === tab.key;
 
-      {/* Tab Bar */}
-      <div
-        className="inline-flex rounded-xl p-1 gap-1 mb-8"
-        style={{ backgroundColor: 'var(--bg-hover)' }}
-      >
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{
-              backgroundColor: activeTab === tab.key ? 'var(--bg-surface)' : 'transparent',
-              color: activeTab === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-              boxShadow: activeTab === tab.key ? 'var(--shadow-card)' : 'none',
-            }}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                onMouseEnter={() => setHoveredTab(tab.key)}
+                onMouseLeave={() => setHoveredTab(null)}
+                className="relative flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-300"
+                style={{
+                  backgroundColor: isActive
+                    ? 'var(--settings-tab-active-bg)'
+                    : isHovered
+                    ? 'var(--settings-tab-hover-bg)'
+                    : 'transparent',
+                  color: isActive ? 'var(--settings-tab-active-text)' : 'var(--settings-tab-inactive-text)',
+                  boxShadow: isActive ? 'var(--settings-tab-active-shadow)' : 'none',
+                  transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
+                  letterSpacing: '-0.01em',
+                  animationDelay: `${index * 50}ms`,
+                  animationFillMode: 'backwards',
+                }}
+              >
+                {/* Icon with subtle glow on active */}
+                <Icon
+                  className="w-[15px] h-[15px] transition-all duration-300"
+                  style={{
+                    filter: isActive ? 'var(--settings-tab-icon-glow)' : 'none',
+                    color: isActive ? 'var(--settings-tab-icon-active)' : 'inherit',
+                  }}
+                />
+
+                {/* Label */}
+                <span className="relative">
+                  {tab.label}
+
+                  {/* Active indicator - subtle gradient underline */}
+                  {isActive && (
+                    <span
+                      className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full transition-opacity duration-300"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent, var(--brand-primary), transparent)',
+                        opacity: 0.6,
+                      }}
+                    />
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Ambient glow beneath tabs */}
+        <div
+          className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-12 rounded-full blur-2xl"
+          style={{
+            background: 'radial-gradient(ellipse, var(--brand-primary), transparent 70%)',
+            opacity: 'var(--settings-tab-ambient-opacity)',
+            pointerEvents: 'none',
+          }}
+        />
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'categories' && (
+      {activeTab === 'categories' ? (
         <CategorySettings
           categories={categories}
           onCategoriesChange={onCategoriesChange}
         />
-      )}
+      ) : null}
 
-      {activeTab === 'notifications' && (
+      {activeTab === 'notifications' ? (
         <Suspense
           fallback={
             <div className="card">
@@ -94,9 +133,9 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
         >
           <NotificationSettings />
         </Suspense>
-      )}
+      ) : null}
 
-      {activeTab === 'account' && <AccountSettings />}
+      {activeTab === 'account' ? <AccountSettings /> : null}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from '../services/database';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
 import ServiceLogo from './ui/ServiceLogo';
+import SegmentedControl from './ui/SegmentedControl';
 
 interface DashboardProps {
   items: ItemWithCategory[];
@@ -74,32 +75,16 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
     color: item.category.color
   }));
 
-  // Tab labels
-  const tabs: { id: FilterTab; label: string }[] = [
+  // Tab config
+  const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
     { id: 'all', label: 'All' },
-    { id: 'bill', label: 'Bills' },
-    { id: 'subscription', label: 'Subscriptions' },
+    { id: 'bill', label: 'Bills', icon: <Receipt className="w-3.5 h-3.5" /> },
+    { id: 'subscription', label: 'Subscriptions', icon: <CreditCard className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setFilterTab(tab.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors filter-tab ${
-              filterTab === tab.id ? 'filter-tab-active' : ''
-            }`}
-            style={{
-              letterSpacing: '-0.01em'
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={setFilterTab} />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -753,22 +753,24 @@ export default function NotificationSettings() {
                 No notifications sent yet.
               </p>
             ) : (
-              log.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between p-2 rounded-lg text-sm"
-                  style={{ backgroundColor: 'var(--bg-hover)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded flex items-center justify-center"
-                      style={{
-                        backgroundColor: CHANNEL_CONFIG[entry.channel]?.color + '20',
-                        color: CHANNEL_CONFIG[entry.channel]?.color,
-                      }}
-                    >
-                      {CHANNEL_CONFIG[entry.channel]?.icon}
-                    </div>
+              log.map((entry) => {
+                const channelConfig = CHANNEL_CONFIG[entry.channel];
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between p-2 rounded-lg text-sm"
+                    style={{ backgroundColor: 'var(--bg-hover)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-6 rounded flex items-center justify-center"
+                        style={{
+                          backgroundColor: channelConfig?.color + '20',
+                          color: channelConfig?.color,
+                        }}
+                      >
+                        {channelConfig?.icon}
+                      </div>
                     <span style={{ color: 'var(--text-primary)' }}>
                       {entry.event_type === 'renewal_reminder' ? 'Renewal' : 'Trial'} reminder
                     </span>
@@ -803,7 +805,8 @@ export default function NotificationSettings() {
                     </span>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

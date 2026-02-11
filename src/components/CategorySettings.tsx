@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Pencil, X, Check, Tag } from 'lucide-react';
 import type { Category, ItemType } from '../types';
 import { createCategory, updateCategory, deleteCategory } from '../services/database';
+import SegmentedControl from './ui/SegmentedControl';
 
 interface CategorySettingsProps {
   categories: Category[];
@@ -114,19 +115,8 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
           </button>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-5">
-          {filterTabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setFilterType(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold filter-tab ${
-                filterType === tab.id ? 'filter-tab-active' : ''
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="mb-5">
+          <SegmentedControl tabs={filterTabs} activeTab={filterType} onTabChange={setFilterType} />
         </div>
 
         {/* New Category Form */}
@@ -280,25 +270,27 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
           </p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {filteredCategories.map(category => (
-              <div
-                key={category.id}
-                className="group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all cursor-default"
-                style={{
-                  backgroundColor: 'var(--bg-hover)',
-                  border: '2px solid var(--border-default)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-                  e.currentTarget.style.borderColor = category.color;
-                  e.currentTarget.style.boxShadow = `0 2px 8px ${category.color}40`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                  e.currentTarget.style.borderColor = 'var(--border-default)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
+            {filteredCategories.map(category => {
+              const categoryColor = category.color;
+              return (
+                <div
+                  key={category.id}
+                  className="group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all cursor-default"
+                  style={{
+                    backgroundColor: 'var(--bg-hover)',
+                    border: '2px solid var(--border-default)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+                    e.currentTarget.style.borderColor = categoryColor;
+                    e.currentTarget.style.boxShadow = `0 2px 8px ${categoryColor}40`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                 <div
                   className="w-2.5 h-2.5 rounded-sm shrink-0"
                   style={{ backgroundColor: category.color }}
@@ -334,7 +326,8 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                   <X className="w-3 h-3" />
                 </button>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

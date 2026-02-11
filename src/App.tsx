@@ -37,13 +37,13 @@ import AuthScreen from './components/AuthScreen';
 import StatusChangeDialog from './components/StatusChangeDialog';
 import { LazyComponentFallback } from './components/LazyComponentFallback';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
+import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from './theme';
 
 // Lazy load heavier components for code splitting
 const Analytics = lazy(() => import('./components/Analytics'));
 const Settings = lazy(() => import('./components/Settings'));
 
 type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
-type Theme = 'light' | 'dark';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -63,7 +63,9 @@ function App() {
     item: ItemWithCategory;
     action: StatusChangeData['action'];
   } | null>(null);
-  const [theme, setTheme] = useLocalStorage<Theme>('subtrkr-theme', 'dark');
+  const [storedTheme, setStoredTheme] = useLocalStorage<string>('subtrkr-theme', DEFAULT_THEME);
+  const theme = isTheme(storedTheme) ? storedTheme : DEFAULT_THEME;
+  const themeTone = getThemeTone(theme);
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -181,10 +183,19 @@ function App() {
     };
   }, []);
 
+  // Normalize corrupted/unknown theme values from localStorage
+  useEffect(() => {
+    if (!isTheme(storedTheme)) {
+      setStoredTheme(DEFAULT_THEME);
+    }
+  }, [storedTheme, setStoredTheme]);
+
   // Theme switching via data-theme attribute
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    root.classList.toggle('dark', themeTone === 'dark');
+  }, [theme, themeTone]);
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -221,7 +232,7 @@ function App() {
   }, [session, loadData]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setStoredTheme((prev) => getNextTheme(isTheme(prev) ? prev : DEFAULT_THEME));
   };
 
   const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
@@ -420,13 +431,15 @@ function App() {
             {/* Theme Toggle Icon Button */}
             <button
               onClick={toggleTheme}
+              title={`Theme: ${theme}`}
+              aria-label={`Switch theme (current: ${theme})`}
               className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg"
             >
               <div style={{
                 transition: 'transform 0.3s var(--ease-spring)',
-                transform: theme === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
+                transform: themeTone === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
               }}>
-                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {themeTone === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </div>
             </button>
 

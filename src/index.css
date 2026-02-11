@@ -80,6 +80,28 @@
   /* Focus ring */
   --ring-offset: #ffffff;
 
+  /* Segmented controls */
+  --segmented-bg: var(--bg-hover);
+  --segmented-border: var(--border-default);
+  --segmented-active-bg: var(--brand-primary-light);
+  --segmented-active-border: color-mix(in srgb, var(--brand-primary) 35%, var(--border-default));
+  --segmented-active-shadow: 0 2px 8px color-mix(in srgb, var(--brand-primary) 18%, transparent);
+  --segmented-active-text: var(--brand-text);
+  --segmented-inactive-text: var(--text-secondary);
+
+  /* Settings tab navigation */
+  --settings-tabs-bg: var(--bg-hover);
+  --settings-tabs-border: var(--border-default);
+  --settings-tabs-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --settings-tab-active-bg: var(--bg-surface);
+  --settings-tab-hover-bg: var(--bg-active);
+  --settings-tab-active-shadow: var(--shadow-sm);
+  --settings-tab-active-text: var(--text-primary);
+  --settings-tab-inactive-text: var(--text-secondary);
+  --settings-tab-icon-active: var(--brand-text);
+  --settings-tab-icon-glow: none;
+  --settings-tab-ambient-opacity: 0.08;
+
   /* shadcn/ui theme bridge */
   --background: #f5f5f5;
   --foreground: #171717;
@@ -172,6 +194,28 @@
 
   /* Focus ring */
   --ring-offset: #171717;
+
+  /* Segmented controls */
+  --segmented-bg: rgba(255, 255, 255, 0.04);
+  --segmented-border: rgba(255, 255, 255, 0.06);
+  --segmented-active-bg: rgba(74, 222, 128, 0.1);
+  --segmented-active-border: rgba(74, 222, 128, 0.2);
+  --segmented-active-shadow: 0 2px 8px rgba(74, 222, 128, 0.12);
+  --segmented-active-text: var(--brand-text);
+  --segmented-inactive-text: var(--text-muted);
+
+  /* Settings tab navigation */
+  --settings-tabs-bg: rgba(255, 255, 255, 0.03);
+  --settings-tabs-border: rgba(255, 255, 255, 0.06);
+  --settings-tabs-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --settings-tab-active-bg: rgba(255, 255, 255, 0.08);
+  --settings-tab-hover-bg: rgba(255, 255, 255, 0.04);
+  --settings-tab-active-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --settings-tab-active-text: var(--text-primary);
+  --settings-tab-inactive-text: var(--text-muted);
+  --settings-tab-icon-active: var(--brand-text);
+  --settings-tab-icon-glow: drop-shadow(0 0 8px rgba(74, 222, 128, 0.4));
+  --settings-tab-ambient-opacity: 0.2;
 
   /* shadcn/ui theme bridge */
   --background: #0a0a0a;
@@ -684,6 +728,41 @@ button, a, input, select, textarea {
 
 .animate-pulse-subtle {
   animation: pulse 2s var(--ease-out-expo) infinite;
+}
+
+/* Segmented control edge-collision bounce */
+@keyframes segmentedPillCollisionLeft {
+  0% {
+    transform: scaleX(1) translateX(0);
+  }
+  35% {
+    transform: scaleX(0.95) translateX(-1px);
+  }
+  100% {
+    transform: scaleX(1) translateX(0);
+  }
+}
+
+@keyframes segmentedPillCollisionRight {
+  0% {
+    transform: scaleX(1) translateX(0);
+  }
+  35% {
+    transform: scaleX(0.95) translateX(1px);
+  }
+  100% {
+    transform: scaleX(1) translateX(0);
+  }
+}
+
+.segmented-pill-collision-left {
+  animation: segmentedPillCollisionLeft 220ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  transform-origin: left center;
+}
+
+.segmented-pill-collision-right {
+  animation: segmentedPillCollisionRight 220ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  transform-origin: right center;
 }
 
 /* Shimmer effect */

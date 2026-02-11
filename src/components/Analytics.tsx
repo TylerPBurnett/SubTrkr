@@ -23,6 +23,7 @@ import {
 import { parseLocalDate, formatDisplayDate } from '../utils/dates';
 import ServiceLogo from './ui/ServiceLogo';
 import { GlowFilter, GradientFill, lightenColor } from './ui/ChartEffects';
+import SegmentedControl from './ui/SegmentedControl';
 
 type FilterTab = 'all' | ItemType;
 
@@ -167,37 +168,17 @@ function Analytics({ items, categories }: AnalyticsProps) {
     color: item.category.color,
   }));
 
-  const tabs: { key: FilterTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'all', label: 'All', icon: null },
-    { key: 'bill', label: 'Bills', icon: <Receipt className="w-4 h-4" /> },
-    { key: 'subscription', label: 'Subscriptions', icon: <CreditCard className="w-4 h-4" /> },
+  const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'bill', label: 'Bills', icon: <Receipt className="w-3.5 h-3.5" /> },
+    { id: 'subscription', label: 'Subscriptions', icon: <CreditCard className="w-3.5 h-3.5" /> },
   ];
 
   const itemTypeLabel = activeTab === 'bill' ? 'Bills' : activeTab === 'subscription' ? 'Subscriptions' : 'Items';
 
   return (
     <div className="space-y-6">
-      {/* Filter Tabs */}
-      <div 
-        className="inline-flex rounded-xl p-1 gap-1"
-        style={{ backgroundColor: 'var(--bg-hover)' }}
-      >
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{
-              backgroundColor: activeTab === tab.key ? 'var(--bg-surface)' : 'transparent',
-              color: activeTab === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-              boxShadow: activeTab === tab.key ? 'var(--shadow-card)' : 'none',
-            }}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
