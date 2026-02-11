@@ -8,7 +8,7 @@ import {
   ChevronRight,
   RotateCcw
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { Category, ItemWithCategory, SpendingByCategory } from '../types';
 import {
   calculateMonthlySpending,
@@ -104,10 +104,7 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Monthly Spending Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--brand-primary)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">MONTHLY SPENDING</p>
@@ -131,10 +128,7 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
         </div>
 
         {/* Yearly Spending Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--accent-purple)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">YEARLY SPENDING</p>
@@ -158,10 +152,7 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
         </div>
 
         {/* Active Items Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--accent-blue)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">
@@ -192,10 +183,7 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
         </div>
 
         {/* Due This Week Card */}
-        <div className="stagger-item card" style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%)',
-          borderLeft: '4px solid var(--accent-amber)'
-        }}>
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-amber)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">DUE THIS WEEK</p>
@@ -302,35 +290,49 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
             </div>
           ) : (
             <div className="flex items-center gap-6">
-              <div className="w-40 h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value) => formatCurrency(value as number)}
-                      contentStyle={{
-                        backgroundColor: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '8px',
-                        boxShadow: 'var(--shadow-elevated)'
-                      }}
-                      labelStyle={{ color: 'var(--text-primary)' }}
-                      itemStyle={{ color: 'var(--text-primary)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="w-40 h-40 relative">
+                <PieChart width={160} height={160}>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    cornerRadius={4}
+                    dataKey="value"
+                    isAnimationActive={true}
+                    animationDuration={300}
+                    animationEasing="ease-out"
+                    className="chart-pie-sector"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [formatCurrency(value as number), '']}
+                    contentStyle={{
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: '10px',
+                      boxShadow: 'var(--shadow-elevated)',
+                      padding: '6px 10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: '12px',
+                    }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
+                    itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
+                    separator=""
+                  />
+                  {/* Center label */}
+                  <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
+                    MONTHLY
+                  </text>
+                  <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
+                    {formatCurrency(monthlySpending)}
+                  </text>
+                </PieChart>
               </div>
               
               <div className="flex-1 space-y-2">

@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, memo } from 'react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -21,6 +22,7 @@ import {
 } from '../services/database';
 import { parseLocalDate, formatDisplayDate } from '../utils/dates';
 import ServiceLogo from './ui/ServiceLogo';
+import { GlowFilter, GradientFill, lightenColor } from './ui/ChartEffects';
 
 type FilterTab = 'all' | ItemType;
 
@@ -199,7 +201,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="stagger-item card">
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
           <p className="label mb-2">MONTHLY AVERAGE</p>
           <div className="flex items-end gap-2">
             <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
@@ -218,7 +220,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
           </div>
         </div>
 
-        <div className="stagger-item card">
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-emerald)' }}>
           <p className="label mb-2">MONTHLY SAVINGS</p>
           <p className="text-3xl font-bold font-mono" style={{ color: 'var(--accent-green)' }}>
             {formatCurrency(monthlySavings)}
@@ -228,14 +230,14 @@ function Analytics({ items, categories }: AnalyticsProps) {
           </p>
         </div>
 
-        <div className="stagger-item card">
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
           <p className="label mb-2">YEARLY TOTAL</p>
           <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
             {formatCurrency(yearlySpending)}
           </p>
         </div>
 
-        <div className="stagger-item card">
+        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
           <p className="label mb-2">ACTIVE {itemTypeLabel.toUpperCase()}</p>
           <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
             {filteredItems.filter(s => s.status === 'active').length}
@@ -258,8 +260,12 @@ function Analytics({ items, categories }: AnalyticsProps) {
           ) : (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                <AreaChart data={monthlyTrendData}>
+                  <defs>
+                    <GlowFilter id="line-glow" blur={5} opacity={0.5} />
+                    <GradientFill id="area-fill" startColor="var(--brand-primary)" startOpacity={0.3} endOpacity={0} />
+                  </defs>
+                  <CartesianGrid stroke="var(--border-default)" strokeOpacity={0.5} vertical={false} />
                   <XAxis
                     dataKey="month"
                     stroke="var(--text-muted)"
@@ -267,34 +273,50 @@ function Analytics({ items, categories }: AnalyticsProps) {
                     fontFamily="Inter, -apple-system, sans-serif"
                     fontWeight={600}
                     style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <YAxis
                     stroke="var(--text-muted)"
                     fontSize={12}
                     fontFamily="JetBrains Mono, monospace"
                     tickFormatter={(value) => `$${value}`}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <Tooltip
-                    formatter={(value) => [`$${value}`, 'Spending']}
+                    formatter={(value) => [`$${value}`, '']}
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
-                      border: '2px solid var(--border-default)',
-                      borderRadius: '12px',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: '10px',
                       boxShadow: 'var(--shadow-elevated)',
-                      fontFamily: 'JetBrains Mono, monospace'
+                      padding: '6px 10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: '13px',
                     }}
-                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600 }}
-                    itemStyle={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
+                    itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
+                    separator=""
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke="var(--brand-primary)" 
+                  <Area
+                    type="bump"
+                    dataKey="amount"
+                    fill="url(#area-fill)"
+                    stroke="none"
+                    tooltipType="none"
+                  />
+                  <Line
+                    type="bump"
+                    dataKey="amount"
+                    stroke="var(--brand-primary)"
                     strokeWidth={3}
-                    dot={{ fill: 'var(--brand-primary)', strokeWidth: 2 }}
-                    activeDot={{ r: 6 }}
+                    strokeLinecap="round"
+                    dot={{ fill: 'var(--brand-primary)', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 7, className: 'chart-active-dot' }}
+                    filter="url(#line-glow)"
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           )}
@@ -314,13 +336,24 @@ function Analytics({ items, categories }: AnalyticsProps) {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" horizontal={false} />
+                  <defs>
+                    <GlowFilter id="bar-glow" blur={3} opacity={0.25} />
+                    {categoryChartData.map((entry, index) => (
+                      <linearGradient key={`bar-grad-${index}`} id={`bar-gradient-${index}`} x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor={entry.color} stopOpacity={0.85} />
+                        <stop offset="100%" stopColor={lightenColor(entry.color, 0.2)} stopOpacity={1} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid stroke="var(--border-default)" strokeOpacity={0.3} horizontal={false} vertical />
                   <XAxis
                     type="number"
                     stroke="var(--text-muted)"
                     fontSize={12}
                     fontFamily="JetBrains Mono, monospace"
                     tickFormatter={(value) => `$${value}`}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <YAxis
                     type="category"
@@ -330,22 +363,28 @@ function Analytics({ items, categories }: AnalyticsProps) {
                     fontFamily="Inter, -apple-system, sans-serif"
                     fontWeight={600}
                     width={100}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <Tooltip
-                    formatter={(value) => [`$${value}/mo`, 'Spending']}
+                    cursor={false}
+                    formatter={(value) => [`$${value}/mo`, '']}
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
-                      border: '2px solid var(--border-default)',
-                      borderRadius: '12px',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: '10px',
                       boxShadow: 'var(--shadow-elevated)',
-                      fontFamily: 'JetBrains Mono, monospace'
+                      padding: '6px 10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: '13px',
                     }}
-                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600 }}
-                    itemStyle={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}
+                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
+                    itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
+                    separator=""
                   />
-                  <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
-                    {categoryChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Bar dataKey="amount" radius={[0, 6, 6, 0]} filter="url(#bar-glow)" className="chart-bar-enter">
+                    {categoryChartData.map((_entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`url(#bar-gradient-${index})`} />
                     ))}
                   </Bar>
                 </BarChart>
