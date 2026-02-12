@@ -6,6 +6,16 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns"
+    ],
+    "resources": [
+      "icons/icon-light.icns",
+      "icons/icon-dark.icns",
+      "icons/icon-clear-light.icns",
+      "icons/icon-clear-dark.icns",
+      "icons/icon-tinted-light.icns",
+      "icons/icon-tinted-dark.icns",
+      "icons/icon-tinted-template-light.png",
+      "icons/icon-tinted-template-dark.png"
     ]
   }
 }

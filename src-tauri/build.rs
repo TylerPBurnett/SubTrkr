@@ -3,6 +3,14 @@ fn main() {
     println!("cargo:rerun-if-changed=tauri.macos.conf.json");
     println!("cargo:rerun-if-changed=tauri.windows.conf.json");
     println!("cargo:rerun-if-changed=icons/icon.icns");
+    println!("cargo:rerun-if-changed=icons/icon-light.icns");
+    println!("cargo:rerun-if-changed=icons/icon-dark.icns");
+    println!("cargo:rerun-if-changed=icons/icon-clear-light.icns");
+    println!("cargo:rerun-if-changed=icons/icon-clear-dark.icns");
+    println!("cargo:rerun-if-changed=icons/icon-tinted-light.icns");
+    println!("cargo:rerun-if-changed=icons/icon-tinted-dark.icns");
+    println!("cargo:rerun-if-changed=icons/icon-tinted-template-light.png");
+    println!("cargo:rerun-if-changed=icons/icon-tinted-template-dark.png");
     println!("cargo:rerun-if-changed=icons/icon.ico");
     println!("cargo:rerun-if-changed=icons/icon.png");
     println!("cargo:rerun-if-changed=icons/32x32.png");

@@ -2,12 +2,14 @@
 
 ## Current Strategy
 
-SubTrkr now uses a deterministic icon pipeline with one source theme generating all platform outputs.
+SubTrkr now uses a deterministic icon pipeline with a canonical source theme plus macOS appearance variants.
 
 - Canonical production theme: `dark`
 - Source files: `branding/icons/sources/`
 - Generator script: `scripts/generate-icons.sh`
 - Output directory: `src-tauri/icons/`
+- Output inventory: `src-tauri/icons/README.md`
+- macOS runtime sync: `src-tauri/src/lib.rs` (applies light/dark/tinted icon on launch and resume)
 
 ## Generate Icons
 
@@ -44,6 +46,10 @@ This keeps macOS and Windows icon behavior explicit and prevents cross-platform 
 The generator updates all required desktop assets, including:
 
 - `icon.icns`
+- `icon-light.icns`
+- `icon-dark.icns`
+- `icon-tinted-light.icns`
+- `icon-tinted-dark.icns`
 - `icon.ico`
 - `icon.png`
 - `32x32.png`
@@ -53,7 +59,23 @@ The generator updates all required desktop assets, including:
 - `icon-16.png`, `icon-32.png`, `icon-48.png`, `icon-256.png`
 - `Square*Logo.png`, `StoreLogo.png` (Windows bundle assets)
 
+It intentionally prunes transient `android/`, `ios/`, and `iconsets/` folders under `src-tauri/icons/` to keep the repo clean.
+
 If local debug/release bundles already exist, the generator also syncs their `icon.icns` so `tauri dev` and packaged builds do not drift.
+
+## macOS Appearance Behavior
+
+SubTrkr follows macOS icon appearance settings automatically while running:
+
+- `AppleIconAppearanceTheme` drives `Regular` vs `RegularDark` vs `Tinted`
+- `AppleInterfaceStyle` resolves dark vs light fallback
+- `AppleIconAppearanceTintColor` provides the active tint color in tinted mode
+- On app `setup`, `RunEvent::Resumed`, and window focus, the app applies the matching icon:
+  - light: `icons/icon-light.icns`
+  - dark: `icons/icon-dark.icns`
+  - tinted: render from `icons/icon-tinted-template-light.png` or `icons/icon-tinted-template-dark.png` using current system tint color (falls back to `icon-tinted-*.icns` if template render fails)
+
+The base bundle icon remains `icon.icns` for Finder/package metadata.
 
 ## QA Checklist
 
