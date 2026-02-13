@@ -44,6 +44,7 @@ Use this checklist for each release tag (`vX.Y.Z`).
 - [ ] macOS artifacts present
 - [ ] Windows artifacts present
 - [ ] Linux artifacts present
+- [ ] Landing-page direct links (stable `releases/latest/download/...`) return 200
 
 ## Updater Verification
 

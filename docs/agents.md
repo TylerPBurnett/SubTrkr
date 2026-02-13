@@ -1,5 +1,7 @@
 # SubTrkr - Comprehensive Agent Documentation
 
+> DEPRECATED: This file reflects a legacy local SQLite architecture and is no longer the source of truth. Use `/Users/tyler/Development/SubTrkr/agents.md` for current cloud-native (Supabase) architecture and workflows.
+
 > **Purpose**: This document provides complete context for AI agents and developers working on SubTrkr. It covers the app's architecture, billing date logic, key patterns, and recent improvements to inform future iterations.
 
 ---

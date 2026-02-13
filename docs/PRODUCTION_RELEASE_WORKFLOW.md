@@ -62,7 +62,14 @@ Treat updater signing material as long-lived production root credentials.
 ```bash
 gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/subtrkr-prod.key
 printf '%s' "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" | gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+gh secret set VITE_SUPABASE_URL --body 'https://your-project.supabase.co'
+gh secret set VITE_SUPABASE_ANON_KEY --body 'your-anon-key'
 ```
+
+Notes:
+
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are required at build time for Vite/Tauri release builds.
+- The anon key is intended to be public in client apps, but storing it in GitHub secrets keeps CI configuration centralized.
 
 ### 4. Update Tauri updater public key
 
@@ -132,11 +139,40 @@ For this action version, the updater JSON input is:
 
 - `includeUpdaterJson: true`
 
+This workflow also sets:
+
+- `assetNamePattern: '[name]-[platform]-[arch][_setup][ext]'`
+
+This keeps user-facing download URLs stable across releases.
+
 If you upgrade to a newer action release, verify input names because some versions use:
 
 - `uploadUpdaterJson`
 
 Do not change action version and input names independently.
+
+## Landing Page Download Links
+
+Why there are many assets in GitHub Releases:
+
+- Installers for multiple operating systems and CPU architectures
+- Updater bundles/signatures (`.sig`, `.app.tar.gz`, etc.)
+- `latest.json` used by the in-app updater
+
+For end users, link installers only (not `.sig`, `.app.tar.gz`, or `latest.json`).
+
+Recommended buttons:
+
+- Windows: `https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-windows-x64_setup.exe`
+- macOS (Apple Silicon): `https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-darwin-aarch64.dmg`
+- macOS (Intel): `https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-darwin-x64.dmg`
+- Linux (AppImage): `https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-linux-amd64.AppImage`
+
+If you want a single fallback button:
+
+- `https://github.com/TylerPBurnett/SubTrkr/releases/latest`
+
+Note: these stable direct-link filenames take effect on releases created after the `assetNamePattern` workflow change.
 
 ## Post-Release Verification
 
@@ -225,6 +261,13 @@ tmp=$(mktemp); echo "test" > "$tmp"
 bun tauri signer sign -k "$(cat ~/.tauri/subtrkr-prod.key)" -p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" "$tmp"
 rm -f "$tmp" "$tmp.sig"
 ```
+
+### "Missing Supabase environment variables" at runtime
+
+- Ensure these are set in GitHub Actions secrets and injected by `.github/workflows/release.yml`:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+- Ensure values are valid for your production Supabase project.
 
 ### Signature or pubkey verification errors in-app
 
