@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Receipt,
   CreditCard,
-  DollarSign,
   Calendar,
   Tag,
   Bell,
@@ -12,7 +11,8 @@ import {
   FileText,
   Sparkles,
   ChevronDown,
-  CircleDot
+  CircleDot,
+  SlidersHorizontal
 } from 'lucide-react';
 import type { Category, ItemWithCategory, BillingCycle, ItemFormData, ItemType, ItemStatus } from '@/types';
 import { getNextFutureBillingDate, formatISODate, getToday, formatDisplayDate } from '../utils/dates';
@@ -103,8 +103,14 @@ export default function ItemForm({
 
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormData, string>>>({});
   const [shake, setShake] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => setIsVisible(true), 10);
+  }, []);
 
   useEffect(() => {
     if (item) {
@@ -124,10 +130,19 @@ export default function ItemForm({
         status: item.status,
         trial_end_date: item.trial_end_date || '',
       });
-      // Show optional fields if they have data
-      if (item.notes || item.url) {
-        setShowOptional(true);
-      }
+
+      const hasAdvancedData =
+        item.status === 'trial' ||
+        item.reminder_days !== 3 ||
+        Boolean(item.trial_end_date) ||
+        Boolean(item.notes) ||
+        Boolean(item.url);
+
+      setShowAdvanced(hasAdvancedData);
+      setShowOptional(Boolean(item.notes || item.url));
+    } else {
+      setShowAdvanced(false);
+      setShowOptional(false);
     }
   }, [item]);
 
@@ -138,11 +153,13 @@ export default function ItemForm({
       newErrors.name = 'Name is required';
     }
 
-    const amount = parseFloat(formData.amount);
-    const minAmount = formData.status === 'trial' ? 0 : 0.01;
-    if (isNaN(amount) || amount < 0) {
+    const amountInput = formData.amount.trim();
+    const amount = Number(amountInput);
+    if (!amountInput || !Number.isFinite(amount)) {
       newErrors.amount = 'Enter a valid amount';
-    } else if (amount < minAmount) {
+    } else if (amount < 0) {
+      newErrors.amount = 'Amount cannot be negative';
+    } else if (formData.status !== 'trial' && amount === 0) {
       newErrors.amount = 'Amount must be greater than 0 for paid subscriptions';
     }
 
@@ -263,543 +280,836 @@ export default function ItemForm({
     }
   };
 
-  const currentCurrency = currencies.find(c => c.code === formData.currency) || currencies[0];
-  const currentCycle = billingCycles.find(c => c.value === formData.billing_cycle) || billingCycles[1];
   const selectedCategory = filteredCategories.find(c => c.id === formData.category_id);
+  const isBill = itemType === 'bill';
 
-  const formatDisplayAmount = (amount: string) => {
-    const num = parseFloat(amount);
-    if (isNaN(num)) return '0.00';
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
+  // Gradient and glow config matching StatusChangeDialog's approach
+  const config = isBill
+    ? {
+        gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        glowColor: 'rgba(245, 158, 11, 0.3)',
+        textColor: '#f59e0b',
+        contrastText: '#1f2937',
+      }
+    : {
+        gradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+        glowColor: 'rgba(34, 197, 94, 0.3)',
+        textColor: 'var(--brand-text)',
+        contrastText: 'white',
+      };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        onClick={onClose}
-      />
+    <>
+      <style>{`
+        .item-form-modal {
+          animation: ${isVisible ? 'itemFormFadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1)' : 'none'};
+          font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
 
-      {/* Modal */}
-      <div
-        className={`zoom-in-95 relative w-full max-w-xl rounded-3xl shadow-2xl max-h-[92vh] overflow-hidden ${shake ? 'animate-shake' : ''}`}
-        style={{ backgroundColor: 'var(--bg-surface)' }}
-      >
-        {/* Gradient header bar */}
+        .item-form-header {
+          font-family: 'Archivo', sans-serif;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .item-form-mono {
+          font-family: 'JetBrains Mono', monospace;
+          letter-spacing: -0.01em;
+        }
+
+        .item-form-label {
+          font-family: 'Archivo', sans-serif;
+          font-weight: 600;
+          font-size: 0.6875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .item-form-input {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 500;
+          font-size: 0.9375rem;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .item-form-input:focus {
+          transform: translateY(-1px);
+        }
+
+        .item-form-date-input::-webkit-calendar-picker-indicator {
+          cursor: pointer;
+          opacity: 0.6;
+          transition: opacity 0.2s;
+        }
+
+        .item-form-date-input::-webkit-calendar-picker-indicator:hover {
+          opacity: 1;
+        }
+
+        .item-form-button {
+          font-family: 'Archivo', sans-serif;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          font-size: 0.8125rem;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .item-form-button:active:not(:disabled) {
+          transform: scale(0.98);
+        }
+
+        .item-form-field {
+          animation: itemFormSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+        }
+
+        .item-form-field:nth-child(1) { animation-delay: 0.05s; }
+        .item-form-field:nth-child(2) { animation-delay: 0.1s; }
+        .item-form-field:nth-child(3) { animation-delay: 0.15s; }
+        .item-form-field:nth-child(4) { animation-delay: 0.2s; }
+        .item-form-field:nth-child(5) { animation-delay: 0.25s; }
+        .item-form-field:nth-child(6) { animation-delay: 0.3s; }
+        .item-form-field:nth-child(7) { animation-delay: 0.35s; }
+
+        .item-form-shake {
+          animation: itemFormShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+        }
+
+        .item-form-processing {
+          animation: itemFormPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .item-form-hero {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .item-form-hero::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          animation: itemFormShimmer 3s infinite;
+        }
+
+        @keyframes itemFormFadeInScale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes itemFormSlideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes itemFormShake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+
+        @keyframes itemFormPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        @keyframes itemFormShimmer {
+          0% { left: -100%; }
+          100% { left: 200%; }
+        }
+      `}</style>
+
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop - cinematic radial gradient like StatusChangeDialog */}
         <div
-          className="h-1.5"
+          className="absolute inset-0 backdrop-blur-md"
           style={{
-            background: itemType === 'bill'
-              ? 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)'
-              : 'linear-gradient(90deg, var(--brand-primary) 0%, #06b6d4 100%)'
+            background: 'radial-gradient(circle at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7))',
           }}
+          onClick={onClose}
         />
 
-        {/* Header */}
-        <div className="px-8 pt-6 pb-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: itemType === 'bill'
-                    ? 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)'
-                    : 'linear-gradient(135deg, var(--brand-primary) 0%, #06b6d4 100%)',
-                  boxShadow: itemType === 'bill'
-                    ? '0 8px 24px -4px rgba(245, 158, 11, 0.4)'
-                    : '0 8px 24px -4px rgba(34, 197, 94, 0.4)'
-                }}
-              >
-                {itemType === 'bill' ? (
-                  <Receipt className="w-7 h-7 text-white" />
-                ) : (
-                  <CreditCard className="w-7 h-7 text-white" />
-                )}
-              </div>
-              <div>
-                <h2 className="text-2xl" style={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
-                  {isEditing ? 'Edit' : 'New'} {labels.singular}
-                </h2>
-                <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {isEditing ? 'Update payment details' : 'Track a recurring payment'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2.5 rounded-xl transition-all hover:scale-105"
-              style={{
-                backgroundColor: 'var(--bg-hover)',
-                color: 'var(--text-muted)'
-              }}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Form */}
-        <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8 overflow-y-auto max-h-[calc(92vh-140px)]">
-          {/* Error summary */}
-          {Object.keys(errors).length > 0 && (
-            <div
-              className="mb-6 p-4 rounded-2xl flex items-start gap-3"
-              style={{
-                backgroundColor: 'var(--accent-red-muted)',
-                border: '1px solid var(--accent-red)'
-              }}
-            >
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--accent-red)' }} />
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--accent-red)' }}>Please fix the following:</p>
-                <ul className="mt-1 text-sm space-y-0.5" style={{ color: 'var(--accent-red)' }}>
-                  {Object.values(errors).filter(Boolean).map((error, i) => (
-                    <li key={i}>• {error}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Preview Card */}
+        {/* Modal */}
+        <div
+          className={`relative w-full max-w-lg item-form-modal ${shake ? 'item-form-shake' : ''}`}
+          style={{
+            background: 'var(--bg-surface)',
+            boxShadow: `
+              0 0 0 1px rgba(0, 0, 0, 0.1),
+              0 20px 60px -10px ${config.glowColor},
+              0 40px 100px -20px rgba(0, 0, 0, 0.4)
+            `,
+            borderRadius: '20px',
+            overflow: 'hidden',
+            maxHeight: '92vh',
+          }}
+        >
+          {/* Gradient header bar */}
           <div
-            className="mb-6 p-5 rounded-2xl border-2 border-dashed transition-all"
+            className="item-form-hero"
             style={{
-              borderColor: formData.name ? (selectedCategory?.color || 'var(--brand-primary)') : 'var(--border-default)',
-              backgroundColor: formData.name ? 'var(--bg-hover)' : 'transparent'
+              background: config.gradient,
+              height: '6px',
             }}
-          >
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <ServiceLogo
-                  logoUrl={formData.logo_url || null}
-                  name={formData.name || 'Service'}
-                  size="lg"
-                  itemType={itemType}
-                  categoryName={selectedCategory?.name}
-                  categoryColor={selectedCategory?.color}
-                />
-                {formData.logo_url && (
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
-                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                    style={{
-                      backgroundColor: 'var(--accent-red)',
-                      color: 'white'
-                    }}
-                    title="Clear logo"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="font-semibold text-lg truncate"
-                  style={{ color: formData.name ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                >
-                  {formData.name || 'Service name'}
-                </p>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  {selectedCategory?.name || 'Category'} • {currentCycle.label}
-                </p>
-              </div>
-              <div className="text-right">
-                <p
-                  className="font-mono text-2xl"
+          />
+
+          {/* Header */}
+          <div className="px-8 pt-7 pb-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                {/* Gradient icon badge */}
+                <div
                   style={{
-                    fontWeight: 700,
-                    color: formData.amount ? 'var(--text-primary)' : 'var(--text-muted)',
-                    letterSpacing: '-0.02em'
+                    background: config.gradient,
+                    boxShadow: `0 8px 24px ${config.glowColor}`,
+                    borderRadius: '14px',
+                    padding: '14px',
                   }}
                 >
-                  {currentCurrency.symbol}{formatDisplayAmount(formData.amount)}
-                </p>
-                <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                  {currentCycle.short}
-                </p>
+                  {isBill ? (
+                    <Receipt className="w-7 h-7" style={{ color: 'white', strokeWidth: 2.5 }} />
+                  ) : (
+                    <CreditCard className="w-7 h-7" style={{ color: 'white', strokeWidth: 2.5 }} />
+                  )}
+                </div>
+                <div>
+                  <h2
+                    className="item-form-header"
+                    style={{
+                      fontSize: '1.75rem',
+                      color: 'var(--text-primary)',
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {isEditing ? 'Edit' : 'New'} {labels.singular}
+                  </h2>
+                  <p
+                    className="item-form-mono mt-1"
+                    style={{
+                      color: isBill ? '#f59e0b' : 'var(--brand-text)',
+                      fontWeight: 600,
+                      fontSize: '0.8125rem',
+                    }}
+                  >
+                    {isEditing ? 'Update payment details' : 'Track a recurring payment'}
+                  </p>
+                </div>
               </div>
+
+              <button
+                onClick={onClose}
+                aria-label="Close form"
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
-          <div className="space-y-6">
-            {/* Service Name */}
-            <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
-              <label className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
-                <span className="label">{labels.singular} Name</span>
-              </label>
-              <ServiceAutocomplete
-                value={formData.name}
-                itemType={itemType}
-                onChange={(value) => {
-                  setFormData(prev => {
-                    // Clear logo when manually typing, unless it was set from URL field
-                    const urlGeneratedLogo = prev.url ? (() => {
-                      try {
-                        const urlObj = new URL(prev.url);
-                        const domain = urlObj.hostname.replace(/^www\./, '');
-                        return getLogoUrl(domain);
-                      } catch {
-                        return null;
-                      }
-                    })() : null;
-
-                    return {
-                      ...prev,
-                      name: value,
-                      // Only keep logo if it was generated from URL field
-                      logo_url: urlGeneratedLogo === prev.logo_url ? prev.logo_url : ''
-                    };
-                  });
-                  if (errors.name) {
-                    setErrors(prev => ({ ...prev, name: undefined }));
-                  }
-                }}
-                onServiceSelect={handleServiceSelect}
-                placeholder={labels.namePlaceholder}
-                error={errors.name}
-                autoFocus={!isEditing}
-              />
-            </div>
-
-            {/* Amount Section - Hero */}
-            <div className="stagger-item" style={{ animationDelay: '0.1s' }}>
-              <label className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
-                <span className="label">Amount & Frequency</span>
-              </label>
+          {/* Form */}
+          <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8 overflow-y-auto max-h-[calc(92vh-140px)]">
+            {/* Error Banner */}
+            {Object.keys(errors).length > 0 && (
               <div
-                className="p-4 rounded-2xl"
-                style={{ backgroundColor: 'var(--bg-hover)' }}
+                className="mb-6 p-4 rounded-2xl flex items-start gap-3"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '2px solid #ef4444',
+                }}
+              >
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+                <div>
+                  <p className="font-semibold text-sm" style={{ color: '#ef4444' }}>
+                    Validation Error
+                  </p>
+                  <ul className="mt-1 text-sm space-y-1" style={{ color: '#ef4444' }}>
+                    {Object.values(errors).filter(Boolean).map((error, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span>•</span>
+                        <span>{error}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Preview Card — compact inline when content exists */}
+            {(isEditing || formData.name.trim()) && (
+              <div
+                className="mb-6 p-5 rounded-2xl item-form-field"
+                style={{
+                  background: `linear-gradient(135deg, ${config.glowColor}, transparent)`,
+                  border: `1px solid ${isBill ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)'}`,
+                }}
               >
                 <div className="flex items-center gap-3">
-                  {/* Currency */}
+                  <div className="relative group">
+                    <ServiceLogo
+                      logoUrl={formData.logo_url || null}
+                      name={formData.name || 'Service'}
+                      size="md"
+                      itemType={itemType}
+                      categoryName={selectedCategory?.name}
+                      categoryColor={selectedCategory?.color}
+                    />
+                    {formData.logo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
+                        aria-label="Clear logo"
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        style={{
+                          backgroundColor: 'var(--accent-red)',
+                          color: 'white'
+                        }}
+                        title="Clear logo"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-semibold text-base truncate"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {formData.name || 'Service name'}
+                    </p>
+                    <p className="item-form-mono" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
+                      {selectedCategory?.name || 'Category'} • {billingCycles.find(c => c.value === formData.billing_cycle)?.label || 'Monthly'}
+                    </p>
+                  </div>
+                  {formData.amount && (
+                    <div className="text-right">
+                      <p
+                        className="item-form-mono"
+                        style={{
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          fontSize: '1.125rem',
+                        }}
+                      >
+                        {(currencies.find(c => c.code === formData.currency) || currencies[0]).symbol}
+                        {(() => {
+                          const num = parseFloat(formData.amount);
+                          if (isNaN(num)) return '0.00';
+                          return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        })()}
+                      </p>
+                      <p className="item-form-mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 600 }}>
+                        {billingCycles.find(c => c.value === formData.billing_cycle)?.short || '/mo'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-5">
+              {/* Service Name */}
+              <div className="item-form-field">
+                <label htmlFor="item-name" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{labels.singular} Name</span>
+                </label>
+                <ServiceAutocomplete
+                  id="item-name"
+                  value={formData.name}
+                  itemType={itemType}
+                  onChange={(value) => {
+                    setFormData(prev => {
+                      const urlGeneratedLogo = prev.url ? (() => {
+                        try {
+                          const urlObj = new URL(prev.url);
+                          const domain = urlObj.hostname.replace(/^www\./, '');
+                          return getLogoUrl(domain);
+                        } catch {
+                          return null;
+                        }
+                      })() : null;
+
+                      return {
+                        ...prev,
+                        name: value,
+                        logo_url: urlGeneratedLogo === prev.logo_url ? prev.logo_url : ''
+                      };
+                    });
+                    if (errors.name) {
+                      setErrors(prev => ({ ...prev, name: undefined }));
+                    }
+                  }}
+                  onServiceSelect={handleServiceSelect}
+                  placeholder={labels.namePlaceholder}
+                  error={errors.name}
+                  autoFocus={!isEditing}
+                />
+              </div>
+
+              {/* Amount */}
+              <div className="item-form-field">
+                <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Amount</span>
+                </label>
+                {/* Unified currency + amount input */}
+                <div
+                  className="flex items-center rounded-xl overflow-hidden transition-all"
+                  style={{
+                    border: `2px solid ${errors.amount ? '#ef4444' : 'var(--border-default)'}`,
+                    background: 'var(--bg-default)',
+                  }}
+                >
                   <select
+                    id="item-currency"
                     name="currency"
                     value={formData.currency}
                     onChange={handleChange}
-                    className="appearance-none px-3 py-3 rounded-lg font-mono font-semibold text-center cursor-pointer"
+                    aria-label="Currency"
+                    className="item-form-input appearance-none pl-4 pr-1 py-3.5 cursor-pointer focus:outline-none"
                     style={{
-                      backgroundColor: 'var(--bg-surface)',
-                      border: '2px solid var(--border-default)',
-                      color: 'var(--text-primary)',
-                      width: '72px'
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--text-muted)',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      width: 'auto',
+                      minWidth: '60px',
                     }}
                   >
                     {currencies.map(c => (
-                      <option key={c.code} value={c.code}>{c.symbol}</option>
+                      <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>
                     ))}
                   </select>
-
-                  {/* Amount */}
-                  <div className="flex-1 relative">
-                    <input
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      className="w-full px-4 py-3 rounded-lg font-mono text-right"
-                      style={{
-                        backgroundColor: 'var(--bg-surface)',
-                        border: `2px solid ${errors.amount ? 'var(--accent-red)' : 'var(--border-default)'}`,
-                        color: 'var(--text-primary)',
-                        fontSize: '1.75rem',
-                        fontWeight: 700,
-                        letterSpacing: '-0.02em'
-                      }}
-                    />
-                  </div>
-
-                  {/* Billing Cycle */}
-                  <select
-                    name="billing_cycle"
-                    value={formData.billing_cycle}
-                    onChange={handleChange}
-                    className="appearance-none px-4 py-3 rounded-lg font-semibold cursor-pointer"
-                    style={{
-                      backgroundColor: 'var(--bg-surface)',
-                      border: '2px solid var(--border-default)',
-                      color: 'var(--text-secondary)',
-                      minWidth: '110px'
-                    }}
-                  >
-                    {billingCycles.map(({ value, label }) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                {errors.amount && (
-                  <p className="mt-2 text-sm" style={{ color: 'var(--accent-red)' }}>{errors.amount}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Category */}
-            <div className="stagger-item" style={{ animationDelay: '0.15s' }}>
-              <label className="flex items-center gap-2 mb-2">
-                <Tag className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
-                <span className="label">Category</span>
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {filteredCategories.slice(0, 7).map(cat => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, category_id: cat.id }))}
-                    className="p-3 rounded-xl text-sm font-medium transition-all text-center truncate"
-                    style={{
-                      backgroundColor: formData.category_id === cat.id ? cat.color : 'var(--bg-hover)',
-                      color: formData.category_id === cat.id ? 'white' : 'var(--text-secondary)',
-                      border: `2px solid ${formData.category_id === cat.id ? cat.color : 'transparent'}`,
-                      transform: formData.category_id === cat.id ? 'scale(1.02)' : 'scale(1)'
-                    }}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-                {filteredCategories.length > 7 && (
-                  <select
-                    value={filteredCategories.slice(7).some(c => c.id === formData.category_id) ? formData.category_id : ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
-                    className="p-3 rounded-xl text-sm font-medium cursor-pointer"
-                    style={{
-                      backgroundColor: 'var(--bg-hover)',
-                      border: '2px solid transparent',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    <option value="">More...</option>
-                    {filteredCategories.slice(7).map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-
-            {/* Status Selection */}
-            {!isEditing && (
-              <div className="stagger-item" style={{ animationDelay: '0.175s' }}>
-                <label className="flex items-center gap-2 mb-2">
-                  <CircleDot className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
-                  <span className="label">Initial Status</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, status: 'active' }))}
-                    className="p-3 rounded-xl text-sm font-medium transition-all text-center"
-                    style={{
-                      backgroundColor: formData.status === 'active' ? 'var(--accent-green)' : 'var(--bg-hover)',
-                      color: formData.status === 'active' ? 'white' : 'var(--text-secondary)',
-                      border: `2px solid ${formData.status === 'active' ? 'var(--accent-green)' : 'transparent'}`,
-                    }}
-                  >
-                    Active (Paid)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, status: 'trial' }))}
-                    className="p-3 rounded-xl text-sm font-medium transition-all text-center"
-                    style={{
-                      backgroundColor: formData.status === 'trial' ? 'var(--accent-blue)' : 'var(--bg-hover)',
-                      color: formData.status === 'trial' ? 'white' : 'var(--text-secondary)',
-                      border: `2px solid ${formData.status === 'trial' ? 'var(--accent-blue)' : 'transparent'}`,
-                    }}
-                  >
-                    Trial (Free)
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Trial End Date - Only show if status is trial */}
-            {formData.status === 'trial' && (
-              <div className="stagger-item" style={{ animationDelay: '0.18s' }}>
-                <label className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-4 h-4" style={{ color: 'var(--accent-blue)' }} />
-                  <span className="label">Trial Ends</span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Optional</span>
-                </label>
-                <input
-                  type="date"
-                  name="trial_end_date"
-                  value={formData.trial_end_date || ''}
-                  onChange={handleChange}
-                  min={today}
-                  className="input w-full px-4 py-3 rounded-xl"
-                  placeholder="When does the trial expire?"
-                />
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                  {formData.trial_end_date
-                    ? `Trial expires on ${formatDisplayDate(formData.trial_end_date)}`
-                    : 'Leave empty for ongoing trials'}
-                </p>
-              </div>
-            )}
-
-            {/* Dates */}
-            <div className="stagger-item grid grid-cols-2 gap-4" style={{ animationDelay: '0.2s' }}>
-              <div>
-                <label className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
-                  <span className="label">Next Billing</span>
-                </label>
-                <input
-                  type="date"
-                  name="next_billing_date"
-                  value={formData.next_billing_date}
-                  onChange={handleChange}
-                  className="input w-full px-4 py-3 rounded-xl"
-                  style={{
-                    borderColor: errors.next_billing_date ? 'var(--accent-red)' : 'var(--border-default)',
-                  }}
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                  <span className="label">Start Date</span>
-                </label>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={formData.start_date}
-                  onChange={handleChange}
-                  className="input w-full px-4 py-3 rounded-xl"
-                  style={{
-                    borderColor: errors.start_date ? 'var(--accent-red)' : 'var(--border-default)',
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Reminder */}
-            <div className="stagger-item" style={{ animationDelay: '0.25s' }}>
-              <label className="flex items-center gap-2 mb-2">
-                <Bell className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
-                <span className="label">Reminder</span>
-              </label>
-              <div className="flex gap-2">
-                {[
-                  { value: 0, label: 'None' },
-                  { value: 1, label: '1 day' },
-                  { value: 3, label: '3 days' },
-                  { value: 7, label: '1 week' },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, reminder_days: opt.value }))}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={{
-                      backgroundColor: formData.reminder_days === opt.value ? 'var(--brand-primary)' : 'var(--bg-hover)',
-                      color: formData.reminder_days === opt.value ? 'white' : 'var(--text-secondary)',
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Optional Fields Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowOptional(!showOptional)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
-              style={{
-                backgroundColor: 'var(--bg-hover)',
-                color: 'var(--text-muted)'
-              }}
-            >
-              <span>{showOptional ? 'Hide' : 'Show'} optional fields</span>
-              <ChevronDown
-                className="w-4 h-4 transition-transform"
-                style={{ transform: showOptional ? 'rotate(180deg)' : 'rotate(0)' }}
-              />
-            </button>
-
-            {/* Optional Fields */}
-            {showOptional && (
-              <div className="space-y-5 pt-2">
-                {/* URL */}
-                <div className="stagger-item">
-                  <label className="flex items-center gap-2 mb-2">
-                    <Link className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    <span className="label">Website URL</span>
-                  </label>
+                  <div
+                    className="w-px self-stretch my-2"
+                    style={{ background: 'var(--border-default)' }}
+                  />
                   <input
-                    type="url"
-                    name="url"
-                    value={formData.url}
+                    id="item-amount"
+                    type="number"
+                    name="amount"
+                    value={formData.amount}
                     onChange={handleChange}
-                    placeholder="https://..."
-                    className="input w-full px-4 py-3 rounded-xl"
+                    placeholder="0.00"
+                    step="0.01"
+                    min={formData.status === 'trial' ? '0' : '0.01'}
+                    aria-label="Amount"
+                    aria-invalid={Boolean(errors.amount)}
+                    className="item-form-input flex-1 min-w-0 px-4 py-3.5 text-right focus:outline-none"
                     style={{
-                      borderColor: errors.url ? 'var(--accent-red)' : 'var(--border-default)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--text-primary)',
+                      fontSize: '1.25rem',
+                      fontWeight: 700,
                     }}
                   />
-                  {errors.url && (
-                    <p className="mt-1.5 text-sm" style={{ color: 'var(--accent-red)' }}>{errors.url}</p>
+                </div>
+                {errors.amount && (
+                  <p className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>{errors.amount}</p>
+                )}
+                {!errors.amount && formData.status === 'trial' && (
+                  <p className="item-form-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                    Trial subscriptions can use an amount of 0.
+                  </p>
+                )}
+              </div>
+
+              {/* Billing Cycle */}
+              <div className="item-form-field">
+                <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Frequency</span>
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {billingCycles.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          billing_cycle: value,
+                          next_billing_date: getNextFutureBillingDate(today, value),
+                        }));
+                      }}
+                      aria-pressed={formData.billing_cycle === value}
+                      className="py-3 rounded-xl text-xs font-semibold transition-all"
+                      style={{
+                        background: formData.billing_cycle === value ? config.gradient : 'var(--bg-hover)',
+                        color: formData.billing_cycle === value ? config.contrastText : 'var(--text-secondary)',
+                        boxShadow: formData.billing_cycle === value ? `0 4px 12px ${config.glowColor}` : 'none',
+                        fontFamily: "'Archivo', sans-serif",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div className="item-form-field">
+                <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Category</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {filteredCategories.slice(0, 7).map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, category_id: cat.id }))}
+                      aria-pressed={formData.category_id === cat.id}
+                      className="p-2.5 rounded-xl text-xs font-semibold transition-all text-center truncate"
+                      style={{
+                        backgroundColor: formData.category_id === cat.id ? cat.color : 'var(--bg-hover)',
+                        color: formData.category_id === cat.id ? 'white' : 'var(--text-secondary)',
+                        border: `2px solid ${formData.category_id === cat.id ? cat.color : 'transparent'}`,
+                        transform: formData.category_id === cat.id ? 'scale(1.01)' : 'scale(1)',
+                        fontFamily: "'Archivo', sans-serif",
+                      }}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                  {filteredCategories.length > 7 && (
+                    <select
+                      value={filteredCategories.slice(7).some(c => c.id === formData.category_id) ? formData.category_id : ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
+                      aria-label="More categories"
+                      className="p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                      style={{
+                        backgroundColor: 'var(--bg-hover)',
+                        border: '2px solid transparent',
+                        color: 'var(--text-secondary)',
+                        fontFamily: "'Archivo', sans-serif",
+                      }}
+                    >
+                      <option value="">More...</option>
+                      {filteredCategories.slice(7).map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="item-form-field grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="item-next-billing-date" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Next Billing</span>
+                    <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
+                  </label>
+                  <input
+                    id="item-next-billing-date"
+                    type="date"
+                    name="next_billing_date"
+                    value={formData.next_billing_date}
+                    onChange={handleChange}
+                    aria-invalid={Boolean(errors.next_billing_date)}
+                    aria-describedby={errors.next_billing_date ? 'next-billing-date-error' : undefined}
+                    className="item-form-input item-form-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                    style={{
+                      border: `2px solid ${errors.next_billing_date ? '#ef4444' : 'var(--border-default)'}`,
+                      background: 'var(--bg-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                  {errors.next_billing_date && (
+                    <p id="next-billing-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                      {errors.next_billing_date}
+                    </p>
+                  )}
+                  {!errors.next_billing_date && formData.next_billing_date && (
+                    <p className="item-form-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      Next charge on {formatDisplayDate(formData.next_billing_date)}
+                    </p>
                   )}
                 </div>
 
-                {/* Notes */}
-                <div className="stagger-item">
-                  <label className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    <span className="label">Notes</span>
+                <div>
+                  <label htmlFor="item-start-date" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Start Date</span>
+                    <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
                   </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
+                  <input
+                    id="item-start-date"
+                    type="date"
+                    name="start_date"
+                    value={formData.start_date}
                     onChange={handleChange}
-                    rows={3}
-                    placeholder="Any additional notes..."
-                    className="input w-full px-4 py-3 rounded-xl resize-none"
+                    aria-invalid={Boolean(errors.start_date)}
+                    aria-describedby={errors.start_date ? 'start-date-error' : undefined}
+                    className="item-form-input item-form-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                    style={{
+                      border: `2px solid ${errors.start_date ? '#ef4444' : 'var(--border-default)'}`,
+                      background: 'var(--bg-default)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
+                  {errors.start_date && (
+                    <p id="start-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                      {errors.start_date}
+                    </p>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-3 mt-8 pt-6" style={{ borderTop: '1px solid var(--border-default)' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSaving}
-              className="btn-secondary flex-1 px-6 py-3.5 rounded-xl font-semibold transition-all disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex-1 px-6 py-3.5 rounded-xl font-semibold transition-all disabled:opacity-50"
-              style={{
-                background: itemType === 'bill'
-                  ? 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)'
-                  : 'linear-gradient(135deg, var(--brand-primary) 0%, #06b6d4 100%)',
-                color: 'white',
-                boxShadow: itemType === 'bill'
-                  ? '0 4px 14px -3px rgba(245, 158, 11, 0.4)'
-                  : '0 4px 14px -3px rgba(34, 197, 94, 0.4)'
-              }}
-            >
-              {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : `Add ${labels.singular}`}
-            </button>
-          </div>
-        </form>
+              {/* Advanced Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                aria-expanded={showAdvanced}
+                className="item-form-field w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition-all"
+                style={{
+                  backgroundColor: 'var(--bg-hover)',
+                  color: 'var(--text-secondary)',
+                  fontFamily: "'Archivo', sans-serif",
+                  fontWeight: 600,
+                  fontSize: '0.8125rem',
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+                  {showAdvanced ? 'Hide' : 'Show'} Advanced Options
+                </span>
+                <ChevronDown
+                  className="w-4 h-4 transition-transform"
+                  style={{ transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0)' }}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {/* Advanced Fields */}
+              {showAdvanced && (
+                <div className="space-y-5 pt-1">
+                  {!isEditing && (
+                    <div className="item-form-field">
+                      <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                        <CircleDot className="w-3.5 h-3.5" />
+                        <span>Initial Status</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, status: 'active' }))}
+                          aria-pressed={formData.status === 'active'}
+                          className="p-3 rounded-xl text-xs font-semibold transition-all text-center"
+                          style={{
+                            backgroundColor: formData.status === 'active' ? 'var(--accent-green)' : 'var(--bg-hover)',
+                            color: formData.status === 'active' ? 'white' : 'var(--text-secondary)',
+                            border: `2px solid ${formData.status === 'active' ? 'var(--accent-green)' : 'transparent'}`,
+                            fontFamily: "'Archivo', sans-serif",
+                          }}
+                        >
+                          Active (Paid)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData(prev => ({
+                              ...prev,
+                              status: 'trial',
+                              amount: prev.amount.trim() === '' ? '0' : prev.amount,
+                            }))
+                          }
+                          aria-pressed={formData.status === 'trial'}
+                          className="p-3 rounded-xl text-xs font-semibold transition-all text-center"
+                          style={{
+                            backgroundColor: formData.status === 'trial' ? 'var(--accent-blue)' : 'var(--bg-hover)',
+                            color: formData.status === 'trial' ? 'white' : 'var(--text-secondary)',
+                            border: `2px solid ${formData.status === 'trial' ? 'var(--accent-blue)' : 'transparent'}`,
+                            fontFamily: "'Archivo', sans-serif",
+                          }}
+                        >
+                          Trial (Free)
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.status === 'trial' && (
+                    <div className="item-form-field">
+                      <label htmlFor="item-trial-end-date" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Trial Ends</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
+                      </label>
+                      <input
+                        id="item-trial-end-date"
+                        type="date"
+                        name="trial_end_date"
+                        value={formData.trial_end_date || ''}
+                        onChange={handleChange}
+                        min={today}
+                        className="item-form-input item-form-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                        style={{
+                          border: '2px solid var(--border-default)',
+                          background: 'var(--bg-default)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                      <p className="item-form-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {formData.trial_end_date
+                          ? `Trial expires on ${formatDisplayDate(formData.trial_end_date)}`
+                          : 'Leave empty for ongoing trials'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="item-form-field">
+                    <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Bell className="w-3.5 h-3.5" />
+                      <span>Reminder</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { value: 0, label: 'None' },
+                        { value: 1, label: '1 Day' },
+                        { value: 3, label: '3 Days' },
+                        { value: 7, label: '1 Week' },
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, reminder_days: opt.value }))}
+                          aria-pressed={formData.reminder_days === opt.value}
+                          className="py-3 rounded-xl text-xs font-semibold transition-all"
+                          style={{
+                            background: formData.reminder_days === opt.value ? config.gradient : 'var(--bg-hover)',
+                            color: formData.reminder_days === opt.value ? config.contrastText : 'var(--text-secondary)',
+                            boxShadow: formData.reminder_days === opt.value ? `0 4px 12px ${config.glowColor}` : 'none',
+                            fontFamily: "'Archivo', sans-serif",
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowOptional(!showOptional)}
+                    aria-expanded={showOptional}
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition-all"
+                    style={{
+                      backgroundColor: 'var(--bg-hover)',
+                      color: 'var(--text-muted)',
+                      fontFamily: "'Archivo', sans-serif",
+                      fontWeight: 600,
+                      fontSize: '0.8125rem',
+                    }}
+                  >
+                    <span>{showOptional ? 'Hide' : 'Show'} Optional Fields</span>
+                    <ChevronDown
+                      className="w-4 h-4 transition-transform"
+                      style={{ transform: showOptional ? 'rotate(180deg)' : 'rotate(0)' }}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {showOptional && (
+                    <div className="space-y-5 pt-1">
+                      <div className="item-form-field">
+                        <label htmlFor="item-url" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                          <Link className="w-3.5 h-3.5" />
+                          <span>Website URL</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
+                        </label>
+                        <input
+                          id="item-url"
+                          type="url"
+                          name="url"
+                          value={formData.url}
+                          onChange={handleChange}
+                          autoComplete="off"
+                          placeholder="https://example.com"
+                          aria-invalid={Boolean(errors.url)}
+                          aria-describedby={errors.url ? 'url-error' : undefined}
+                          className="item-form-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                          style={{
+                            border: `2px solid ${errors.url ? '#ef4444' : 'var(--border-default)'}`,
+                            background: 'var(--bg-default)',
+                            color: 'var(--text-primary)',
+                          }}
+                        />
+                        {errors.url && (
+                          <p id="url-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                            {errors.url}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="item-form-field">
+                        <label htmlFor="item-notes" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Notes</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
+                        </label>
+                        <textarea
+                          id="item-notes"
+                          name="notes"
+                          value={formData.notes}
+                          onChange={handleChange}
+                          rows={3}
+                          placeholder="Additional context or details..."
+                          className="item-form-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
+                          style={{
+                            border: '2px solid var(--border-default)',
+                            background: 'var(--bg-default)',
+                            color: 'var(--text-primary)',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 mt-6 pt-5" style={{ borderTop: '1px solid var(--border-default)' }}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSaving}
+                className="item-form-button flex-1 px-5 py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  border: '2px solid var(--border-default)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className={`item-form-button flex-1 px-5 py-4 rounded-xl disabled:cursor-not-allowed ${isSaving ? 'item-form-processing' : ''}`}
+                style={{
+                  background: config.gradient,
+                  color: config.contrastText,
+                  border: 'none',
+                  boxShadow: `0 4px 16px ${config.glowColor}`,
+                  opacity: isSaving ? 0.7 : 1,
+                }}
+              >
+                {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : `Add ${labels.singular}`}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

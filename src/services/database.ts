@@ -30,6 +30,20 @@ async function getUserId(): Promise<string> {
   return user.id;
 }
 
+function assertValidAmountForStatus(amount: number, status: ItemStatus): void {
+  if (!Number.isFinite(amount)) {
+    throw new Error('Amount must be a valid number');
+  }
+
+  if (amount < 0) {
+    throw new Error('Amount cannot be negative');
+  }
+
+  if (status !== 'trial' && amount === 0) {
+    throw new Error('Amount must be greater than 0 for paid items');
+  }
+}
+
 // ============ Categories ============
 
 export async function getCategories(type?: ItemType): Promise<Category[]> {
@@ -155,6 +169,8 @@ export async function createItem(data: {
   trial_end_date?: string;
 }): Promise<Item> {
   const userId = await getUserId();
+  const initialStatus = data.status || 'active';
+  assertValidAmountForStatus(data.amount, initialStatus);
 
   const insertData: any = {
     user_id: userId,
@@ -170,11 +186,11 @@ export async function createItem(data: {
     url: data.url || null,
     logo_url: data.logo_url || null,
     reminder_days: data.reminder_days ?? 3,
-    status: data.status || 'active',
+    status: initialStatus,
   };
 
   // Set trial-specific fields if status is trial
-  if (data.status === 'trial') {
+  if (initialStatus === 'trial') {
     insertData.trial_started_at = new Date().toISOString();
     insertData.trial_end_date = data.trial_end_date || null;
   }
@@ -193,6 +209,23 @@ export async function updateItem(
   data: Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>>
 ): Promise<void> {
   const userId = await getUserId();
+
+  if ('amount' in data && data.amount !== undefined) {
+    const { data: statusRow, error: statusError } = await supabase
+      .from('items')
+      .select('status')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (statusError) {
+      if (statusError.code === 'PGRST116') throw new Error('Item not found');
+      throw statusError;
+    }
+
+    assertValidAmountForStatus(data.amount, statusRow.status as ItemStatus);
+  }
+
   // Filter out undefined/non-present fields
   const updateData: Record<string, unknown> = {};
   const fields = [
@@ -209,6 +242,7 @@ export async function updateItem(
     'logo_url',
     'is_active',
     'reminder_days',
+    'trial_end_date',
   ] as const;
   for (const field of fields) {
     if (field in data) {
@@ -330,6 +364,10 @@ export async function executeStatusChange(
       break;
 
     case 'active':
+      if (data.action === 'convert' && item.amount === 0) {
+        throw new Error('Set an amount greater than 0 before converting this trial to paid');
+      }
+
       // Resume: clear all non-active status fields
       updateData.paused_at = null;
       updateData.paused_until = null;

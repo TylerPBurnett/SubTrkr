@@ -186,8 +186,6 @@ export default function StatusChangeDialog({
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Archivo:wght@400;500;600;700;800;900&display=swap');
-
         @keyframes fadeInScale {
           from {
             opacity: 0;

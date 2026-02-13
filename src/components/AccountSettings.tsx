@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, RefreshCw } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { signOut } from '../services/auth';
+import { checkForUpdates } from '../services/updater';
 
 export default function AccountSettings() {
   const [userEmail, setUserEmail] = useState<string>('');
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -19,6 +22,18 @@ export default function AccountSettings() {
       await signOut();
     } catch (error) {
       console.error('Failed to sign out:', error);
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true);
+    setUpdateMessage('');
+
+    try {
+      const result = await checkForUpdates();
+      setUpdateMessage(result.message || '');
+    } finally {
+      setIsCheckingUpdates(false);
     }
   };
 
@@ -68,6 +83,20 @@ export default function AccountSettings() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Your data is securely stored in the cloud and synced across all your devices.
           </p>
+          <button
+            type="button"
+            onClick={handleCheckForUpdates}
+            disabled={isCheckingUpdates}
+            className="btn-secondary inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-4 h-4 ${isCheckingUpdates ? 'animate-spin' : ''}`} />
+            {isCheckingUpdates ? 'Checking for updates...' : 'Check for updates'}
+          </button>
+          {updateMessage ? (
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {updateMessage}
+            </p>
+          ) : null}
         </div>
 
         {/* Divider */}

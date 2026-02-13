@@ -4,6 +4,7 @@ import type { ItemType } from '../../types';
 import ServiceLogo from './ServiceLogo';
 
 interface ServiceAutocompleteProps {
+  id?: string;
   value: string;
   itemType: ItemType;
   onChange: (value: string) => void;
@@ -14,6 +15,7 @@ interface ServiceAutocompleteProps {
 }
 
 export default function ServiceAutocomplete({
+  id,
   value,
   itemType,
   onChange,
@@ -128,6 +130,7 @@ export default function ServiceAutocomplete({
   return (
     <div className="relative">
       <input
+        id={id}
         ref={inputRef}
         type="text"
         name="name"
@@ -142,6 +145,8 @@ export default function ServiceAutocomplete({
         placeholder={placeholder}
         autoFocus={autoFocus}
         autoComplete="off"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error && id ? `${id}-error` : undefined}
         className="w-full px-4 py-3 rounded-xl text-base transition-all duration-200"
         style={{
           backgroundColor: 'var(--bg-input)',
@@ -199,7 +204,7 @@ export default function ServiceAutocomplete({
       )}
 
       {error && (
-        <p className="mt-1 text-sm text-red-500">{error}</p>
+        <p id={id ? `${id}-error` : undefined} className="mt-1 text-sm text-red-500">{error}</p>
       )}
     </div>
   );

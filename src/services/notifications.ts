@@ -92,14 +92,21 @@ export async function sendTrialExpiringReminder(
     style: 'currency',
     currency: item.currency,
   }).format(item.amount);
+  const hasPaidAmount = item.amount > 0;
 
   let body: string;
   if (daysUntil === 0) {
-    body = `${item.name} trial expires today! Convert to paid (${amount}/${item.billing_cycle}) or cancel.`;
+    body = hasPaidAmount
+      ? `${item.name} trial expires today! Convert to paid (${amount}/${item.billing_cycle}) or cancel.`
+      : `${item.name} trial expires today! Set a paid amount, then convert or cancel.`;
   } else if (daysUntil === 1) {
-    body = `${item.name} trial expires tomorrow. Convert to paid (${amount}/${item.billing_cycle}) or cancel.`;
+    body = hasPaidAmount
+      ? `${item.name} trial expires tomorrow. Convert to paid (${amount}/${item.billing_cycle}) or cancel.`
+      : `${item.name} trial expires tomorrow. Set a paid amount, then convert or cancel.`;
   } else {
-    body = `${item.name} trial expires in ${daysUntil} days. Full price: ${amount}/${item.billing_cycle}`;
+    body = hasPaidAmount
+      ? `${item.name} trial expires in ${daysUntil} days. Full price: ${amount}/${item.billing_cycle}`
+      : `${item.name} trial expires in ${daysUntil} days. Add the paid amount before converting to active.`;
   }
 
   await sendNotification({

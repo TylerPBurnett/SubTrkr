@@ -104,7 +104,7 @@ Manage all your subscriptions in one place. See upcoming bills, track trials, an
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/SubTrkr.git
+git clone https://github.com/TylerPBurnett/SubTrkr.git
 cd SubTrkr
 
 # Install dependencies (requires Bun)
@@ -119,6 +119,22 @@ bun tauri dev
 
 # Build for production
 bun tauri build
+```
+
+---
+
+## 📦 Production Releases
+
+SubTrkr now includes a production distribution pipeline for signed desktop releases and in-app updates.
+
+- Release runbook: [`docs/PRODUCTION_RELEASE_WORKFLOW.md`](docs/PRODUCTION_RELEASE_WORKFLOW.md)
+- GitHub releases: [SubTrkr Releases](https://github.com/TylerPBurnett/SubTrkr/releases)
+
+Release trigger:
+
+```bash
+git tag v1.0.0
+git push origin main --tags
 ```
 
 ---
@@ -204,7 +220,7 @@ Contributions are welcome! Whether it's:
 - 📝 Documentation improvements
 - 🔧 Code contributions
 
-Check out the [issues](https://github.com/yourusername/SubTrkr/issues) to get started.
+Check out the [issues](https://github.com/TylerPBurnett/SubTrkr/issues) to get started.
 
 ---
 
@@ -218,6 +234,6 @@ MIT © TylerPBurnett
 
 **Built with care for people tired of subscription chaos.**
 
-[Report Bug](https://github.com/yourusername/SubTrkr/issues) · [Request Feature](https://github.com/yourusername/SubTrkr/issues) · [Discussions](https://github.com/yourusername/SubTrkr/discussions)
+[Report Bug](https://github.com/TylerPBurnett/SubTrkr/issues) · [Request Feature](https://github.com/TylerPBurnett/SubTrkr/issues) · [Discussions](https://github.com/TylerPBurnett/SubTrkr/discussions)
 
 </div>

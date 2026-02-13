@@ -29,6 +29,7 @@ import {
 import { supabase } from './services/supabase';
 import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
 import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './services/notifications';
+import { checkForUpdatesOnLaunch } from './services/updater';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
@@ -132,6 +133,15 @@ function App() {
       loadData();
     }
   }, [session, loadData]);
+
+  // Check for app updates after login on desktop builds.
+  useEffect(() => {
+    if (!session) return;
+
+    checkForUpdatesOnLaunch().catch((updateError) => {
+      console.warn('Automatic update check failed:', updateError);
+    });
+  }, [session]);
 
   // Seed default categories on first login
   useEffect(() => {

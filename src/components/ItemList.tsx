@@ -472,9 +472,7 @@ function ItemList({
         case "trial":
           return {
             label: "Trial",
-            date: item.trial_end_date
-              ? formatShortDate(item.trial_end_date)
-              : null,
+            date: null,
             background: "var(--accent-blue-muted)",
             color: "var(--accent-blue)",
           };
@@ -682,9 +680,7 @@ function ItemList({
                           letterSpacing: "0.02em",
                         }}
                       >
-                        TRIAL{" "}
-                        {item.trial_end_date &&
-                          `· ${formatShortDate(item.trial_end_date)}`}
+                        TRIAL
                       </div>
                     )}
                     {item.status === "paused" && (
@@ -805,6 +801,14 @@ function ItemList({
                         {formatDisplayDate(item.next_billing_date)}
                       </span>
                     </div>
+                    {item.status === "trial" && item.trial_end_date ? (
+                      <p
+                        className="mt-2 text-xs font-mono"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        Trial ends {formatDisplayDate(item.trial_end_date)}
+                      </p>
+                    ) : null}
                   </motion.div>
                 );
               })}
@@ -987,7 +991,17 @@ function ItemList({
                               {formatCurrency(item.amount, item.currency)}
                             </td>
                             <td className="px-5 py-4">
-                              {renderStatusPill(item)}
+                              <div className="flex flex-col items-start gap-1">
+                                {renderStatusPill(item)}
+                                {item.status === "trial" && item.trial_end_date ? (
+                                  <span
+                                    className="text-[11px] font-mono"
+                                    style={{ color: "var(--text-secondary)" }}
+                                  >
+                                    Ends {formatShortDate(item.trial_end_date)}
+                                  </span>
+                                ) : null}
+                              </div>
                             </td>
                             <td className="px-5 py-4 text-right">
                               {renderActionsMenu(item)}
