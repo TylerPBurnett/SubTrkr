@@ -16,10 +16,10 @@ jobs:
         include:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
-            apple_signing_identity: -
+            apple_signing_identity: '-'
           - platform: macos-latest
             args: --target x86_64-apple-darwin
-            apple_signing_identity: -
+            apple_signing_identity: '-'
           - platform: ubuntu-22.04
             args: ''
             apple_signing_identity: ''
