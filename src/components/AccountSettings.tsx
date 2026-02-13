@@ -4,6 +4,8 @@ import { supabase } from '../services/supabase';
 import { signOut } from '../services/auth';
 import { checkForUpdates } from '../services/updater';
 
+const APP_VERSION = __APP_VERSION__;
+
 export default function AccountSettings() {
   const [userEmail, setUserEmail] = useState<string>('');
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
@@ -75,7 +77,7 @@ export default function AccountSettings() {
         <div className="label mb-3">About</div>
         <div className="space-y-3">
           <p className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            SubTrkr <span style={{ color: 'var(--text-muted)' }}>v1.0.0</span>
+            SubTrkr <span style={{ color: 'var(--text-muted)' }}>v{APP_VERSION}</span>
           </p>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             A cloud-native subscription and bills tracker built with Tauri, React, and Supabase.
