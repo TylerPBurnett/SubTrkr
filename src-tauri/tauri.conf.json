@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "subtrkr",
-  "version": "1.0.8",
-  "identifier": "subtrkr.app",
+  "version": "1.0.9",
+  "identifier": "com.tylerpburnett.subtrkr",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",

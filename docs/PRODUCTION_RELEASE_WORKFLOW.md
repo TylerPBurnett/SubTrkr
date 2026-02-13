@@ -83,10 +83,11 @@ Important: The CI private key and app `pubkey` must always be a matching pair.
 
 Updater signatures secure update integrity, but OS trust prompts are separate.
 
-- macOS: configure Apple code signing + notarization.
+- macOS: release CI uses ad-hoc app signing (`APPLE_SIGNING_IDENTITY: "-"`) to avoid broken/damaged bundle signatures.
+- macOS: configure Apple Developer ID code signing + notarization for best install UX.
 - Windows: configure Authenticode signing certificate.
 
-Without platform signing, installs still work but user trust prompts are stronger.
+Without Developer ID / Authenticode trust signing, installs still work but user trust prompts are stronger.
 
 ## Release Process (Stable)
 
@@ -273,6 +274,18 @@ rm -f "$tmp" "$tmp.sig"
 
 - Ensure `src-tauri/tauri.conf.json` `plugins.updater.pubkey` matches the CI signing private key.
 - If key was rotated, release clients built with the new pubkey before expecting updates signed by that key.
+
+### macOS says "<app> is damaged and can't be opened"
+
+- Root cause is usually an invalid app bundle signature (missing/invalid `Contents/_CodeSignature/CodeResources`).
+- Ensure release workflow sets `APPLE_SIGNING_IDENTITY: "-"` (ad-hoc signing) for macOS jobs at minimum.
+- Validate a built app bundle before shipping:
+
+```bash
+codesign --verify --deep --strict --verbose=2 /path/to/subtrkr.app
+```
+
+- For production-grade UX, add Apple Developer ID signing + notarization; ad-hoc signing prevents broken bundles but is not trusted notarization.
 
 ### Workflow builds but no `latest.json`
 
