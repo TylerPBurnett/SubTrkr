@@ -4,7 +4,7 @@ import {
   AlertCircle,
   Receipt,
   CreditCard,
-  Calendar,
+  Calendar as CalendarIcon,
   Tag,
   Bell,
   Link,
@@ -20,6 +20,7 @@ import ServiceAutocomplete from './ui/ServiceAutocomplete';
 import ServiceLogo from './ui/ServiceLogo';
 import { getServiceLogoUrl, type KnownService } from '../data/knownServices';
 import { getLogoUrl } from '../config/logoApi';
+import { DatePicker } from './ui/date-picker';
 
 interface ItemFormProps {
   item?: ItemWithCategory | null;
@@ -103,9 +104,9 @@ export default function ItemForm({
 
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormData, string>>>({});
   const [shake, setShake] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showOptional, setShowOptional] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [hasServiceSelection, setHasServiceSelection] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -131,18 +132,18 @@ export default function ItemForm({
         trial_end_date: item.trial_end_date || '',
       });
 
-      const hasAdvancedData =
+      const hasMoreData =
         item.status === 'trial' ||
         item.reminder_days !== 3 ||
         Boolean(item.trial_end_date) ||
         Boolean(item.notes) ||
         Boolean(item.url);
 
-      setShowAdvanced(hasAdvancedData);
-      setShowOptional(Boolean(item.notes || item.url));
+      setShowMore(hasMoreData);
+      setHasServiceSelection(Boolean(item.logo_url));
     } else {
-      setShowAdvanced(false);
-      setShowOptional(false);
+      setShowMore(false);
+      setHasServiceSelection(false);
     }
   }, [item]);
 
@@ -275,8 +276,31 @@ export default function ItemForm({
       url: `https://${service.domain}`,
     }));
 
+    setHasServiceSelection(true);
+
     if (errors.name) {
       setErrors(prev => ({ ...prev, name: undefined }));
+    }
+  };
+
+  const handleClearService = () => {
+    if (hasServiceSelection) {
+      // Full reset — clear all service-auto-filled fields
+      setHasServiceSelection(false);
+      setFormData(prev => ({
+        ...prev,
+        name: '',
+        amount: '',
+        currency: 'USD',
+        billing_cycle: 'monthly',
+        category_id: '',
+        logo_url: '',
+        url: '',
+        next_billing_date: getNextFutureBillingDate(today, 'monthly'),
+      }));
+    } else {
+      // Simple clear — just wipe the name
+      setFormData(prev => ({ ...prev, name: '' }));
     }
   };
 
@@ -325,25 +349,30 @@ export default function ItemForm({
           letter-spacing: 0.08em;
         }
 
-        .item-form-input {
+        .item-form-input,
+        .item-form-input:focus,
+        .item-form-input:focus-visible {
           font-family: 'JetBrains Mono', monospace;
           font-weight: 500;
           font-size: 0.9375rem;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          outline: none !important;
+          box-shadow: none !important;
         }
 
         .item-form-input:focus {
           transform: translateY(-1px);
         }
 
-        .item-form-date-input::-webkit-calendar-picker-indicator {
-          cursor: pointer;
-          opacity: 0.6;
-          transition: opacity 0.2s;
+        /* Hide number input spinners */
+        .item-form-input[type="number"]::-webkit-inner-spin-button,
+        .item-form-input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
         }
 
-        .item-form-date-input::-webkit-calendar-picker-indicator:hover {
-          opacity: 1;
+        .item-form-input[type="number"] {
+          -moz-appearance: textfield;
         }
 
         .item-form-button {
@@ -538,77 +567,78 @@ export default function ItemForm({
               </div>
             )}
 
-            {/* Preview Card — compact inline when content exists */}
-            {(isEditing || formData.name.trim()) && (
-              <div
-                className="mb-6 p-5 rounded-2xl item-form-field"
-                style={{
-                  background: `linear-gradient(135deg, ${config.glowColor}, transparent)`,
-                  border: `1px solid ${isBill ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)'}`,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="relative group">
-                    <ServiceLogo
-                      logoUrl={formData.logo_url || null}
-                      name={formData.name || 'Service'}
-                      size="md"
-                      itemType={itemType}
-                      categoryName={selectedCategory?.name}
-                      categoryColor={selectedCategory?.color}
-                    />
-                    {formData.logo_url && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
-                        aria-label="Clear logo"
-                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                        style={{
-                          backgroundColor: 'var(--accent-red)',
-                          color: 'white'
-                        }}
-                        title="Clear logo"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="font-semibold text-base truncate"
-                      style={{ color: 'var(--text-primary)' }}
+            {/* Preview Card — always visible with placeholder state */}
+            <div
+              className="mb-6 p-5 rounded-2xl item-form-field transition-all duration-300"
+              style={{
+                background: formData.name.trim()
+                  ? `linear-gradient(135deg, ${config.glowColor}, transparent)`
+                  : 'var(--bg-hover)',
+                border: `1px solid ${formData.name.trim()
+                  ? (isBill ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)')
+                  : 'var(--border-default)'}`,
+                opacity: formData.name.trim() ? 1 : 0.7,
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative group">
+                  <ServiceLogo
+                    logoUrl={formData.logo_url || null}
+                    name={formData.name || 'Service'}
+                    size="md"
+                    itemType={itemType}
+                    categoryName={selectedCategory?.name}
+                    categoryColor={selectedCategory?.color}
+                  />
+                  {formData.logo_url && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
+                      aria-label="Clear logo"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      style={{
+                        backgroundColor: 'var(--accent-red)',
+                        color: 'white'
+                      }}
+                      title="Clear logo"
                     >
-                      {formData.name || 'Service name'}
-                    </p>
-                    <p className="item-form-mono" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
-                      {selectedCategory?.name || 'Category'} • {billingCycles.find(c => c.value === formData.billing_cycle)?.label || 'Monthly'}
-                    </p>
-                  </div>
-                  {formData.amount && (
-                    <div className="text-right">
-                      <p
-                        className="item-form-mono"
-                        style={{
-                          fontWeight: 700,
-                          color: 'var(--text-primary)',
-                          fontSize: '1.125rem',
-                        }}
-                      >
-                        {(currencies.find(c => c.code === formData.currency) || currencies[0]).symbol}
-                        {(() => {
-                          const num = parseFloat(formData.amount);
-                          if (isNaN(num)) return '0.00';
-                          return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        })()}
-                      </p>
-                      <p className="item-form-mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 600 }}>
-                        {billingCycles.find(c => c.value === formData.billing_cycle)?.short || '/mo'}
-                      </p>
-                    </div>
+                      <X className="w-3 h-3" />
+                    </button>
                   )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="font-semibold text-base truncate"
+                    style={{ color: formData.name.trim() ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                  >
+                    {formData.name || `${labels.singular} name`}
+                  </p>
+                  <p className="item-form-mono" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
+                    {selectedCategory?.name || 'Category'} • {billingCycles.find(c => c.value === formData.billing_cycle)?.label || 'Monthly'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p
+                    className="item-form-mono"
+                    style={{
+                      fontWeight: 700,
+                      color: formData.amount ? 'var(--text-primary)' : 'var(--text-muted)',
+                      fontSize: '1.125rem',
+                    }}
+                  >
+                    {(currencies.find(c => c.code === formData.currency) || currencies[0]).symbol}
+                    {(() => {
+                      const num = parseFloat(formData.amount);
+                      if (isNaN(num) || !formData.amount) return '0.00';
+                      return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    })()}
+                  </p>
+                  <p className="item-form-mono" style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 600 }}>
+                    {billingCycles.find(c => c.value === formData.billing_cycle)?.short || '/mo'}
+                  </p>
+                </div>
               </div>
-            )}
+            </div>
 
             <div className="space-y-5">
               {/* Service Name */}
@@ -616,34 +646,26 @@ export default function ItemForm({
                 <label htmlFor="item-name" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{labels.singular} Name</span>
+                  <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
                 </label>
                 <ServiceAutocomplete
                   id="item-name"
                   value={formData.name}
                   itemType={itemType}
                   onChange={(value) => {
-                    setFormData(prev => {
-                      const urlGeneratedLogo = prev.url ? (() => {
-                        try {
-                          const urlObj = new URL(prev.url);
-                          const domain = urlObj.hostname.replace(/^www\./, '');
-                          return getLogoUrl(domain);
-                        } catch {
-                          return null;
-                        }
-                      })() : null;
-
-                      return {
-                        ...prev,
-                        name: value,
-                        logo_url: urlGeneratedLogo === prev.logo_url ? prev.logo_url : ''
-                      };
-                    });
+                    // Only reset service data when name is fully cleared
+                    if (!value && hasServiceSelection) {
+                      handleClearService();
+                    } else {
+                      setFormData(prev => ({ ...prev, name: value }));
+                    }
                     if (errors.name) {
                       setErrors(prev => ({ ...prev, name: undefined }));
                     }
                   }}
                   onServiceSelect={handleServiceSelect}
+                  onClear={handleClearService}
+                  showClear={formData.name.length > 0}
                   placeholder={labels.namePlaceholder}
                   error={errors.name}
                   autoFocus={!isEditing}
@@ -653,8 +675,9 @@ export default function ItemForm({
               {/* Amount */}
               <div className="item-form-field">
                 <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
+                  <CalendarIcon className="w-3.5 h-3.5" />
                   <span>Amount</span>
+                  <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
                 </label>
                 {/* Unified currency + amount input */}
                 <div
@@ -723,7 +746,7 @@ export default function ItemForm({
               {/* Billing Cycle */}
               <div className="item-form-field">
                 <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
+                  <CalendarIcon className="w-3.5 h-3.5" />
                   <span>Frequency</span>
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -764,7 +787,7 @@ export default function ItemForm({
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, category_id: cat.id }))}
+                      onClick={() => setFormData(prev => ({ ...prev, category_id: prev.category_id === cat.id ? '' : cat.id }))}
                       aria-pressed={formData.category_id === cat.id}
                       className="p-2.5 rounded-xl text-xs font-semibold transition-all text-center truncate"
                       style={{
@@ -803,25 +826,51 @@ export default function ItemForm({
               {/* Dates */}
               <div className="item-form-field grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="item-next-billing-date" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    <Calendar className="w-3.5 h-3.5" />
+                  <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    <span>Start Date</span>
+                    <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
+                  </label>
+                  <DatePicker
+                    id="item-start-date"
+                    value={formData.start_date}
+                    onChange={(date) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        start_date: date,
+                        next_billing_date: getNextFutureBillingDate(date, prev.billing_cycle),
+                      }));
+                      if (errors.start_date) {
+                        setErrors(prev => ({ ...prev, start_date: undefined }));
+                      }
+                    }}
+                    error={Boolean(errors.start_date)}
+                    placeholder="Select start date"
+                  />
+                  {errors.start_date && (
+                    <p id="start-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                      {errors.start_date}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    <CalendarIcon className="w-3.5 h-3.5" />
                     <span>Next Billing</span>
                     <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
                   </label>
-                  <input
+                  <DatePicker
                     id="item-next-billing-date"
-                    type="date"
-                    name="next_billing_date"
                     value={formData.next_billing_date}
-                    onChange={handleChange}
-                    aria-invalid={Boolean(errors.next_billing_date)}
-                    aria-describedby={errors.next_billing_date ? 'next-billing-date-error' : undefined}
-                    className="item-form-input item-form-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                    style={{
-                      border: `2px solid ${errors.next_billing_date ? '#ef4444' : 'var(--border-default)'}`,
-                      background: 'var(--bg-default)',
-                      color: 'var(--text-primary)',
+                    onChange={(date) => {
+                      setFormData(prev => ({ ...prev, next_billing_date: date }));
+                      if (errors.next_billing_date) {
+                        setErrors(prev => ({ ...prev, next_billing_date: undefined }));
+                      }
                     }}
+                    error={Boolean(errors.next_billing_date)}
+                    placeholder="Select billing date"
                   />
                   {errors.next_billing_date && (
                     <p id="next-billing-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
@@ -834,41 +883,13 @@ export default function ItemForm({
                     </p>
                   )}
                 </div>
-
-                <div>
-                  <label htmlFor="item-start-date" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Start Date</span>
-                    <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
-                  </label>
-                  <input
-                    id="item-start-date"
-                    type="date"
-                    name="start_date"
-                    value={formData.start_date}
-                    onChange={handleChange}
-                    aria-invalid={Boolean(errors.start_date)}
-                    aria-describedby={errors.start_date ? 'start-date-error' : undefined}
-                    className="item-form-input item-form-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                    style={{
-                      border: `2px solid ${errors.start_date ? '#ef4444' : 'var(--border-default)'}`,
-                      background: 'var(--bg-default)',
-                      color: 'var(--text-primary)',
-                    }}
-                  />
-                  {errors.start_date && (
-                    <p id="start-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
-                      {errors.start_date}
-                    </p>
-                  )}
-                </div>
               </div>
 
-              {/* Advanced Toggle */}
+              {/* More Options Toggle */}
               <button
                 type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                aria-expanded={showAdvanced}
+                onClick={() => setShowMore(!showMore)}
+                aria-expanded={showMore}
                 className="item-form-field w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition-all"
                 style={{
                   backgroundColor: 'var(--bg-hover)',
@@ -880,17 +901,17 @@ export default function ItemForm({
               >
                 <span className="flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
-                  {showAdvanced ? 'Hide' : 'Show'} Advanced Options
+                  {showMore ? 'Hide' : 'More'} Options
                 </span>
                 <ChevronDown
                   className="w-4 h-4 transition-transform"
-                  style={{ transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0)' }}
+                  style={{ transform: showMore ? 'rotate(180deg)' : 'rotate(0)' }}
                   aria-hidden="true"
                 />
               </button>
 
-              {/* Advanced Fields */}
-              {showAdvanced && (
+              {/* Expanded Options — all in one flat section */}
+              {showMore && (
                 <div className="space-y-5 pt-1">
                   {!isEditing && (
                     <div className="item-form-field">
@@ -939,24 +960,19 @@ export default function ItemForm({
 
                   {formData.status === 'trial' && (
                     <div className="item-form-field">
-                      <label htmlFor="item-trial-end-date" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                        <Calendar className="w-3.5 h-3.5" />
+                      <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                        <CalendarIcon className="w-3.5 h-3.5" />
                         <span>Trial Ends</span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
                       </label>
-                      <input
+                      <DatePicker
                         id="item-trial-end-date"
-                        type="date"
-                        name="trial_end_date"
                         value={formData.trial_end_date || ''}
-                        onChange={handleChange}
-                        min={today}
-                        className="item-form-input item-form-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                        style={{
-                          border: '2px solid var(--border-default)',
-                          background: 'var(--bg-default)',
-                          color: 'var(--text-primary)',
+                        onChange={(date) => {
+                          setFormData(prev => ({ ...prev, trial_end_date: date }));
                         }}
+                        min={today}
+                        placeholder="Select trial end date"
                       />
                       <p className="item-form-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {formData.trial_end_date
@@ -997,82 +1013,57 @@ export default function ItemForm({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowOptional(!showOptional)}
-                    aria-expanded={showOptional}
-                    className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition-all"
-                    style={{
-                      backgroundColor: 'var(--bg-hover)',
-                      color: 'var(--text-muted)',
-                      fontFamily: "'Archivo', sans-serif",
-                      fontWeight: 600,
-                      fontSize: '0.8125rem',
-                    }}
-                  >
-                    <span>{showOptional ? 'Hide' : 'Show'} Optional Fields</span>
-                    <ChevronDown
-                      className="w-4 h-4 transition-transform"
-                      style={{ transform: showOptional ? 'rotate(180deg)' : 'rotate(0)' }}
-                      aria-hidden="true"
+                  <div className="item-form-field">
+                    <label htmlFor="item-url" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Link className="w-3.5 h-3.5" />
+                      <span>Website URL</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
+                    </label>
+                    <input
+                      id="item-url"
+                      type="url"
+                      name="url"
+                      value={formData.url}
+                      onChange={handleChange}
+                      autoComplete="off"
+                      placeholder="https://example.com"
+                      aria-invalid={Boolean(errors.url)}
+                      aria-describedby={errors.url ? 'url-error' : undefined}
+                      className="item-form-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                      style={{
+                        border: `2px solid ${errors.url ? '#ef4444' : 'var(--border-default)'}`,
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
                     />
-                  </button>
+                    {errors.url && (
+                      <p id="url-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                        {errors.url}
+                      </p>
+                    )}
+                  </div>
 
-                  {showOptional && (
-                    <div className="space-y-5 pt-1">
-                      <div className="item-form-field">
-                        <label htmlFor="item-url" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                          <Link className="w-3.5 h-3.5" />
-                          <span>Website URL</span>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
-                        </label>
-                        <input
-                          id="item-url"
-                          type="url"
-                          name="url"
-                          value={formData.url}
-                          onChange={handleChange}
-                          autoComplete="off"
-                          placeholder="https://example.com"
-                          aria-invalid={Boolean(errors.url)}
-                          aria-describedby={errors.url ? 'url-error' : undefined}
-                          className="item-form-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                          style={{
-                            border: `2px solid ${errors.url ? '#ef4444' : 'var(--border-default)'}`,
-                            background: 'var(--bg-default)',
-                            color: 'var(--text-primary)',
-                          }}
-                        />
-                        {errors.url && (
-                          <p id="url-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
-                            {errors.url}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="item-form-field">
-                        <label htmlFor="item-notes" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Notes</span>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
-                        </label>
-                        <textarea
-                          id="item-notes"
-                          name="notes"
-                          value={formData.notes}
-                          onChange={handleChange}
-                          rows={3}
-                          placeholder="Additional context or details..."
-                          className="item-form-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
-                          style={{
-                            border: '2px solid var(--border-default)',
-                            background: 'var(--bg-default)',
-                            color: 'var(--text-primary)',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <div className="item-form-field">
+                    <label htmlFor="item-notes" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Notes</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
+                    </label>
+                    <textarea
+                      id="item-notes"
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleChange}
+                      rows={3}
+                      placeholder="Additional context or details..."
+                      className="item-form-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
+                      style={{
+                        border: '2px solid var(--border-default)',
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>

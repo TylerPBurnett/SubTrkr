@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { X } from 'lucide-react';
 import { searchServices, getServiceLogoUrl, type KnownService } from '../../data/knownServices';
 import type { ItemType } from '../../types';
 import ServiceLogo from './ServiceLogo';
@@ -9,6 +10,8 @@ interface ServiceAutocompleteProps {
   itemType: ItemType;
   onChange: (value: string) => void;
   onServiceSelect: (service: KnownService) => void;
+  onClear?: () => void;
+  showClear?: boolean;
   placeholder?: string;
   error?: string;
   autoFocus?: boolean;
@@ -20,6 +23,8 @@ export default function ServiceAutocomplete({
   itemType,
   onChange,
   onServiceSelect,
+  onClear,
+  showClear,
   placeholder,
   error,
   autoFocus,
@@ -30,6 +35,7 @@ export default function ServiceAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const justSelectedRef = useRef(false);
 
   // Debounced search
   const search = useCallback((query: string) => {
@@ -45,8 +51,12 @@ export default function ServiceAutocomplete({
     }, 150);
   }, [itemType]);
 
-  // Search when value changes
+  // Search when value changes (skip if we just selected a service)
   useEffect(() => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
     search(value);
   }, [value, search]);
 
@@ -81,6 +91,7 @@ export default function ServiceAutocomplete({
   };
 
   const handleSelect = (service: KnownService) => {
+    justSelectedRef.current = true;
     onServiceSelect(service);
     setIsOpen(false);
     setSuggestions([]);
@@ -129,32 +140,48 @@ export default function ServiceAutocomplete({
 
   return (
     <div className="relative">
-      <input
-        id={id}
-        ref={inputRef}
-        type="text"
-        name="name"
-        value={value}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        onFocus={() => {
-          if (suggestions.length > 0 && value.length > 0) {
-            setIsOpen(true);
-          }
-        }}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        autoComplete="off"
-        aria-invalid={Boolean(error)}
-        aria-describedby={error && id ? `${id}-error` : undefined}
-        className="w-full px-4 py-3 rounded-xl text-base transition-all duration-200"
-        style={{
-          backgroundColor: 'var(--bg-input)',
-          border: error ? '2px solid #ef4444' : '2px solid transparent',
-          color: 'var(--text-primary)',
-          outline: 'none',
-        }}
-      />
+      <div className="relative">
+        <input
+          id={id}
+          ref={inputRef}
+          type="text"
+          name="name"
+          value={value}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            if (suggestions.length > 0 && value.length > 0) {
+              setIsOpen(true);
+            }
+          }}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          autoComplete="off"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error && id ? `${id}-error` : undefined}
+          className="item-form-input w-full px-4 py-3.5 rounded-xl transition-all duration-200"
+          style={{
+            backgroundColor: 'var(--bg-default)',
+            border: error ? '2px solid #ef4444' : '2px solid var(--border-default)',
+            color: 'var(--text-primary)',
+            paddingRight: showClear ? '44px' : '16px',
+          }}
+        />
+        {showClear && onClear && (
+          <button
+            type="button"
+            onClick={() => {
+              onClear();
+              inputRef.current?.focus();
+            }}
+            aria-label="Clear selection"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       {isOpen && suggestions.length > 0 && (
         <div
@@ -204,7 +231,7 @@ export default function ServiceAutocomplete({
       )}
 
       {error && (
-        <p id={id ? `${id}-error` : undefined} className="mt-1 text-sm text-red-500">{error}</p>
+        <p id={id ? `${id}-error` : undefined} className="mt-2" style={{ color: '#ef4444', fontSize: '0.75rem', fontFamily: "'JetBrains Mono', monospace" }}>{error}</p>
       )}
     </div>
   );
