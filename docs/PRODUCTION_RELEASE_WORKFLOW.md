@@ -99,6 +99,7 @@ git push origin main --tags
 - Ensure:
   - `plugins.updater.pubkey` matches the private key used in CI
   - CI secret `TAURI_SIGNING_PRIVATE_KEY` contains the matching private key
+- If you rotate the private key, immediately update `plugins.updater.pubkey` in `src-tauri/tauri.conf.json` to the new public key before tagging a release.
 
 ### Workflow builds but no `latest.json`
 

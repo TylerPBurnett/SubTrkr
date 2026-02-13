@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "subtrkr",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "identifier": "subtrkr.app",
   "build": {
     "beforeDevCommand": "bun run dev",
@@ -44,7 +44,7 @@
       "endpoints": [
         "https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFFMjkxMzk2MDRCNEQzMTEKUldRUjA3UUVsaE1wcmxXaDJNSTRRN1dQTHNYRGJ2U1E1dW96c2dRaEVGNXRubnJTcE1jSTcrWEgK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQwMTFCRTBGQkY5Q0JDQUUKUldTdXZKeS9ENzRSMFB0ajB3Tzlhby9SVXJhU093ZnhsVHJHeG9haVhHcEFnOTBVbEo1KzdiMVoK"
     }
   }
 }
