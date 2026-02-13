@@ -67,4 +67,4 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           tauriScript: bun tauri
           args: ${{ matrix.args }}
-          uploadUpdaterJson: true
+          includeUpdaterJson: true
