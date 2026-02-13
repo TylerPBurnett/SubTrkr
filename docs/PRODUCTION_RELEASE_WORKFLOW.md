@@ -31,7 +31,8 @@ bun tauri signer generate --ci -w ~/.tauri/subtrkr.key
   - Recommended: paste the private key file contents from `~/.tauri/subtrkr.key`
   - Alternative: set to an absolute path on self-hosted runners
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`:
-  - Optional if your private key has a password
+  - Only set this if your key was generated with a password
+  - If you generated the key with `bun tauri signer generate --ci ...`, do not set this secret
 
 3. Optional (recommended for public trust):
 
@@ -102,5 +103,9 @@ git push origin main --tags
 ### Workflow builds but no `latest.json`
 
 - Ensure `bundle.createUpdaterArtifacts` is true in `src-tauri/tauri.conf.json`.
-- Ensure `uploadUpdaterJson: true` in `.github/workflows/release.yml`.
+- Ensure `includeUpdaterJson: true` in `.github/workflows/release.yml`.
 
+### "failed to decode secret key" / "incorrect updater private key password"
+
+- If using a `--ci` key, remove `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` from workflow env/secrets.
+- If using a password-protected key, set the exact matching password in that secret.
