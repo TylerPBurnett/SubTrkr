@@ -1,6 +1,6 @@
 [package]
 name = "subtrkr"
-version = "1.0.3"
+version = "1.0.4"
 description = "SubTrkr desktop app"
 authors = ["you"]
 edition = "2021"
