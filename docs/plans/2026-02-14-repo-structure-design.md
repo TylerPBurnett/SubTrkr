@@ -23,7 +23,7 @@ Make the repository root scannable by keeping only tooling-required files/folder
 - `docs/plans/` — feature plans and implementation notes
 - `docs/reference/` — standalone references, setup notes, and misc docs
 - `docs/branding/` — if `branding/` is not used by tooling
-- `docs/images/` — images (if not already organized)
+- `docs/images/` — images
 
 ## Move Map (Root Only)
 - `DESIGN_SYSTEM.md` -> `docs/reference/`

@@ -12,7 +12,7 @@
 
 <br/>
 
-![SubTrkr Dashboard](docs/Images/dashboard-hero.png)
+![SubTrkr Dashboard](docs/images/dashboard-hero.png)
 
 *Your subscription spending, crystal clear.*
 
@@ -45,7 +45,7 @@ Stop bleeding money on forgotten subscriptions. Start making informed decisions.
 ### 📊 Analytics & Insights
 Track spending trends, identify patterns, and see where your money goes with beautiful visualizations.
 
-<img src="docs/Images/analytics-view.png" alt="Analytics Dashboard" />
+<img src="docs/images/analytics-view.png" alt="Analytics Dashboard" />
 
 </td>
 <td width="50%">
@@ -53,7 +53,7 @@ Track spending trends, identify patterns, and see where your money goes with bea
 ### 💳 Subscription Management
 Manage all your subscriptions in one place. See upcoming bills, track trials, and never miss a renewal date.
 
-<img src="docs/Images/subscriptions-grid.png" alt="Subscriptions View" />
+<img src="docs/images/subscriptions-grid.png" alt="Subscriptions View" />
 
 </td>
 </tr>
