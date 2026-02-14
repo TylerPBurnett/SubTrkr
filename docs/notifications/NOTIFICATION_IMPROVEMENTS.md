@@ -12,7 +12,7 @@ This document outlines potential enhancements to the SubTrkr notification system
 
 Notifications are now sent at 9 AM user's local time. The system runs hourly and filters users by timezone.
 
-**See:** `TIMEZONE_IMPLEMENTATION.md` for full details.
+**See:** `../architecture/TIMEZONE_IMPLEMENTATION.md` for full details.
 
 ---
 
