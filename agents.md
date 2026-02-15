@@ -1062,6 +1062,19 @@ CREATE TRIGGER update_items_updated_at
 
 ---
 
+## Production & Release
+
+**Documentation**: See `docs/` for production workflows:
+- [Production Release Workflow](docs/PRODUCTION_RELEASE_WORKFLOW.md) - Full release process and setup
+- [Release Captain Checklist](docs/RELEASE_CAPTAIN_CHECKLIST.md) - Per-release execution checklist
+- [Updater Testing Guide](docs/UPDATER_TESTING_GUIDE.md) - Test auto-updater before production
+
+**Quick Reference**: Tag → CI builds → Users auto-update
+```bash
+# Bump version in package.json, tauri.conf.json, Cargo.toml, then:
+git tag v1.0.11 && git push origin v1.0.11
+```
+
 ## Future Roadmap
 
 ### High Priority

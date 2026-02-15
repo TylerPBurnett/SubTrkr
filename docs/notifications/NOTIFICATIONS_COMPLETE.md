@@ -41,7 +41,7 @@ A complete, privacy-first notification system where users can receive subscripti
 **Just one thing:** Enable pg_cron for automated daily notifications
 
 1. Open Supabase SQL Editor: https://supabase.com/dashboard/project/bpgsfyallqqvvtjorybl/sql
-2. Run the SQL from `./NOTIFICATION_SETUP.md` (lines 57-87)
+2. Run the SQL from `NOTIFICATION_SETUP.md` (lines 57-87)
 3. Done!
 
 That's it. Everything else is ready.
@@ -140,8 +140,8 @@ Users can:
 - `src/components/Settings.tsx` (import + render)
 
 **Documentation:**
-- `./NOTIFICATION_SETUP.md`
-- `./NOTIFICATIONS_COMPLETE.md` (this file)
+- `NOTIFICATION_SETUP.md`
+- `NOTIFICATIONS_COMPLETE.md` (this file)
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "subtrkr",
+  "productName": "SubTrkr",
   "version": "1.0.10",
   "identifier": "com.tylerpburnett.subtrkr",
   "build": {
