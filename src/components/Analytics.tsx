@@ -266,6 +266,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
                     axisLine={false}
                   />
                   <Tooltip
+                    cursor={false}
                     formatter={(value) => [`$${value}`, '']}
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
@@ -286,16 +287,43 @@ function Analytics({ items, categories }: AnalyticsProps) {
                     fill="url(#area-fill)"
                     stroke="none"
                     tooltipType="none"
+                    isAnimationActive={true}
+                    animationDuration={1000}
+                    animationEasing="ease-in-out"
                   />
+                  {/* Glow layer — no dots, just the blurred stroke */}
                   <Line
                     type="bump"
                     dataKey="amount"
                     stroke="var(--brand-primary)"
                     strokeWidth={3}
                     strokeLinecap="round"
-                    dot={{ fill: 'var(--brand-primary)', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 7, className: 'chart-active-dot' }}
+                    dot={false}
+                    activeDot={false}
                     filter="url(#line-glow)"
+                    isAnimationActive={true}
+                    animationDuration={1000}
+                    animationEasing="ease-in-out"
+                    tooltipType="none"
+                  />
+                  {/* Main line with dots — no filter */}
+                  <Line
+                    type="bump"
+                    dataKey="amount"
+                    stroke="var(--brand-primary)"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    dot={{ fill: 'var(--brand-primary)', stroke: 'var(--brand-primary)', r: 4 }}
+                    activeDot={{
+                      r: 8,
+                      fill: 'var(--brand-primary)',
+                      stroke: 'rgba(34, 197, 94, 0.25)',
+                      strokeWidth: 6,
+                      className: 'chart-active-dot',
+                    }}
+                    isAnimationActive={true}
+                    animationDuration={1000}
+                    animationEasing="ease-in-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>

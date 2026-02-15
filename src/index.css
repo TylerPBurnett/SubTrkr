@@ -786,15 +786,18 @@ button, a, input, select, textarea {
    CHART ANIMATIONS (Evil Charts style)
    ============================================ */
 
-/* Pulsing active dot on line chart hover */
-@keyframes chart-pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.7; }
+/* Remove focus outline on chart containers */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-surface {
+  outline: none !important;
 }
 
+/* Magnify + glow active dot on line chart hover */
 .chart-active-dot {
-  animation: chart-pulse-dot 1.2s ease-in-out infinite;
-  transform-origin: center;
+  filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.6))
+          drop-shadow(0 0 12px rgba(34, 197, 94, 0.3));
+  cursor: pointer;
 }
 
 /* Bar chart entrance animation */
