@@ -86,6 +86,48 @@ export const KNOWN_SERVICES: KnownService[] = [
   { id: 'pge', name: 'PG&E', domain: 'pge.com', defaultPrice: 150.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Utilities', type: 'bill', aliases: ['Pacific Gas Electric'] },
   { id: 'con-edison', name: 'Con Edison', domain: 'coned.com', defaultPrice: 120.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Utilities', type: 'bill', aliases: ['ConEd'] },
   { id: 'duke-energy', name: 'Duke Energy', domain: 'duke-energy.com', defaultPrice: 130.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Utilities', type: 'bill' },
+
+  // Additional Streaming & Content
+  { id: 'audible', name: 'Audible', domain: 'audible.com', defaultPrice: 14.95, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Streaming', type: 'subscription', aliases: ['Amazon Audible', 'Audiobooks'] },
+  { id: 'kindle-unlimited', name: 'Kindle Unlimited', domain: 'amazon.com', defaultPrice: 11.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Streaming', type: 'subscription', aliases: ['Kindle'] },
+  { id: 'discovery-plus', name: 'Discovery+', domain: 'discoveryplus.com', defaultPrice: 6.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Streaming', type: 'subscription', aliases: ['Discovery Plus'] },
+  { id: 'espn-plus', name: 'ESPN+', domain: 'espn.com', defaultPrice: 10.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Streaming', type: 'subscription', aliases: ['ESPN Plus'] },
+  { id: 'twitch-turbo', name: 'Twitch Turbo', domain: 'twitch.tv', defaultPrice: 11.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Streaming', type: 'subscription', aliases: ['Twitch'] },
+
+  // VPN & Security
+  { id: 'nordvpn', name: 'NordVPN', domain: 'nordvpn.com', defaultPrice: 12.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Security', type: 'subscription' },
+  { id: 'expressvpn', name: 'ExpressVPN', domain: 'expressvpn.com', defaultPrice: 12.95, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Security', type: 'subscription' },
+  { id: 'malwarebytes', name: 'Malwarebytes', domain: 'malwarebytes.com', defaultPrice: 7.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Security', type: 'subscription' },
+
+  // Additional Software & Productivity
+  { id: 'vercel', name: 'Vercel', domain: 'vercel.com', defaultPrice: 20.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription' },
+  { id: 'linear', name: 'Linear', domain: 'linear.app', defaultPrice: 8.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription' },
+  { id: 'canva-pro', name: 'Canva Pro', domain: 'canva.com', defaultPrice: 12.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['Canva'] },
+  { id: 'grammarly', name: 'Grammarly Premium', domain: 'grammarly.com', defaultPrice: 12.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['Grammarly'] },
+  { id: 'jetbrains', name: 'JetBrains', domain: 'jetbrains.com', defaultPrice: 24.90, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['IntelliJ', 'PyCharm', 'WebStorm'] },
+  { id: 'mongodb', name: 'MongoDB Atlas', domain: 'mongodb.com', defaultPrice: 25.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['MongoDB'] },
+  { id: 'supabase', name: 'Supabase', domain: 'supabase.com', defaultPrice: 25.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription' },
+  { id: 'digitalocean', name: 'DigitalOcean', domain: 'digitalocean.com', defaultPrice: 12.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription' },
+  { id: 'discord-nitro', name: 'Discord Nitro', domain: 'discord.com', defaultPrice: 9.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['Discord'] },
+  { id: 'google-workspace', name: 'Google Workspace', domain: 'workspace.google.com', defaultPrice: 6.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['G Suite', 'Google Apps'] },
+  { id: 'telegram-premium', name: 'Telegram Premium', domain: 'telegram.org', defaultPrice: 4.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Software', type: 'subscription', aliases: ['Telegram'] },
+
+  // Food Delivery
+  { id: 'doordash-dashpass', name: 'DoorDash DashPass', domain: 'doordash.com', defaultPrice: 9.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Food & Delivery', type: 'subscription', aliases: ['DoorDash', 'DashPass'] },
+  { id: 'uber-one', name: 'Uber One', domain: 'uber.com', defaultPrice: 9.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Food & Delivery', type: 'subscription', aliases: ['Uber Eats'] },
+  { id: 'instacart-plus', name: 'Instacart+', domain: 'instacart.com', defaultPrice: 9.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Food & Delivery', type: 'subscription', aliases: ['Instacart'] },
+
+  // Shopping & Memberships
+  { id: 'walmart-plus', name: 'Walmart+', domain: 'walmart.com', defaultPrice: 12.95, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Shopping', type: 'subscription', aliases: ['Walmart Plus'] },
+  { id: 'costco', name: 'Costco Membership', domain: 'costco.com', defaultPrice: 5.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Shopping', type: 'subscription', aliases: ['Costco'] },
+  { id: 'aaa', name: 'AAA Membership', domain: 'aaa.com', defaultPrice: 8.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Auto & Travel', type: 'subscription', aliases: ['AAA', 'Triple A'] },
+
+  // Financial & Budgeting
+  { id: 'ynab', name: 'YNAB', domain: 'ynab.com', defaultPrice: 14.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Finance', type: 'subscription', aliases: ['You Need A Budget', 'You Need a Budget'] },
+
+  // Home Security
+  { id: 'ring-protect', name: 'Ring Protect', domain: 'ring.com', defaultPrice: 4.99, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Home & Security', type: 'subscription', aliases: ['Ring'] },
+  { id: 'nest-aware', name: 'Nest Aware', domain: 'nest.com', defaultPrice: 8.00, defaultCurrency: 'USD', defaultBillingCycle: 'monthly', suggestedCategory: 'Home & Security', type: 'subscription', aliases: ['Google Nest'] },
 ];
 
 /**
