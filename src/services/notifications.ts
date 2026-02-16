@@ -8,6 +8,8 @@ import { formatISODate, getDaysUntil, getToday, shouldRemindToday } from '../uti
 
 const REMINDER_STORAGE_KEY = 'subtrkr-reminder-history';
 
+const HISTORY_MAX_AGE_DAYS = 30;
+
 function loadReminderHistory(): Record<string, string> {
   if (typeof localStorage === 'undefined') return {};
 
@@ -16,13 +18,27 @@ function loadReminderHistory(): Record<string, string> {
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object') {
-      return parsed as Record<string, string>;
+      return pruneHistory(parsed as Record<string, string>);
     }
   } catch {
     return {};
   }
 
   return {};
+}
+
+function pruneHistory(history: Record<string, string>): Record<string, string> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - HISTORY_MAX_AGE_DAYS);
+  const cutoffStr = formatISODate(cutoff);
+
+  const pruned: Record<string, string> = {};
+  for (const [id, date] of Object.entries(history)) {
+    if (date >= cutoffStr) {
+      pruned[id] = date;
+    }
+  }
+  return pruned;
 }
 
 function saveReminderHistory(history: Record<string, string>): void {

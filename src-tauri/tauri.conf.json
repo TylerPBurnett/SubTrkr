@@ -40,6 +40,11 @@
     }
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["subtrkr"]
+      }
+    },
     "updater": {
       "endpoints": [
         "https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json"

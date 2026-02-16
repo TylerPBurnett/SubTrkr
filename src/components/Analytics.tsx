@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import {
   AreaChart,
   Area,
@@ -13,7 +13,7 @@ import {
   Cell
 } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Receipt, CreditCard } from 'lucide-react';
-import type { Category, ItemWithCategory, SpendingByCategory, ItemType } from '@/types';
+import type { Category, ItemWithCategory, ItemType } from '@/types';
 import {
   calculateMonthlySpending,
   calculateYearlySpending,
@@ -58,10 +58,6 @@ function getMonthlyAmount(item: ItemWithCategory): number {
 
 function Analytics({ items, categories }: AnalyticsProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [monthlySpending, setMonthlySpending] = useState(0);
-  const [yearlySpending, setYearlySpending] = useState(0);
-  const [monthlySavings, setMonthlySavings] = useState(0);
-  const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
 
   // Filter items by type
   const filteredItems = useMemo(() => {
@@ -69,27 +65,26 @@ function Analytics({ items, categories }: AnalyticsProps) {
     return items.filter(item => item.item_type === activeTab);
   }, [items, activeTab]);
 
-  useEffect(() => {
-    async function loadStats() {
-      const [monthly, yearly, savings, byCategory] = await Promise.all([
-        calculateMonthlySpending(filteredItems),
-        calculateYearlySpending(filteredItems),
-        calculateMonthlySavings(filteredItems),
-        Promise.resolve(
-          getSpendingByCategory(
-            filteredItems,
-            categories,
-            activeTab === 'all' ? undefined : activeTab
-          )
-        ),
-      ]);
-      setMonthlySpending(monthly);
-      setYearlySpending(yearly);
-      setMonthlySavings(savings);
-      setSpendingByCategory(byCategory);
-    }
-    loadStats();
-  }, [filteredItems, categories, activeTab]);
+  // Compute stats with useMemo (pure synchronous functions)
+  const monthlySpending = useMemo(
+    () => calculateMonthlySpending(filteredItems),
+    [filteredItems]
+  );
+
+  const yearlySpending = useMemo(
+    () => calculateYearlySpending(filteredItems),
+    [filteredItems]
+  );
+
+  const monthlySavings = useMemo(
+    () => calculateMonthlySavings(filteredItems),
+    [filteredItems]
+  );
+
+  const spendingByCategory = useMemo(
+    () => getSpendingByCategory(filteredItems, categories, activeTab === 'all' ? undefined : activeTab),
+    [filteredItems, categories, activeTab]
+  );
 
   // Monthly trend data (last 6 months) - includes historical data for cancelled items
   const monthlyTrendData = useMemo(() => {

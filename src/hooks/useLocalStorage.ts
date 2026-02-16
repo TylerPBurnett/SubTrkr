@@ -28,13 +28,15 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, SetValue<T
 
   const setStoredValue = useCallback<SetValue<T>>((newValue) => {
     try {
-      const valueToStore = newValue instanceof Function ? newValue(value) : newValue;
-      setValue(valueToStore);
-      localStorage.setItem(key, JSON.stringify(valueToStore));
+      setValue((current) => {
+        const valueToStore = newValue instanceof Function ? newValue(current) : newValue;
+        localStorage.setItem(key, JSON.stringify(valueToStore));
+        return valueToStore;
+      });
     } catch (error) {
       console.error(`Failed to set localStorage key "${key}":`, error);
     }
-  }, [key, value]);
+  }, [key]);
 
   return [value, setStoredValue];
 }

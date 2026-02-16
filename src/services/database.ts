@@ -721,17 +721,17 @@ export async function advancePastDueItems(): Promise<number> {
   if (error) throw error;
   if (!pastDueItems || pastDueItems.length === 0) return 0;
 
-  let updatedCount = 0;
-  for (const item of pastDueItems) {
-    const newDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
-    const { error: updateError } = await supabase
-      .from('items')
-      .update({ next_billing_date: newDate })
-      .eq('id', item.id)
-      .eq('user_id', userId);
-    if (!updateError) updatedCount++;
-  }
-  return updatedCount;
+  const results = await Promise.all(
+    pastDueItems.map((item) => {
+      const newDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
+      return supabase
+        .from('items')
+        .update({ next_billing_date: newDate })
+        .eq('id', item.id)
+        .eq('user_id', userId);
+    })
+  );
+  return results.filter((r) => !r.error).length;
 }
 
 export function advanceNextBillingDate(item: Item): string {

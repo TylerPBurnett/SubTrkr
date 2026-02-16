@@ -321,11 +321,26 @@ mod macos_icon {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use tauri::Manager;
+    use tauri_plugin_deep_link::DeepLinkExt;
+
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                if let Some(window) = handle.get_webview_window("main") {
+                    let _ = window.set_focus();
+                }
+                // URLs are forwarded to the frontend via the plugin's JS listener
+                let _ = &event;
+            });
+            Ok(())
+        })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

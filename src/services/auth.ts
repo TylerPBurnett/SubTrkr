@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
+const AUTH_REDIRECT_URL = 'subtrkr://auth-callback';
+
 export interface AuthState {
   user: User | null;
   session: Session | null;
@@ -9,7 +11,13 @@ export interface AuthState {
 }
 
 export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: AUTH_REDIRECT_URL,
+    },
+  });
   if (error) throw error;
   return data;
 }
@@ -25,6 +33,7 @@ export async function signInWithOtp(email: string) {
     email,
     options: {
       shouldCreateUser: true,
+      emailRedirectTo: AUTH_REDIRECT_URL,
     }
   });
   if (error) throw error;
@@ -47,7 +56,7 @@ export async function signOut() {
 
 export async function resetPassword(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}`,
+    redirectTo: AUTH_REDIRECT_URL,
   });
   if (error) throw error;
 }
@@ -57,7 +66,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}`,
+      redirectTo: AUTH_REDIRECT_URL,
       skipBrowserRedirect: true, // Don't redirect in webview
     },
   });
@@ -75,7 +84,7 @@ export async function signInWithGitHub() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: `${window.location.origin}`,
+      redirectTo: AUTH_REDIRECT_URL,
       skipBrowserRedirect: true, // Don't redirect in webview
     },
   });
@@ -92,6 +101,9 @@ export async function resendVerificationEmail(email: string) {
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email,
+    options: {
+      emailRedirectTo: AUTH_REDIRECT_URL,
+    },
   });
   if (error) throw error;
 }

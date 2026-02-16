@@ -30,12 +30,14 @@ import { supabase } from './services/supabase';
 import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
 import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './services/notifications';
 import { checkForUpdatesOnLaunch } from './services/updater';
+import { onOpenUrl, getCurrent as getCurrentDeepLinks } from '@tauri-apps/plugin-deep-link';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
 import ItemForm from './components/ItemForm';
 import AuthScreen from './components/AuthScreen';
 import StatusChangeDialog from './components/StatusChangeDialog';
+import SetNewPassword from './components/SetNewPassword';
 import { LazyComponentFallback } from './components/LazyComponentFallback';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
 import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from './theme';
@@ -57,6 +59,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backgroundWarning, setBackgroundWarning] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formItemType, setFormItemType] = useState<ItemType>('subscription');
   const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
@@ -68,29 +71,27 @@ function App() {
   const theme = isTheme(storedTheme) ? storedTheme : DEFAULT_THEME;
   const themeTone = getThemeTone(theme);
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      // Run background maintenance jobs
-      await Promise.all([
-        advancePastDueItems(),
-        archivePastCancellations(),
-        resumePausedItems(),
-        handleExpiredTrials(),
-      ]);
-
       const [itemsData, cats] = await Promise.all([getItems(), getCategories()]);
       setItems(itemsData);
       setCategories(cats);
 
-      // Send notifications for upcoming renewals and expiring trials
+      // Run maintenance and notifications in background (don't block UI)
       Promise.all([
+        advancePastDueItems(),
+        archivePastCancellations(),
+        resumePausedItems(),
+        handleExpiredTrials(),
         checkAndNotifyUpcomingRenewals(itemsData),
         checkAndNotifyExpiringTrials(itemsData),
-      ]).catch((notifyError) => {
-        console.warn('Failed to send notifications:', notifyError);
+      ]).catch((err) => {
+        console.error('Background task failed:', err);
+        setBackgroundWarning('Some background tasks failed. Your data may not be fully up to date.');
       });
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -120,11 +121,53 @@ function App() {
     // Subscribe to auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+
+      // Handle password recovery flow
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowPasswordRecovery(true);
+      }
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Handle deep link auth callbacks (email verification, OAuth, password reset)
+  useEffect(() => {
+    async function handleDeepLink(urls: string[]) {
+      for (const urlStr of urls) {
+        try {
+          const url = new URL(urlStr);
+          // PKCE flow (default in supabase-js v2.39+)
+          const code = url.searchParams.get('code');
+          if (code) {
+            await supabase.auth.exchangeCodeForSession(code);
+            return;
+          }
+          // Implicit flow fallback (hash fragment tokens)
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          const access_token = hashParams.get('access_token');
+          const refresh_token = hashParams.get('refresh_token');
+          if (access_token && refresh_token) {
+            await supabase.auth.setSession({ access_token, refresh_token });
+          }
+        } catch (e) {
+          console.error('Deep link auth error:', e);
+        }
+      }
+    }
+
+    // Check if app was launched via deep link
+    getCurrentDeepLinks().then((urls) => {
+      if (urls && urls.length > 0) handleDeepLink(urls);
+    }).catch(() => {});
+
+    // Listen for deep links while app is running
+    let unlisten: (() => void) | undefined;
+    onOpenUrl((urls) => handleDeepLink(urls)).then((fn) => { unlisten = fn; }).catch(() => {});
+
+    return () => unlisten?.();
   }, []);
 
   // Load data when authenticated
@@ -559,14 +602,18 @@ function App() {
             />
           )}
           {view === 'analytics' && (
-            <Suspense fallback={<LazyComponentFallback />}>
-              <Analytics items={items} categories={categories} />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<LazyComponentFallback />}>
+                <Analytics items={items} categories={categories} />
+              </Suspense>
+            </ErrorBoundary>
           )}
           {view === 'settings' && (
-            <Suspense fallback={<LazyComponentFallback />}>
-              <Settings categories={categories} onCategoriesChange={loadData} />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<LazyComponentFallback />}>
+                <Settings categories={categories} onCategoriesChange={loadData} />
+              </Suspense>
+            </ErrorBoundary>
           )}
           </div>
           </div>
@@ -586,6 +633,25 @@ function App() {
           <button
             onClick={() => setError(null)}
             className="p-1 rounded hover:bg-white/20 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Background Warning Toast */}
+      {backgroundWarning && (
+        <div
+          className="fixed bottom-4 left-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
+          style={{
+            backgroundColor: 'var(--accent-yellow)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          <span>{backgroundWarning}</span>
+          <button
+            onClick={() => setBackgroundWarning(null)}
+            className="p-1 rounded hover:bg-black/10 transition-colors"
           >
             ×
           </button>
@@ -615,6 +681,11 @@ function App() {
           onConfirm={handleStatusChangeConfirm}
           onCancel={handleStatusChangeCancel}
         />
+      )}
+
+      {/* Password Recovery Modal */}
+      {showPasswordRecovery && (
+        <SetNewPassword onComplete={() => setShowPasswordRecovery(false)} />
       )}
     </div>
   );

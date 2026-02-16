@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import {
   TrendingUp,
   Calendar,
@@ -9,7 +9,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
-import type { Category, ItemWithCategory, SpendingByCategory } from '../types';
+import type { Category, ItemWithCategory } from '../types';
 import {
   calculateMonthlySpending,
   calculateYearlySpending,
@@ -38,30 +38,31 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
 
 function Dashboard({ items, categories, onEdit }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
-  const [monthlySpending, setMonthlySpending] = useState(0);
-  const [yearlySpending, setYearlySpending] = useState(0);
-  const [spendingByCategory, setSpendingByCategory] = useState<SpendingByCategory[]>([]);
   const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
-  
+
   // Get the type filter for database queries
   const typeFilter = filterTab === 'all' ? undefined : filterTab;
 
-  // Load stats when items or filter changes
+  // Compute stats with useMemo (these are pure synchronous functions)
+  const monthlySpending = useMemo(
+    () => calculateMonthlySpending(items, typeFilter),
+    [items, typeFilter]
+  );
+
+  const yearlySpending = useMemo(
+    () => calculateYearlySpending(items, typeFilter),
+    [items, typeFilter]
+  );
+
+  const spendingByCategory = useMemo(
+    () => getSpendingByCategory(items, categories, typeFilter),
+    [items, categories, typeFilter]
+  );
+
+  // Load upcoming items (async query)
   useEffect(() => {
-    async function loadStats() {
-      const [monthly, yearly, byCategory, upcoming] = await Promise.all([
-        Promise.resolve(calculateMonthlySpending(items, typeFilter)),
-        Promise.resolve(calculateYearlySpending(items, typeFilter)),
-        Promise.resolve(getSpendingByCategory(items, categories, typeFilter)),
-        getUpcomingItems(items, 7, typeFilter),
-      ]);
-      setMonthlySpending(monthly);
-      setYearlySpending(yearly);
-      setSpendingByCategory(byCategory);
-      setUpcomingItems(upcoming);
-    }
-    loadStats();
-  }, [items, categories, typeFilter]);
+    getUpcomingItems(items, 7, typeFilter).then(setUpcomingItems);
+  }, [items, typeFilter]);
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
