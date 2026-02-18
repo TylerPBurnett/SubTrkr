@@ -57,6 +57,14 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      - name: Sync version from tag
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          jq --arg version "$VERSION" '.version = $version' src-tauri/tauri.conf.json > tmp.json
+          mv tmp.json src-tauri/tauri.conf.json
+
       - name: Build and upload release artifacts
         uses: tauri-apps/tauri-action@v0.6.1
         env:
