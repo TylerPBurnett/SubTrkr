@@ -33,6 +33,29 @@ SubTrkr uses **semantic design tokens** (CSS custom properties) for all colors. 
 
 ---
 
+## Visual Hierarchy Principle
+
+Cards must be visually distinct from the surface they sit on. The app uses a **3-tier background system** — each layer is a clearly different shade so content layers read as elevated:
+
+```
+Shell/Sidebar      ← darkest (outer frame)
+  └─ Main Panel    ← mid (bg-surface)
+       └─ Cards    ← lightest (bg-card)
+```
+
+**The rule: `--bg-card` must differ from `--bg-surface` by at least ~10 RGB units** in at least one channel. Less than that and cards dissolve into the background.
+
+### Current token values
+
+| Theme | `--bg-surface` | `--bg-card` | Gap |
+|-------|---------------|-------------|-----|
+| Light | `#edeef2` | `#ffffff` | ~15 units |
+| Dark  | `#131415` | `#1e2022` | ~12 units |
+
+Card borders use `--border-default` (not `--border-muted`) so they have a visible edge against the surface.
+
+---
+
 ## Semantic Tokens Reference
 
 All tokens are defined in `src/index.css`. Here's what each one controls:
@@ -41,12 +64,13 @@ All tokens are defined in `src/index.css`. Here's what each one controls:
 
 | Token | Purpose | Example Usage |
 |-------|---------|---------------|
-| `--bg-base` | Main app background | Body, main content area |
-| `--bg-surface` | Elevated surfaces | Sidebar, modals |
-| `--bg-card` | Card backgrounds | Stats cards, list items |
+| `--bg-base` | Outermost shell background | Tiny margin gap around sidebar+panel |
+| `--bg-surface` | Main content panel | The white/gray panel cards sit on |
+| `--bg-card` | Card backgrounds | Stats cards, subscription cards |
 | `--bg-input` | Form input backgrounds | Text fields, selects |
 | `--bg-hover` | Hover state backgrounds | Button/list item hover |
 | `--bg-active` | Active/pressed states | Button pressed state |
+| `--bg-default` | Subtle fills | Table headers, secondary areas |
 
 ### Text
 
@@ -293,10 +317,19 @@ If you want a theme selector instead of a toggle, update the sidebar button in `
 ## Tips for Creating Themes
 
 1. **Start with a base**: Copy an existing theme (light or dark) as a starting point
-2. **Test contrast**: Ensure `--text-primary` on `--bg-base` has sufficient contrast (4.5:1 minimum)
-3. **Muted variants**: Accent muted colors should be ~15-20% opacity of the main accent
-4. **Shadows**: Darker themes need more opaque shadows; lighter themes need subtler ones
-5. **Brand consistency**: Keep `--brand-primary` as your main accent color (green by default)
+2. **Ensure card separation**: `--bg-card` must differ from `--bg-surface` by ≥10 RGB units — this is the most common mistake
+3. **Test contrast**: Ensure `--text-primary` on `--bg-card` has sufficient contrast (4.5:1 minimum)
+4. **Muted variants**: Accent muted colors should be ~15-20% opacity of the main accent
+5. **Shadows**: Darker themes need more opaque shadows; lighter themes need subtler ones
+6. **Brand consistency**: Keep `--brand-primary` as your main accent color (green `#22c55e` by default)
+7. **Forms use brand green**: `ItemForm.tsx` uses brand green for both bill and subscription forms — no type-specific color overrides
+
+## Brand Color Usage
+
+- **Brand primary**: `#22c55e` (light) / `#22c55e` (dark, same)
+- **Brand hover**: `#16a34a` (light) / `#4ade80` (dark, lighter for visibility)
+- **ItemForm**: Both bill and subscription forms use the green gradient — `linear-gradient(135deg, #22c55e 0%, #16a34a 100%)`
+- Never use orange/amber as a form accent; that was removed in favor of consistent brand green
 
 ---
 

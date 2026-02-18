@@ -135,7 +135,7 @@ export async function checkAndNotifyUpcomingRenewals(
   items: ItemWithCategory[]
 ): Promise<void> {
   const itemsToNotify = items.filter((item) => {
-    if (!item.is_active) return false;
+    if (item.status !== 'active' && item.status !== 'trial') return false;
     const reminderDays = item.reminder_days ?? 0;
     if (reminderDays <= 0) return false;
     return shouldRemindToday(item.next_billing_date, reminderDays);

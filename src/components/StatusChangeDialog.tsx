@@ -342,6 +342,9 @@ export default function StatusChangeDialog({
             `,
             borderRadius: '20px',
             overflow: 'hidden',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           {/* Colored header bar */}
@@ -429,7 +432,7 @@ export default function StatusChangeDialog({
             )}
           </div>
 
-          <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8">
+          <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8 overflow-y-auto flex-1">
             {/* Error Banner */}
             {errors.length > 0 && (
               <div

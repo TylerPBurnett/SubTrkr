@@ -82,16 +82,19 @@ function App() {
       setCategories(cats);
 
       // Run maintenance and notifications in background (don't block UI)
-      Promise.all([
+      Promise.allSettled([
         advancePastDueItems(),
         archivePastCancellations(),
         resumePausedItems(),
         handleExpiredTrials(),
         checkAndNotifyUpcomingRenewals(itemsData),
         checkAndNotifyExpiringTrials(itemsData),
-      ]).catch((err) => {
-        console.error('Background task failed:', err);
-        setBackgroundWarning('Some background tasks failed. Your data may not be fully up to date.');
+      ]).then((results) => {
+        const failures = results.filter(r => r.status === 'rejected');
+        if (failures.length > 0) {
+          console.error('Some background tasks failed:', failures);
+          setBackgroundWarning(`${failures.length} background task(s) failed. Data may be incomplete.`);
+        }
       });
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -138,7 +141,20 @@ function App() {
     async function handleDeepLink(urls: string[]) {
       for (const urlStr of urls) {
         try {
+          if (!urlStr.startsWith('subtrkr://auth-callback')) {
+            console.warn('Rejected deep link with invalid path:', urlStr);
+            continue;
+          }
+
           const url = new URL(urlStr);
+
+          const error = url.searchParams.get('error');
+          if (error) {
+            const errorDesc = url.searchParams.get('error_description');
+            setError(errorDesc || 'Authentication failed. Please try again.');
+            return;
+          }
+
           // PKCE flow (default in supabase-js v2.39+)
           const code = url.searchParams.get('code');
           if (code) {
@@ -154,6 +170,7 @@ function App() {
           }
         } catch (e) {
           console.error('Deep link auth error:', e);
+          setError('Failed to complete sign-in. Please try again.');
         }
       }
     }

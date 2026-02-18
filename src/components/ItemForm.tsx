@@ -160,6 +160,10 @@ export default function ItemForm({
       newErrors.amount = 'Enter a valid amount';
     } else if (amount < 0) {
       newErrors.amount = 'Amount cannot be negative';
+    } else if (amount > 999999.99) {
+      newErrors.amount = 'Amount cannot exceed $999,999.99';
+    } else if (amount > 0 && amount < 0.01) {
+      newErrors.amount = 'Amount must be at least $0.01';
     } else if (formData.status !== 'trial' && amount === 0) {
       newErrors.amount = 'Amount must be greater than 0 for paid subscriptions';
     }
@@ -207,7 +211,7 @@ export default function ItemForm({
 
     onSave({
       name: formData.name.trim(),
-      amount: parseFloat(formData.amount),
+      amount: Math.round(parseFloat(formData.amount) * 100) / 100,
       currency: formData.currency,
       billing_cycle: formData.billing_cycle,
       item_type: formData.item_type,
@@ -308,19 +312,12 @@ export default function ItemForm({
   const isBill = itemType === 'bill';
 
   // Gradient and glow config matching StatusChangeDialog's approach
-  const config = isBill
-    ? {
-        gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-        glowColor: 'rgba(245, 158, 11, 0.3)',
-        textColor: '#f59e0b',
-        contrastText: '#1f2937',
-      }
-    : {
-        gradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-        glowColor: 'rgba(34, 197, 94, 0.3)',
-        textColor: 'var(--brand-text)',
-        contrastText: 'white',
-      };
+  const config = {
+    gradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+    glowColor: 'rgba(34, 197, 94, 0.3)',
+    textColor: 'var(--brand-text)',
+    contrastText: 'white',
+  };
 
   return (
     <>
@@ -518,7 +515,7 @@ export default function ItemForm({
                   <p
                     className="item-form-mono mt-1"
                     style={{
-                      color: isBill ? '#f59e0b' : 'var(--brand-text)',
+                      color: 'var(--brand-text)',
                       fontWeight: 600,
                       fontSize: '0.8125rem',
                     }}
@@ -646,7 +643,7 @@ export default function ItemForm({
                 <label htmlFor="item-name" className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{labels.singular} Name</span>
-                  <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
+                  <span style={{ color: 'var(--brand-text)' }}>*</span>
                 </label>
                 <ServiceAutocomplete
                   id="item-name"
@@ -677,7 +674,7 @@ export default function ItemForm({
                 <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                   <CalendarIcon className="w-3.5 h-3.5" />
                   <span>Amount</span>
-                  <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
+                  <span style={{ color: 'var(--brand-text)' }}>*</span>
                 </label>
                 {/* Unified currency + amount input */}
                 <div
@@ -829,7 +826,7 @@ export default function ItemForm({
                   <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                     <CalendarIcon className="w-3.5 h-3.5" />
                     <span>Start Date</span>
-                    <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
+                    <span style={{ color: 'var(--brand-text)' }}>*</span>
                   </label>
                   <DatePicker
                     id="item-start-date"
@@ -858,7 +855,7 @@ export default function ItemForm({
                   <label className="item-form-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                     <CalendarIcon className="w-3.5 h-3.5" />
                     <span>Next Billing</span>
-                    <span style={{ color: isBill ? '#f59e0b' : 'var(--brand-text)' }}>*</span>
+                    <span style={{ color: 'var(--brand-text)' }}>*</span>
                   </label>
                   <DatePicker
                     id="item-next-billing-date"

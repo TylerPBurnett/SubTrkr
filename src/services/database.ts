@@ -468,22 +468,15 @@ export async function archivePastCancellations(): Promise<number> {
   if (!itemsToArchive || itemsToArchive.length === 0) return 0;
 
   const now = new Date().toISOString();
-  let archivedCount = 0;
 
-  for (const item of itemsToArchive) {
-    const { error: updateError } = await supabase
-      .from('items')
-      .update({
-        status: 'archived',
-        archived_at: now
-      })
-      .eq('id', item.id)
-      .eq('user_id', userId);
+  const { error: updateError } = await supabase
+    .from('items')
+    .update({ status: 'archived', archived_at: now })
+    .in('id', itemsToArchive.map(item => item.id))
+    .eq('user_id', userId);
 
-    if (!updateError) archivedCount++;
-  }
-
-  return archivedCount;
+  if (updateError) throw updateError;
+  return itemsToArchive.length;
 }
 
 export async function resumePausedItems(): Promise<number> {
@@ -502,18 +495,16 @@ export async function resumePausedItems(): Promise<number> {
   if (fetchError) throw fetchError;
   if (!itemsToResume || itemsToResume.length === 0) return 0;
 
-  let resumedCount = 0;
+  const results = await Promise.allSettled(
+    itemsToResume.map(item => executeStatusChange(item.id, { action: 'resume' }))
+  );
 
-  for (const item of itemsToResume) {
-    try {
-      await executeStatusChange(item.id, { action: 'resume' });
-      resumedCount++;
-    } catch (error) {
-      console.error(`Failed to resume item ${item.id}:`, error);
-    }
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length > 0) {
+    console.error(`Failed to resume ${failures.length} items:`, failures);
   }
 
-  return resumedCount;
+  return results.filter(r => r.status === 'fulfilled').length;
 }
 
 export async function getStatusHistory(itemId: string): Promise<StatusHistory[]> {
@@ -785,24 +776,18 @@ export async function handleExpiredTrials(): Promise<number> {
   if (fetchError) throw fetchError;
   if (!expiredTrials || expiredTrials.length === 0) return 0;
 
-  let handledCount = 0;
+  const historyRecords = expiredTrials.map(item => ({
+    item_id: item.id,
+    user_id: userId,
+    status: 'trial' as const,
+    reason: 'trial_expired' as const,
+    notes: `Trial expired on ${item.trial_end_date}`,
+  }));
 
-  // Mark expired trials by setting a flag field
-  // Users will need to manually convert or cancel these
-  for (const item of expiredTrials) {
-    // Record in status history that trial expired
-    const { error: historyError } = await supabase
-      .from('item_status_history')
-      .insert({
-        item_id: item.id,
-        user_id: userId,
-        status: 'trial',
-        reason: 'trial_expired',
-        notes: `Trial expired on ${item.trial_end_date}`,
-      });
+  const { error: historyError } = await supabase
+    .from('item_status_history')
+    .insert(historyRecords);
 
-    if (!historyError) handledCount++;
-  }
-
-  return handledCount;
+  if (historyError) throw historyError;
+  return historyRecords.length;
 }

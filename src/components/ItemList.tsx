@@ -827,7 +827,6 @@ function ItemList({
                     <thead
                       style={{
                         backgroundColor: "var(--bg-default)",
-                        color: "var(--text-primary)",
                         borderBottom: "1px solid var(--border-default)",
                       }}
                     >
@@ -846,22 +845,22 @@ function ItemList({
                             onClick={(event) => event.stopPropagation()}
                           />
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                           Company
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                           Renews
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                           Recurrence
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                           Cost
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                           Actions
                         </th>
                       </tr>
