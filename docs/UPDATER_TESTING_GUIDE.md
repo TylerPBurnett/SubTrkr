@@ -1,351 +1,188 @@
 # SubTrkr Updater Testing Guide
 
-This guide shows how to safely test the auto-updater flow before pushing production releases.
+How to verify the in-app updater works before or after shipping a release.
 
-## Why Test the Updater?
+---
 
-The updater is critical infrastructure. A broken updater means users can't get new versions without manually downloading. Testing ensures:
+## How the Updater Works
 
-- Updates are detected correctly
-- Downloads complete successfully
-- Installation works without errors
-- App relaunches on the new version
-- Users don't lose data during updates
+The app polls this endpoint on launch and when "Check for Updates" is clicked:
 
-## Pre-Production Testing Strategy
+```
+https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json
+```
 
-### The Challenge
+GitHub's `/releases/latest/` resolves to the **most recent non-pre-release, non-draft release**. The Tauri updater compares the version in `latest.json` to the installed app version. If the manifest version is higher, it prompts the user.
 
-The updater endpoint (`/releases/latest/download/latest.json`) always points to the latest release, including pre-releases. This means you can't test in complete isolation without affecting the "latest" pointer.
+**Key implication:** Tags marked as pre-releases (any tag containing `-`, per the release workflow) do **not** update this endpoint. A tag like `v1.1.0-rc.1` will not trigger updates to users — `/releases/latest/download/latest.json` will still return the previous stable version.
 
-### The Solution: Release Candidate Flow
+---
 
-Use pre-release tags (`-rc.1`, `-rc.2`, etc.) to test the update chain, then promote to production once verified.
+## Recommended Testing Approach
 
-## Recommended Testing Flow
+The simplest and most reliable way to test the updater is to point a local build at a version-specific `latest.json` rather than the live endpoint. This lets you test without publishing anything to users.
 
-### Step 1: Install Current Production Version
+### Step 1: Pick or publish a target release to update to
 
-Download and install the latest stable release from GitHub:
+You need a GitHub release that has a `latest.json`. Any existing stable release works, or you can push a real release tag (which will become the new stable for users).
+
+For isolated testing, use an **existing older release** as the "update" target — just to verify the download and install mechanism works end-to-end.
+
+### Step 2: Build a local "old" app that points to a specific release
+
+Temporarily modify the updater endpoint in `src-tauri/tauri.conf.json` to point at a specific release rather than `/latest/`:
+
+```json
+"updater": {
+  "endpoints": [
+    "https://github.com/TylerPBurnett/SubTrkr/releases/download/vX.Y.Z-TARGET/latest.json"
+  ],
+  "pubkey": "..."
+}
+```
+
+Set the app version to something *lower* than the target:
+
+```json
+"version": "0.0.1"
+```
+
+Build locally:
 
 ```bash
-# macOS
-open https://github.com/TylerPBurnett/SubTrkr/releases/latest
-
-# Or use direct link:
-curl -L -o ~/Downloads/subtrkr.dmg \
-  https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-darwin-aarch64.dmg
-
-# Install by opening the DMG and dragging to Applications
+bun tauri build
 ```
 
-**Windows:**
-- Download: https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-windows-x64_setup.exe
-- Run installer
+Install the resulting app from `src-tauri/target/release/bundle/`.
 
-**Linux:**
-- Download: https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/subtrkr-linux-amd64.AppImage
-- Make executable: `chmod +x subtrkr-linux-amd64.AppImage`
-- Run: `./subtrkr-linux-amd64.AppImage`
+**Revert `tauri.conf.json` before committing anything.**
 
-### Step 2: Push First Release Candidate
+### Step 3: Trigger an update
 
-Bump version to the next release with `-rc.1` suffix:
+Launch the locally-built "old" app. Go to Settings → Check for Updates.
+
+Expected behavior:
+- App detects the target version as newer
+- Prompts to install
+- Downloads, installs, relaunches
+- New version is running
+
+### Step 4: Verify post-update state
+
+- [ ] App version reflects the target release
+- [ ] User data intact
+- [ ] No errors in the app on first launch post-update
+
+---
+
+## Post-Release Verification (After Shipping)
+
+After every production release, run these to confirm users will receive the update:
 
 ```bash
-# Update version in these 3 files to "1.0.11" (or next version):
-# - package.json
-# - src-tauri/tauri.conf.json
-# - src-tauri/Cargo.toml
+# 1. Confirm workflow completed
+gh run list --workflow=release.yml --limit=1
 
-# Commit and push
-git add -A
-git commit -m "chore(release): bump to v1.0.11-rc.1"
-git push origin main
+# 2. Check latest.json version matches the tag
+curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json \
+  | jq '{version, pub_date}'
 
-# Create and push tag
-git tag v1.0.11-rc.1
-git push origin v1.0.11-rc.1
+# 3. Check release assets are all present
+gh release view vX.Y.Z --json assets --jq '.assets[].name'
 ```
 
-Wait for CI to complete (~10 minutes). Verify success:
+To manually trigger an update check from a real installed build:
 
-```bash
-gh run list --workflow Release --limit 1
-```
+1. Open the app
+2. Settings → Account Settings → Check for Updates
 
-### Step 3: Test Update Detection (Stable → RC)
+The auto-check on launch is throttled to once every 12 hours — the manual button bypasses the throttle.
 
-1. Open the installed production app (e.g., v1.0.10)
-2. Navigate to **Settings** → **Account Settings**
-3. Click **"Check for Updates"**
-4. Expected: Prompt appears: _"SubTrkr 1.0.11-rc.1 is available. Install now?"_
-5. Click **Yes/OK**
-6. Wait for download progress
-7. Expected: Prompt: _"Update installed successfully. Restart SubTrkr now to finish updating?"_
-8. Click **Yes/OK**
-9. App relaunches
-10. Verify app shows version `1.0.11-rc.1` (check Settings or About)
+---
 
-### Step 4: Test RC → RC Update
-
-Push a second release candidate to test the update chain:
-
-```bash
-# No version changes needed in files (still "1.0.11")
-# Just create a new RC tag:
-git tag v1.0.11-rc.2
-git push origin v1.0.11-rc.2
-```
-
-Wait for CI to complete, then:
-
-1. Open the installed RC app (v1.0.11-rc.1)
-2. Settings → **"Check for Updates"**
-3. Expected: Detects v1.0.11-rc.2
-4. Install and verify relaunch works
-
-### Step 5: Test Fresh Install
-
-Completely uninstall the app (see [Complete Uninstall](#complete-uninstall-after-testing) below), then:
-
-1. Download and install v1.0.11-rc.2 from GitHub Releases
-2. Open app, sign in
-3. Verify all features work:
-   - [ ] Login/signup
-   - [ ] Items load and display
-   - [ ] Add/edit/delete items
-   - [ ] Notification settings save
-   - [ ] Analytics page renders
-
-### Step 6: Ship Production
-
-Once all tests pass:
-
-```bash
-# Tag the production release (no "-rc" suffix)
-git tag v1.0.11
-git push origin v1.0.11
-```
-
-This becomes the new stable release. Existing users (on any version) will now update to v1.0.11.
-
-## Alternative Testing Approach: Version-Specific Endpoint
-
-For isolated testing without affecting the "latest" pointer, you can temporarily modify the updater endpoint in a local build.
-
-### Local Build with Custom Endpoint
-
-1. **Modify `src-tauri/tauri.conf.json` locally** (don't commit):
-   ```json
-   "plugins": {
-     "updater": {
-       "endpoints": [
-         "https://github.com/TylerPBurnett/SubTrkr/releases/download/v1.0.10/latest.json"
-       ],
-       "pubkey": "..."
-     }
-   }
-   ```
-
-2. **Build locally:**
-   ```bash
-   bun tauri build
-   ```
-
-3. **Install this build** (find in `src-tauri/target/release/bundle/`)
-
-4. **Push a test RC tag:**
-   ```bash
-   git tag v1.0.11-rc.1
-   git push origin v1.0.11-rc.1
-   ```
-
-5. **Update your local `tauri.conf.json`** to point to the RC:
-   ```json
-   "endpoints": [
-     "https://github.com/TylerPBurnett/SubTrkr/releases/download/v1.0.11-rc.1/latest.json"
-   ]
-   ```
-
-6. **Test update detection** — the installed app should find the RC
-
-7. **Revert `tauri.conf.json`** before final production release
-
-**⚠️ Important:** This approach is more complex and error-prone. The RC flow (Steps 1-6 above) is recommended.
-
-## Pre-Release Tag Behavior
-
-Tags with `-` in the name (e.g., `v1.0.11-rc.1`, `v1.0.11-beta.2`) are automatically marked as pre-releases by the workflow:
-
-```yaml
-prerelease: ${{ contains(github.ref_name, '-') }}
-```
-
-This means:
-- ✅ CI builds and signs everything normally
-- ✅ Creates `latest.json` with correct signatures
-- ✅ Marked as "Pre-release" in GitHub UI
-- ⚠️ **BUT**: `/releases/latest/` still points to it (GitHub includes pre-releases in "latest")
-
-This is why the RC testing flow works — users on stable versions will detect the RC as "latest" until you push the final production tag.
-
-## Complete Uninstall After Testing
+## Complete Uninstall (For Clean Test Installs)
 
 ### macOS
 
 ```bash
-# Remove the app
-rm -rf /Applications/subtrkr.app
-
-# Remove app data
-rm -rf ~/Library/Application\ Support/com.tylerpburnett.subtrkr
-
-# Remove cache
-rm -rf ~/Library/Caches/com.tylerpburnett.subtrkr
-
-# Remove preferences
-rm -f ~/Library/Preferences/com.tylerpburnett.subtrkr.plist
-
-# Remove WebKit data
-rm -rf ~/Library/WebKit/com.tylerpburnett.subtrkr
-
-# Remove any downloaded DMGs
-rm -f ~/Downloads/subtrkr*.dmg
+rm -rf /Applications/SubTrkr.app
+rm -rf ~/Library/Application\ Support/com.tyler.subtrkr
+rm -rf ~/Library/Caches/com.tyler.subtrkr
+rm -f  ~/Library/Preferences/com.tyler.subtrkr.plist
+rm -rf ~/Library/WebKit/com.tyler.subtrkr
 ```
 
 ### Windows
 
-1. **Uninstall via Settings:**
-   - Settings → Apps → subtrkr → Uninstall
-
-2. **Remove app data:**
-   ```powershell
-   rmdir /s /q %APPDATA%\com.tylerpburnett.subtrkr
-   rmdir /s /q %LOCALAPPDATA%\com.tylerpburnett.subtrkr
-   ```
+```powershell
+# Uninstall via: Settings → Apps → SubTrkr → Uninstall
+rmdir /s /q "$env:APPDATA\com.tyler.subtrkr"
+rmdir /s /q "$env:LOCALAPPDATA\com.tyler.subtrkr"
+```
 
 ### Linux
 
 ```bash
-# Remove the AppImage
-rm -f ~/.local/share/applications/subtrkr.desktop
-rm -f ~/Downloads/subtrkr*.AppImage
-
-# Remove app data
-rm -rf ~/.config/com.tylerpburnett.subtrkr
-rm -rf ~/.local/share/com.tylerpburnett.subtrkr
+rm -f  ~/.local/share/applications/subtrkr.desktop
+rm -rf ~/.config/com.tyler.subtrkr
+rm -rf ~/.local/share/com.tyler.subtrkr
 ```
 
-## Testing Checklist
-
-Use this checklist for each release:
-
-### Pre-Flight
-- [ ] Latest stable version installed (e.g., v1.0.10)
-- [ ] Version bumped in 3 files (package.json, tauri.conf.json, Cargo.toml)
-- [ ] `bun install --frozen-lockfile` succeeds
-- [ ] `bunx tsc --noEmit` succeeds
-
-### RC Testing
-- [ ] Push v1.0.11-rc.1 tag
-- [ ] CI completes successfully (all 4 platforms)
-- [ ] `latest.json` endpoint resolves with rc.1 version
-- [ ] Stable version detects rc.1 update
-- [ ] Download completes without errors
-- [ ] Installation succeeds
-- [ ] App relaunches on rc.1
-- [ ] Push v1.0.11-rc.2 tag
-- [ ] RC.1 detects rc.2 update
-- [ ] Update chain works (rc.1 → rc.2)
-
-### Fresh Install Test
-- [ ] Complete uninstall performed
-- [ ] Fresh install of rc.2 from GitHub
-- [ ] App launches without errors
-- [ ] Login/signup works
-- [ ] Core features functional (items, notifications, analytics)
-
-### Production Release
-- [ ] All RC tests passed
-- [ ] Known issues documented (if any)
-- [ ] Push v1.0.11 tag (no "-rc" suffix)
-- [ ] CI completes successfully
-- [ ] `latest.json` points to v1.0.11
-- [ ] Verify stable download URLs return 200:
-  - [ ] macOS: `/releases/latest/download/subtrkr-darwin-aarch64.dmg`
-  - [ ] Windows: `/releases/latest/download/subtrkr-windows-x64_setup.exe`
-  - [ ] Linux: `/releases/latest/download/subtrkr-linux-amd64.AppImage`
+---
 
 ## Troubleshooting
 
 ### "No published app updates are available yet"
 
-**Cause:** `latest.json` doesn't exist or is unreachable.
+`latest.json` either doesn't exist or is unreachable.
 
-**Fix:**
 ```bash
-# Verify endpoint exists:
-curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | python3 -m json.tool
-
-# If 404, check CI logs:
-gh run list --workflow Release --limit 1
-gh run view <run-id> --log-failed
+curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | jq .
 ```
 
-### macOS says "subtrkr is damaged and can't be opened"
+If that 404s, the CI workflow didn't publish `latest.json`. Check:
 
-**Cause:** Invalid app bundle signature.
-
-**Workaround for testing:**
 ```bash
-xattr -cr ~/Downloads/subtrkr-darwin-aarch64.dmg
+gh run list --workflow=release.yml --limit=3
+gh release view vX.Y.Z --json assets --jq '.assets[].name' | grep latest
 ```
 
-**Permanent fix:** Add Apple Developer ID signing (requires Apple Developer Program membership).
+### latest.json version matches installed version (no update offered)
 
-### Update downloads but installation fails
+The workflow's version sync step didn't run or failed. The release was built with the version from `tauri.conf.json` in the repo rather than the tag.
 
-**Possible causes:**
-- Disk space full
-- Permissions issue
-- App is running from read-only location
+```bash
+# Check what version latest.json actually reports
+curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | jq .version
+```
 
-**Debug:**
-1. Check Console.app (macOS) / Event Viewer (Windows) for errors
-2. Verify app has write permissions to its installation directory
-3. Try manual install from GitHub Releases
+Fix: delete and recreate the tag — see `PRODUCTION_RELEASE_WORKFLOW.md` → Incident Response.
+
+### macOS "app is damaged and can't be opened"
+
+The release uses ad-hoc signing (not notarized). Clear the quarantine flag:
+
+```bash
+xattr -cr /path/to/SubTrkr.dmg
+# or after install:
+xattr -cr /Applications/SubTrkr.app
+```
 
 ### "Signature verification failed"
 
-**Cause:** Mismatch between `TAURI_SIGNING_PRIVATE_KEY` in CI and `pubkey` in `tauri.conf.json`.
+The `pubkey` in `tauri.conf.json` doesn't match `TAURI_SIGNING_PRIVATE_KEY` in GitHub Actions secrets. These must be a matching pair. If they got out of sync, you need to ship a new build with the matching pubkey before the updater will work again.
 
-**Fix:**
-```bash
-# Verify pubkey in tauri.conf.json matches the key used in CI
-# If keys were rotated, you need to ship a new version with the new pubkey
-```
+### Update downloads but install fails
 
-## Post-Release Verification
+- Check disk space
+- Verify the app isn't installed in a read-only location
+- macOS: check Console.app for errors around the time of install
+- Fallback: direct download from GitHub Releases
 
-After pushing production:
+---
 
-```bash
-# 1. Verify workflow success
-gh run list --workflow Release --limit 1
+## Related
 
-# 2. Verify release assets
-gh release view v1.0.11 --json assets --jq '.assets[].name'
-
-# 3. Verify updater metadata
-curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | python3 -m json.tool | head -10
-
-# 4. Verify version in latest.json matches tag
-curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | grep -o '"version": "[^"]*"'
-```
-
-## Related Documentation
-
-- [Production Release Workflow](PRODUCTION_RELEASE_WORKFLOW.md) — Full release process
-- [Release Captain Checklist](RELEASE_CAPTAIN_CHECKLIST.md) — Per-release execution checklist
-- [Tauri Updater Docs](https://v2.tauri.app/plugin/updater/) — Official Tauri documentation
+- [Production Release Workflow](PRODUCTION_RELEASE_WORKFLOW.md)
+- [Release Captain Checklist](RELEASE_CAPTAIN_CHECKLIST.md)
+- [Tauri Updater Plugin](https://v2.tauri.app/plugin/updater/)

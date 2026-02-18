@@ -1,66 +1,118 @@
 # Release Captain Checklist
 
-Use this checklist for each release tag (`vX.Y.Z`).
+One checklist per release. Fill in the header, work top to bottom.
+
+---
 
 ## Release Info
 
-- Version:
-- Release date:
-- Release captain:
-- Commit SHA:
-- Git tag:
+- **Version:** vX.Y.Z
+- **Date:**
+- **Type:** patch / minor / major
+- **Captain:**
 
-## Preflight
+---
 
-- [ ] `main` is clean and synced with `origin/main`
-- [ ] Version updated in:
-  - [ ] `package.json`
-  - [ ] `src-tauri/tauri.conf.json`
-  - [ ] `src-tauri/Cargo.toml`
-- [ ] `bun install --frozen-lockfile` succeeds
-- [ ] `bunx tsc --noEmit` succeeds
-- [ ] Optional local build completed (`bun tauri build`)
+## 1. Preflight
 
-## Tag + Trigger
+```bash
+git status && git pull origin main
+bun install --frozen-lockfile
+bunx tsc --noEmit
+```
 
-- [ ] Commit pushed to `main`
-- [ ] Tag created: `git tag vX.Y.Z`
-- [ ] Tag pushed: `git push origin vX.Y.Z`
+- [ ] `main` is clean and up to date with origin
+- [ ] `bun install` succeeds
+- [ ] TypeScript has no errors
+
+---
+
+## 2. Changelog
+
+```bash
+git log vPREVIOUS..HEAD --oneline   # review commits
+```
+
+- [ ] `CHANGELOG.md` written and committed
+- [ ] Pushed to `main`
+
+---
+
+## 3. Tag and Push
+
+```bash
+git tag -a vX.Y.Z -m "vX.Y.Z — short summary"
+git push origin vX.Y.Z
+```
+
+- [ ] Tag created and pushed
 - [ ] Release workflow started in GitHub Actions
 
-## CI Verification
+---
 
-- [ ] macOS arm64 job passed
-- [ ] macOS x64 job passed
-- [ ] Ubuntu job passed
-- [ ] Windows job passed
-- [ ] Workflow completed with `success`
+## 4. CI — Wait ~8 Minutes
 
-## Artifact Verification
+```bash
+gh run list --workflow=release.yml --limit=1
+```
 
-- [ ] GitHub Release exists for `vX.Y.Z`
+- [ ] macOS arm64 — success
+- [ ] macOS x64 — success
+- [ ] Ubuntu — success
+- [ ] Windows — success
+
+---
+
+## 5. Verify Artifacts
+
+```bash
+gh release view vX.Y.Z --json assets --jq '.assets[].name'
+```
+
 - [ ] `latest.json` present
-- [ ] Updater `.sig` files present
-- [ ] macOS artifacts present
-- [ ] Windows artifacts present
-- [ ] Linux artifacts present
-- [ ] Landing-page direct links (stable `releases/latest/download/...`) return 200
+- [ ] `.sig` files present for all platforms
+- [ ] macOS `.dmg` files present
+- [ ] Windows `.exe` and `.msi` present
+- [ ] Linux `.AppImage` present
 
-## Updater Verification
+---
 
-- [ ] `latest.json` endpoint resolves
-- [ ] `latest.json` version matches `vX.Y.Z`
-- [ ] URLs/signatures are populated in `latest.json`
-- [ ] Manual in-app update check tested from prior version
+## 6. Verify Updater Manifest
+
+```bash
+curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json \
+  | jq '{version, pub_date}'
+```
+
+- [ ] `version` matches the tag (e.g. `"1.1.0"`, not the previous release)
+- [ ] `pub_date` is recent
+- [ ] URLs and signatures are populated (not empty strings)
+
+> **If version is wrong:** The workflow's "Sync version from tag" step failed.
+> Delete and recreate the tag — see `PRODUCTION_RELEASE_WORKFLOW.md` → Incident Response.
+
+---
+
+## 7. Smoke Test (Optional but Recommended for Minor/Major)
+
+- [ ] Launched installed older version
+- [ ] Settings → Check for Updates → detects new version
+- [ ] Download and install completed
+- [ ] App relaunched on new version
+
+---
 
 ## Sign-Off
 
-- [ ] Release notes reviewed
-- [ ] Any known issues documented
-- [ ] Team notified of release
-- [ ] Follow-up tasks created (if needed)
+- [ ] Release notes / changelog reviewed
+- [ ] Known issues documented (if any)
+- [ ] Done — close this checklist
 
-## Incident Notes (if applicable)
+---
+
+## Incident Notes
+
+_Fill in if anything went wrong:_
 
 - What failed:
 - User impact:
