@@ -279,6 +279,18 @@ function ItemList({
     setBulkDeleteConfirmOpen(false);
   };
 
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const modKey = isMac ? "⌘" : "Ctrl+";
+
+  const ShortcutHint = ({ keys }: { keys: string }) => (
+    <span
+      className="ml-auto text-[10px] font-mono opacity-50"
+      style={{ color: "var(--text-muted)" }}
+    >
+      {keys}
+    </span>
+  );
+
   const renderActionsMenu = (item: ItemWithCategory) => (
     <div className="relative" onClick={(event) => event.stopPropagation()}>
       <DropdownMenu>
@@ -314,6 +326,7 @@ function ItemList({
           >
             <Pencil className="w-4 h-4" />
             Edit
+            <ShortcutHint keys={`${modKey}E`} />
           </DropdownMenuItem>
 
           {/* Status-aware actions */}
@@ -460,6 +473,7 @@ function ItemList({
           >
             <Trash2 className="w-4 h-4" />
             Delete
+            <ShortcutHint keys={`${modKey}⌫`} />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -528,10 +542,10 @@ function ItemList({
 
   const statusStyles = {
     active: "",
-    trial: "opacity-90",
-    paused: "opacity-70",
-    cancelled: "opacity-50",
-    archived: "opacity-40",
+    trial: "",
+    paused: "opacity-80",
+    cancelled: "opacity-65",
+    archived: "opacity-55",
   };
 
   const selectedLabel = selectedCount === 1 ? labels.singular : labels.plural;
@@ -645,13 +659,13 @@ function ItemList({
                   <motion.div
                     layout
                     key={item.id}
-                    className={`stagger-item card relative group cursor-pointer ${statusStyles[item.status]}`}
+                    className={`stagger-item card group cursor-pointer ${statusStyles[item.status]}`}
                     style={{
                       borderLeft: `6px solid ${categoryColor}`,
                       filter:
                         item.status === "cancelled" ||
                         item.status === "archived"
-                          ? "grayscale(0.3)"
+                          ? "grayscale(0.15)"
                           : undefined,
                       animationDelay: `${index * 0.05}s`,
                       transition: "all 0.2s var(--ease-out-expo)",
@@ -668,69 +682,8 @@ function ItemList({
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
-                    {/* Status badge */}
-                    {item.status === "trial" && (
-                      <div
-                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                          color: "white",
-                          boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        TRIAL
-                      </div>
-                    )}
-                    {item.status === "paused" && (
-                      <div
-                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                          color: "white",
-                          boxShadow: "0 2px 8px rgba(245, 158, 11, 0.3)",
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        PAUSED{" "}
-                        {item.paused_until &&
-                          `· ${formatShortDate(item.paused_until)}`}
-                      </div>
-                    )}
-                    {item.status === "cancelled" && (
-                      <div
-                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                          color: "white",
-                          boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        CANCELLED{" "}
-                        {item.cancellation_date &&
-                          `· ${formatShortDate(item.cancellation_date)}`}
-                      </div>
-                    )}
-                    {item.status === "archived" && (
-                      <div
-                        className="absolute bottom-16 right-4 px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                        style={{
-                          backgroundColor: "var(--bg-hover)",
-                          color: "var(--text-muted)",
-                          border: "1px solid var(--border-default)",
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        ARCHIVED
-                      </div>
-                    )}
-
                     {/* Header */}
-                    <div className="flex items-start gap-3 mb-4">
+                    <div className="flex items-start gap-3 mb-3">
                       {/* Logo */}
                       <ServiceLogo
                         logoUrl={item.logo_url}
@@ -748,14 +701,14 @@ function ItemList({
                             event.stopPropagation();
                             onEdit(item);
                           }}
-                          className="block w-full text-left font-mono font-semibold text-lg truncate transition-colors hover:underline focus-visible:outline-none"
-                          style={{ color: "var(--text-primary)" }}
+                          className="block w-full text-left font-semibold text-lg truncate transition-colors hover:underline focus-visible:outline-none"
+                          style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
                           aria-label={`Edit ${item.name}`}
                         >
                           {item.name}
                         </button>
                         <p
-                          className="text-sm font-mono"
+                          className="text-sm"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           {item.category?.name || "Uncategorized"}
@@ -765,6 +718,66 @@ function ItemList({
                       {/* Menu */}
                       {renderActionsMenu(item)}
                     </div>
+
+                    {/* Status badge (in flow) */}
+                    {item.status !== "active" && (
+                      <div className="mb-3">
+                        {item.status === "trial" && (
+                          <span
+                            className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
+                            style={{
+                              background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                              color: "white",
+                              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            TRIAL
+                          </span>
+                        )}
+                        {item.status === "paused" && (
+                          <span
+                            className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
+                            style={{
+                              background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                              color: "white",
+                              boxShadow: "0 2px 8px rgba(245, 158, 11, 0.3)",
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            PAUSED{" "}
+                            {item.paused_until && `· ${formatShortDate(item.paused_until)}`}
+                          </span>
+                        )}
+                        {item.status === "cancelled" && (
+                          <span
+                            className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
+                            style={{
+                              background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                              color: "white",
+                              boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            CANCELLED{" "}
+                            {item.cancellation_date && `· ${formatShortDate(item.cancellation_date)}`}
+                          </span>
+                        )}
+                        {item.status === "archived" && (
+                          <span
+                            className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
+                            style={{
+                              backgroundColor: "var(--bg-hover)",
+                              color: "var(--text-muted)",
+                              border: "1px solid var(--border-default)",
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            ARCHIVED
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Amount */}
                     <div className="mb-4">
@@ -879,7 +892,7 @@ function ItemList({
                               filter:
                                 item.status === "cancelled" ||
                                 item.status === "archived"
-                                  ? "grayscale(0.3)"
+                                  ? "grayscale(0.15)"
                                   : undefined,
                               animationDelay: `${index * 0.03}s`,
                               transition: "all 0.15s var(--ease-out-expo)",
@@ -929,7 +942,7 @@ function ItemList({
                                       event.stopPropagation();
                                       onEdit(item);
                                     }}
-                                    className="block w-full text-left font-mono font-semibold truncate transition-all focus-visible:outline-none group-hover:translate-x-0.5"
+                                    className="block w-full text-left font-semibold truncate transition-all focus-visible:outline-none group-hover:translate-x-0.5"
                                     style={{
                                       color: "var(--text-primary)",
                                       fontSize: "0.875rem",

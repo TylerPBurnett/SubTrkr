@@ -11,6 +11,8 @@ import {
   Moon,
   Sun,
   WifiOff,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import type { ItemWithCategory, Category, ItemType, StatusChangeData } from './types';
 import {
@@ -31,6 +33,7 @@ import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
 import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './services/notifications';
 import { checkForUpdatesOnLaunch } from './services/updater';
 import { onOpenUrl, getCurrent as getCurrentDeepLinks } from '@tauri-apps/plugin-deep-link';
+import { toast, Toaster } from 'sonner';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './components/Dashboard';
 import ItemList from './components/ItemList';
@@ -58,7 +61,6 @@ function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [backgroundWarning, setBackgroundWarning] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formItemType, setFormItemType] = useState<ItemType>('subscription');
@@ -68,12 +70,20 @@ function App() {
     action: StatusChangeData['action'];
   } | null>(null);
   const [storedTheme, setStoredTheme] = useLocalStorage<string>('subtrkr-theme', DEFAULT_THEME);
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>('subtrkr-sidebar-collapsed', false);
+  const [windowNarrow, setWindowNarrow] = useState(() => window.innerWidth < 900);
+  const isCollapsed = sidebarCollapsed || windowNarrow;
   const theme = isTheme(storedTheme) ? storedTheme : DEFAULT_THEME;
   const themeTone = getThemeTone(theme);
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs for keyboard shortcut handler — avoids re-registering listener on state changes (rule 5.6/8.2)
+  const showFormRef = useRef(showForm);
+  showFormRef.current = showForm;
+  const statusChangeDialogRef = useRef(statusChangeDialog);
+  statusChangeDialogRef.current = statusChangeDialog;
 
   const loadData = useCallback(async () => {
     try {
@@ -98,7 +108,7 @@ function App() {
       });
     } catch (error) {
       console.error('Failed to load data:', error);
-      setError('Failed to load data. Please check your connection.');
+      toast.error('Failed to load data. Please check your connection.');
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +161,7 @@ function App() {
           const error = url.searchParams.get('error');
           if (error) {
             const errorDesc = url.searchParams.get('error_description');
-            setError(errorDesc || 'Authentication failed. Please try again.');
+            toast.error(errorDesc || 'Authentication failed. Please try again.');
             return;
           }
 
@@ -170,7 +180,7 @@ function App() {
           }
         } catch (e) {
           console.error('Deep link auth error:', e);
-          setError('Failed to complete sign-in. Please try again.');
+          toast.error('Failed to complete sign-in. Please try again.');
         }
       }
     }
@@ -253,6 +263,13 @@ function App() {
     };
   }, []);
 
+  // Auto-collapse sidebar on narrow windows (<900px)
+  useEffect(() => {
+    const handleResize = () => setWindowNarrow(window.innerWidth < 900);
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Normalize corrupted/unknown theme values from localStorage
   useEffect(() => {
     if (!isTheme(storedTheme)) {
@@ -267,13 +284,13 @@ function App() {
     root.classList.toggle('dark', themeTone === 'dark');
   }, [theme, themeTone]);
 
-  // Clear error after 5 seconds
+  // Route background warnings through Sonner toast
   useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 5000);
-      return () => clearTimeout(timer);
+    if (backgroundWarning) {
+      toast.warning(backgroundWarning);
+      setBackgroundWarning(null);
     }
-  }, [error]);
+  }, [backgroundWarning]);
 
   // Daily background jobs (runs every 24 hours)
   useEffect(() => {
@@ -301,19 +318,76 @@ function App() {
     return () => clearInterval(interval);
   }, [session, loadData]);
 
+  // Global keyboard shortcuts — listener registered once per session (refs read latest state)
+  useEffect(() => {
+    if (!session) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Escape: close form or dialog
+      if (e.key === 'Escape') {
+        if (showFormRef.current) { handleCloseForm(); e.preventDefault(); return; }
+        if (statusChangeDialogRef.current) { handleStatusChangeCancel(); e.preventDefault(); return; }
+      }
+
+      // Cmd/Ctrl+N: new subscription
+      if (mod && e.key === 'n') {
+        e.preventDefault();
+        handleAddNew('subscription');
+        return;
+      }
+
+      // Cmd/Ctrl+B: new bill (only if not in input to avoid bold conflict)
+      if (mod && e.key === 'b' && !inInput) {
+        e.preventDefault();
+        handleAddNew('bill');
+        return;
+      }
+
+      // Cmd/Ctrl+1-5: navigate views
+      if (mod && e.key >= '1' && e.key <= '5') {
+        e.preventDefault();
+        const views: View[] = ['dashboard', 'subscriptions', 'bills', 'analytics', 'settings'];
+        const idx = parseInt(e.key) - 1;
+        if (idx < views.length) startTransition(() => setView(views[idx]));
+        return;
+      }
+
+      // Cmd/Ctrl+\: toggle sidebar (only when window isn't forcing collapse)
+      if (mod && e.key === '\\') {
+        e.preventDefault();
+        if (!windowNarrow) setSidebarCollapsed((prev) => !prev);
+        return;
+      }
+
+      // / : focus search (when not in an input)
+      if (e.key === '/' && !inInput) {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>('input[type="text"][placeholder*="Search"]');
+        searchInput?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [session]); // refs read latest showForm/statusChangeDialog without re-subscribing
+
   const toggleTheme = () => {
     setStoredTheme((prev) => getNextTheme(isTheme(prev) ? prev : DEFAULT_THEME));
   };
 
   const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
     setIsSaving(true);
-    setError(null);
     try {
       await createItem(data);
       setShowForm(false);
+      toast.success('Item created');
     } catch (err) {
       console.error('Failed to create item:', err);
-      setError('Failed to create item. Please try again.');
+      toast.error('Failed to create item. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -321,36 +395,35 @@ function App() {
 
   const handleUpdateItem = async (id: string, data: Parameters<typeof updateItem>[1]) => {
     setIsSaving(true);
-    setError(null);
     try {
       await updateItem(id, data);
       setEditingItem(null);
       setShowForm(false);
+      toast.success('Item updated');
     } catch (err) {
       console.error('Failed to update item:', err);
-      setError('Failed to update item. Please try again.');
+      toast.error('Failed to update item. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteItem = async (id: string) => {
-    setError(null);
     try {
       await deleteItem(id);
+      toast.success('Item deleted');
     } catch (err) {
       console.error('Failed to delete item:', err);
-      setError('Failed to delete item. Please try again.');
+      toast.error('Failed to delete item. Please try again.');
     }
   };
 
   const handleToggleActive = async (id: string) => {
-    setError(null);
     try {
       await toggleItemActive(id);
     } catch (err) {
       console.error('Failed to update item:', err);
-      setError('Failed to update item. Please try again.');
+      toast.error('Failed to update item. Please try again.');
     }
   };
 
@@ -364,13 +437,17 @@ function App() {
   const handleStatusChangeConfirm = async (data: StatusChangeData) => {
     if (!statusChangeDialog) return;
 
-    setError(null);
     try {
       await executeStatusChange(statusChangeDialog.item.id, data);
       setStatusChangeDialog(null);
+      const actionLabels: Record<string, string> = {
+        pause: 'paused', resume: 'resumed', cancel: 'cancelled',
+        reactivate: 'reactivated', convert: 'converted to paid',
+      };
+      toast.success(`Item ${actionLabels[data.action] || 'updated'}`);
     } catch (err) {
       console.error('Failed to change status:', err);
-      setError('Failed to change status. Please try again.');
+      toast.error('Failed to change status. Please try again.');
     }
   };
 
@@ -409,9 +486,14 @@ function App() {
         className="min-h-screen flex items-center justify-center"
         style={{ backgroundColor: 'var(--bg-base)' }}
       >
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full" style={{ backgroundColor: 'var(--brand-muted)' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <span
+            className="text-2xl select-none"
+            style={{ fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}
+          >
+            Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
+          </span>
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }} />
         </div>
       </div>
     );
@@ -448,16 +530,21 @@ function App() {
     );
   }
 
-  // Data loading state
+  // Data loading state — show full app shell with skeleton content
   if (isLoading) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
         style={{ backgroundColor: 'var(--bg-base)' }}
       >
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full" style={{ backgroundColor: 'var(--brand-muted)' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <span
+            className="text-2xl select-none"
+            style={{ fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}
+          >
+            Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
+          </span>
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }} />
         </div>
       </div>
     );
@@ -467,43 +554,92 @@ function App() {
     <div className="app-layout h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="app-shell flex w-full h-screen">
         {/* Sidebar */}
-        <aside className="sidebar w-64 shrink-0 h-full flex flex-col">
-          {/* Draggable title bar area */}
+        <aside
+          className="sidebar shrink-0 h-full flex flex-col transition-all duration-200"
+          style={{ width: isCollapsed ? '64px' : '256px' }}
+        >
+          {/* Draggable title bar area with branding */}
           <div
             data-tauri-drag-region
-            className="h-12 shrink-0"
-            style={{
-              WebkitAppRegion: 'drag'
-            } as React.CSSProperties}
-          />
+            className="h-12 shrink-0 flex items-center"
+            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          >
+            {!isCollapsed && (
+              <>
+                {/* Traffic light reservation zone — macOS puts the buttons here (~76px) */}
+                <div data-tauri-drag-region className="w-[76px] shrink-0 h-full" />
+                {/* Brand centered in the remaining space */}
+                <span
+                  className="text-lg select-none flex-1 text-center"
+                  style={{
+                    fontWeight: 800,
+                    letterSpacing: '-0.03em',
+                    color: 'var(--text-primary)',
+                    WebkitAppRegion: 'drag',
+                  } as React.CSSProperties}
+                >
+                  Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
+                </span>
+                {/* Hide toggle when window forces collapse */}
+                {!windowNarrow && (
+                  <button
+                    onClick={() => setSidebarCollapsed((prev) => !prev)}
+                    className="p-1.5 rounded-lg transition-colors interactive-hover-bg shrink-0"
+                    style={{
+                      color: 'var(--text-muted)',
+                      WebkitAppRegion: 'no-drag',
+                      marginRight: '8px',
+                    } as React.CSSProperties}
+                    title="Collapse sidebar"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
 
-          <nav className="flex-1 px-3 overflow-auto">
+          <nav className={`flex-1 overflow-auto ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
+            {/* Expand button lives here when collapsed — clears the traffic light zone */}
+            {isCollapsed && !windowNarrow && (
+              <button
+                onClick={() => setSidebarCollapsed((prev) => !prev)}
+                className="w-full flex items-center justify-center rounded-xl mb-1 py-3 transition-all duration-200 nav-item"
+                style={{ borderLeft: '4px solid transparent' }}
+                title="Expand sidebar"
+              >
+                <PanelLeftOpen className="w-5 h-5 shrink-0" />
+              </button>
+            )}
             {navItems.map((item, index) => (
               <button
                 key={item.id}
                 onClick={() => startTransition(() => setView(item.id))}
-                className={`stagger-item w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all duration-200 ${
+                title={isCollapsed ? item.label : undefined}
+                className={`stagger-item w-full flex items-center rounded-xl mb-1 transition-all duration-200 ${
                   view === item.id ? 'nav-item-active font-medium' : 'nav-item'
-                }`}
+                } ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'}`}
                 style={{
                   animationDelay: `${index * 0.05}s`,
                   borderLeft: view === item.id ? '4px solid var(--brand-primary)' : '4px solid transparent',
-                  paddingLeft: view === item.id ? 'calc(1rem - 4px)' : '1rem'
                 }}
               >
-                <item.icon className="w-5 h-5" />
-                {item.label}
+                <item.icon className="w-5 h-5 shrink-0" />
+                {!isCollapsed && item.label}
               </button>
             ))}
           </nav>
 
-          <div className="p-4 flex items-center gap-2" style={{ borderTop: '1px solid var(--shell-divider)' }}>
+          <div
+            className={`flex items-center ${isCollapsed ? 'flex-col gap-2 p-2' : 'gap-2 p-4'}`}
+            style={{ borderTop: '1px solid var(--shell-divider)' }}
+          >
             {/* Theme Toggle Icon Button */}
             <button
               onClick={toggleTheme}
               title={`Theme: ${theme}`}
               aria-label={`Switch theme (current: ${theme})`}
-              className="flex-1 flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg"
+              className={`flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg ${isCollapsed ? 'w-full' : 'flex-1'}`}
             >
               <div style={{
                 transition: 'transform 0.3s var(--ease-spring)',
@@ -516,13 +652,13 @@ function App() {
             {/* Settings Icon Button */}
             <button
               onClick={() => startTransition(() => setView('settings'))}
-              className={`flex-1 flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
-                view === 'settings' ? 'bg-brand-primary text-text-inverse' : 'interactive-hover'
-              }`}
+              title={isCollapsed ? 'Settings' : undefined}
+              className={`flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
+                view === 'settings' ? 'nav-item-active' : 'btn-secondary interactive-hover-bg'
+              } ${isCollapsed ? 'w-full' : 'flex-1'}`}
               style={{
-                backgroundColor: view === 'settings' ? 'var(--brand-primary)' : 'var(--bg-hover)',
-                color: view === 'settings' ? 'var(--text-inverse)' : 'var(--text-secondary)',
-                borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent'
+                color: view === 'settings' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent',
               }}
             >
               <SettingsIcon className="w-5 h-5" />
@@ -532,15 +668,6 @@ function App() {
 
         {/* Main Content */}
         <main className="main-content flex-1 min-w-0 h-full flex flex-col">
-          {/* Draggable title bar area for main content */}
-          <div
-            data-tauri-drag-region
-            className="h-12 shrink-0"
-            style={{
-              WebkitAppRegion: 'drag'
-            } as React.CSSProperties}
-          />
-
           {/* Email verification banner */}
           {session?.user && !session.user.email_confirmed_at && !emailBannerDismissed && (
             <EmailVerificationBanner
@@ -550,10 +677,14 @@ function App() {
           )}
 
           <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-          <div className="p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-            <div>
+          <div className="px-8 pb-8">
+            {/* Header — also serves as drag region */}
+            <div
+              data-tauri-drag-region
+              className="flex items-center justify-between pt-5 pb-6"
+              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            >
+            <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
               <h2 className="text-3xl" style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 {view === 'dashboard' && 'Dashboard'}
                 {view === 'bills' && 'Bills'}
@@ -574,6 +705,7 @@ function App() {
               <button
                 onClick={() => handleAddNew('bill')}
                 className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
               >
                 <Plus className="w-5 h-5" />
                 Add Bill
@@ -583,6 +715,7 @@ function App() {
               <button
                 onClick={() => handleAddNew('subscription')}
                 className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
               >
                 <Plus className="w-5 h-5" />
                 Add Subscription
@@ -592,7 +725,13 @@ function App() {
 
           {/* Content */}
           {view === 'dashboard' && (
-            <Dashboard items={items} categories={categories} onEdit={handleEdit} />
+            <Dashboard
+              items={items}
+              categories={categories}
+              onEdit={handleEdit}
+              onViewAll={() => startTransition(() => setView('subscriptions'))}
+              onAddNew={() => handleAddNew('subscription')}
+            />
           )}
           {view === 'bills' && (
             <ItemList
@@ -637,43 +776,17 @@ function App() {
         </main>
       </div>
 
-      {/* Error Toast */}
-      {error && (
-        <div
-          className="fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
-          style={{
-            backgroundColor: 'var(--accent-red)',
-            color: 'white',
-          }}
-        >
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="p-1 rounded hover:bg-white/20 transition-colors"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {/* Background Warning Toast */}
-      {backgroundWarning && (
-        <div
-          className="fixed bottom-4 left-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
-          style={{
-            backgroundColor: 'var(--accent-yellow)',
-            color: 'var(--text-primary)',
-          }}
-        >
-          <span>{backgroundWarning}</span>
-          <button
-            onClick={() => setBackgroundWarning(null)}
-            className="p-1 rounded hover:bg-black/10 transition-colors"
-          >
-            ×
-          </button>
-        </div>
-      )}
+      {/* Toast notifications */}
+      <Toaster
+        position="bottom-right"
+        theme={themeTone}
+        toastOptions={{
+          style: {
+            borderRadius: '12px',
+            fontSize: '14px',
+          },
+        }}
+      />
 
       {/* Item Form Modal */}
       {showForm && (

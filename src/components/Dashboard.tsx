@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import {
   TrendingUp,
+  TrendingDown,
+  Minus,
   Calendar,
   CreditCard,
   Receipt,
   AlertCircle,
   ChevronRight,
-  RotateCcw
+  RotateCcw,
+  Plus,
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip } from 'recharts';
-import type { Category, ItemWithCategory } from '../types';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import type { Category, ItemWithCategory, ItemType } from '../types';
 import {
   calculateMonthlySpending,
   calculateYearlySpending,
@@ -18,12 +21,15 @@ import {
 } from '../services/database';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
 import ServiceLogo from './ui/ServiceLogo';
+import EmptyState from './ui/EmptyState';
 import SegmentedControl from './ui/SegmentedControl';
 
 interface DashboardProps {
   items: ItemWithCategory[];
   categories: Category[];
   onEdit: (item: ItemWithCategory) => void;
+  onViewAll?: () => void;
+  onAddNew?: () => void;
 }
 
 type FilterTab = 'all' | 'bill' | 'subscription';
@@ -36,7 +42,60 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
   }).format(amount);
 }
 
-function Dashboard({ items, categories, onEdit }: DashboardProps) {
+/**
+ * Estimate last month's monthly spending by excluding items that started after
+ * the beginning of the current month (i.e., items that didn't exist last month).
+ */
+function calculatePreviousMonthSpending(items: ItemWithCategory[], type?: ItemType): number {
+  const now = new Date();
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const filtered = items.filter(
+    (item) =>
+      (item.status === 'active' || item.status === 'trial') &&
+      (!type || item.item_type === type) &&
+      new Date(item.start_date) < startOfThisMonth
+  );
+
+  return filtered.reduce((total, item) => {
+    let monthlyAmount = item.amount;
+    switch (item.billing_cycle) {
+      case 'weekly': monthlyAmount = (item.amount * 52) / 12; break;
+      case 'quarterly': monthlyAmount = item.amount / 3; break;
+      case 'yearly': monthlyAmount = item.amount / 12; break;
+    }
+    return total + monthlyAmount;
+  }, 0);
+}
+
+function TrendBadge({ current, previous }: { current: number; previous: number }) {
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) return null; // no baseline to compare
+
+  const diff = current - previous;
+  const pct = Math.round((diff / previous) * 100);
+
+  if (pct === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium" style={{ color: 'var(--text-muted)' }}>
+        <Minus className="w-3 h-3" /> 0%
+      </span>
+    );
+  }
+
+  const isUp = pct > 0;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-mono font-medium"
+      style={{ color: isUp ? 'var(--accent-red)' : 'var(--brand-primary)' }}
+    >
+      {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+      {isUp ? '+' : ''}{pct}%
+    </span>
+  );
+}
+
+function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
 
@@ -53,6 +112,13 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
     () => calculateYearlySpending(items, typeFilter),
     [items, typeFilter]
   );
+
+  const prevMonthlySpending = useMemo(
+    () => calculatePreviousMonthSpending(items, typeFilter),
+    [items, typeFilter]
+  );
+
+  const prevYearlySpending = prevMonthlySpending * 12;
 
   const spendingByCategory = useMemo(
     () => getSpendingByCategory(items, categories, typeFilter),
@@ -87,6 +153,18 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
     <div className="space-y-6">
       <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={setFilterTab} />
 
+      {/* Empty state when no items exist */}
+      {items.length === 0 && (
+        <div className="card">
+          <EmptyState
+            icon={Plus}
+            title="Welcome to SubTrkr"
+            description="Start tracking your subscriptions and bills to see spending insights, upcoming payments, and more."
+            action={onAddNew ? { label: 'Add Your First Item', onClick: onAddNew } : undefined}
+          />
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Monthly Spending Card */}
@@ -110,6 +188,7 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
             }}>
               {formatCurrency(monthlySpending)}
             </h1>
+            <TrendBadge current={monthlySpending} previous={prevMonthlySpending} />
           </div>
         </div>
 
@@ -134,6 +213,7 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
             }}>
               {formatCurrency(yearlySpending)}
             </h1>
+            <TrendBadge current={yearlySpending} previous={prevYearlySpending} />
           </div>
         </div>
 
@@ -259,6 +339,16 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
                   </button>
                 );
               })}
+              {upcomingItems.length > 5 && onViewAll && (
+                <button
+                  onClick={onViewAll}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-sm font-medium transition-colors interactive-hover-bg"
+                  style={{ color: 'var(--brand-primary)' }}
+                >
+                  View all {upcomingItems.length} upcoming
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -276,49 +366,51 @@ function Dashboard({ items, categories, onEdit }: DashboardProps) {
             </div>
           ) : (
             <div className="flex items-center gap-6">
-              <div className="w-40 h-40 relative">
-                <PieChart width={160} height={160}>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={70}
-                    paddingAngle={3}
-                    cornerRadius={4}
-                    dataKey="value"
-                    isAnimationActive={true}
-                    animationDuration={300}
-                    animationEasing="ease-out"
-                    className="chart-pie-sector"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => [formatCurrency(value as number), '']}
-                    contentStyle={{
-                      backgroundColor: 'var(--bg-surface)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '10px',
-                      boxShadow: 'var(--shadow-elevated)',
-                      padding: '6px 10px',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontSize: '12px',
-                    }}
-                    labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
-                    itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
-                    separator=""
-                  />
-                  {/* Center label */}
-                  <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
-                    MONTHLY
-                  </text>
-                  <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
-                    {formatCurrency(monthlySpending)}
-                  </text>
-                </PieChart>
+              <div className="w-40 h-40 relative shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      cornerRadius={4}
+                      dataKey="value"
+                      isAnimationActive={true}
+                      animationDuration={300}
+                      animationEasing="ease-out"
+                      className="chart-pie-sector"
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => [formatCurrency(value as number), '']}
+                      contentStyle={{
+                        backgroundColor: 'var(--bg-surface)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: '10px',
+                        boxShadow: 'var(--shadow-elevated)',
+                        padding: '6px 10px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: '12px',
+                      }}
+                      labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
+                      itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
+                      separator=""
+                    />
+                    {/* Center label */}
+                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
+                      MONTHLY
+                    </text>
+                    <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
+                      {formatCurrency(monthlySpending)}
+                    </text>
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
               
               <div className="flex-1 space-y-2">
