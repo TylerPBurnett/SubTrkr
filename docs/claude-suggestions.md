@@ -22,6 +22,9 @@
 
 ### Future Enhancements
 
+ - add a budget feature in settings and wire it up to dashboard/analytics
+ 
+
 3. **Manual logo override**
    - Let users paste a custom logo URL for obscure services that logo.dev doesn't have
    - Could add a small "edit" button on the logo in the form
