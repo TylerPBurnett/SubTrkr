@@ -1,6 +1,6 @@
 # Release Captain Checklist
 
-One checklist per release. Fill in the header, work top to bottom.
+One copy per release. Fill in the header, work top to bottom.
 
 ---
 
@@ -21,7 +21,7 @@ bun install --frozen-lockfile
 bunx tsc --noEmit
 ```
 
-- [ ] `main` is clean and up to date with origin
+- [ ] `main` is clean and up to date
 - [ ] `bun install` succeeds
 - [ ] TypeScript has no errors
 
@@ -30,7 +30,7 @@ bunx tsc --noEmit
 ## 2. Changelog
 
 ```bash
-git log vPREVIOUS..HEAD --oneline   # review commits
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
 ```
 
 - [ ] `CHANGELOG.md` written and committed
@@ -46,11 +46,13 @@ git push origin vX.Y.Z
 ```
 
 - [ ] Tag created and pushed
-- [ ] Release workflow started in GitHub Actions
+- [ ] GitHub Actions release workflow started
+
+> No version bump needed — the workflow sets it from the tag automatically.
 
 ---
 
-## 4. CI — Wait ~8 Minutes
+## 4. CI (~8 min)
 
 ```bash
 gh run list --workflow=release.yml --limit=1
@@ -72,49 +74,45 @@ gh release view vX.Y.Z --json assets --jq '.assets[].name'
 - [ ] `latest.json` present
 - [ ] `.sig` files present for all platforms
 - [ ] macOS `.dmg` files present
-- [ ] Windows `.exe` and `.msi` present
+- [ ] Windows `.exe` / `.msi` present
 - [ ] Linux `.AppImage` present
 
 ---
 
-## 6. Verify Updater Manifest
+## 6. Verify Updater Manifest ← most important step
 
 ```bash
 curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json \
   | jq '{version, pub_date}'
 ```
 
-- [ ] `version` matches the tag (e.g. `"1.1.0"`, not the previous release)
+- [ ] `version` matches this release (e.g. `"1.1.0"`, **not** the previous release)
 - [ ] `pub_date` is recent
-- [ ] URLs and signatures are populated (not empty strings)
+- [ ] Signatures and URLs are populated
 
-> **If version is wrong:** The workflow's "Sync version from tag" step failed.
+> **If version is wrong:** the workflow's "Sync version from tag" step failed.
 > Delete and recreate the tag — see `PRODUCTION_RELEASE_WORKFLOW.md` → Incident Response.
 
 ---
 
-## 7. Smoke Test (Optional but Recommended for Minor/Major)
+## 7. Smoke Test (recommended for minor/major releases)
 
-- [ ] Launched installed older version
-- [ ] Settings → Check for Updates → detects new version
-- [ ] Download and install completed
-- [ ] App relaunched on new version
+- [ ] Opened older installed version
+- [ ] Settings → Check for Updates → detected new version
+- [ ] Downloaded, installed, relaunched successfully
 
 ---
 
 ## Sign-Off
 
-- [ ] Release notes / changelog reviewed
-- [ ] Known issues documented (if any)
-- [ ] Done — close this checklist
+- [ ] Done
 
 ---
 
 ## Incident Notes
 
-_Fill in if anything went wrong:_
+_Fill in only if something went wrong:_
 
 - What failed:
 - User impact:
-- Mitigation:
-- Permanent fix:
+- Fix applied:

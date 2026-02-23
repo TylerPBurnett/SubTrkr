@@ -12,91 +12,74 @@ The app polls this endpoint on launch and when "Check for Updates" is clicked:
 https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json
 ```
 
-GitHub's `/releases/latest/` resolves to the **most recent non-pre-release, non-draft release**. The Tauri updater compares the version in `latest.json` to the installed app version. If the manifest version is higher, it prompts the user.
+GitHub's `/releases/latest/` resolves to the **most recent non-pre-release, non-draft release**. The Tauri updater compares the `version` in `latest.json` against the installed app version. If the manifest version is higher, the user is prompted to update.
 
-**Key implication:** Tags marked as pre-releases (any tag containing `-`, per the release workflow) do **not** update this endpoint. A tag like `v1.1.0-rc.1` will not trigger updates to users — `/releases/latest/download/latest.json` will still return the previous stable version.
+**Important:** Tags with `-` in their name (e.g. `-rc.1`, `-beta.1`) are marked as pre-releases by the workflow and do **not** update the `/releases/latest/` pointer. Publishing `v1.1.0-rc.1` will not cause any installed app to see an update — `/releases/latest/download/latest.json` will still return the previous stable release. The RC flow described in older versions of this doc does not work.
 
 ---
 
-## Recommended Testing Approach
+## Recommended Testing Method
 
-The simplest and most reliable way to test the updater is to point a local build at a version-specific `latest.json` rather than the live endpoint. This lets you test without publishing anything to users.
+The most reliable approach is to build a local "old" version that points at a specific release's `latest.json`, then verify it detects and installs the update.
 
-### Step 1: Pick or publish a target release to update to
+### Step 1: Build a local "old" app
 
-You need a GitHub release that has a `latest.json`. Any existing stable release works, or you can push a real release tag (which will become the new stable for users).
-
-For isolated testing, use an **existing older release** as the "update" target — just to verify the download and install mechanism works end-to-end.
-
-### Step 2: Build a local "old" app that points to a specific release
-
-Temporarily modify the updater endpoint in `src-tauri/tauri.conf.json` to point at a specific release rather than `/latest/`:
+Temporarily modify `src-tauri/tauri.conf.json` — do **not** commit these changes:
 
 ```json
-"updater": {
-  "endpoints": [
-    "https://github.com/TylerPBurnett/SubTrkr/releases/download/vX.Y.Z-TARGET/latest.json"
-  ],
-  "pubkey": "..."
+{
+  "version": "0.0.1",
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/TylerPBurnett/SubTrkr/releases/download/vX.Y.Z-TARGET/latest.json"
+      ],
+      "pubkey": "..."
+    }
+  }
 }
 ```
 
-Set the app version to something *lower* than the target:
+Set `version` lower than the target release. Set `endpoints` to a specific release's `latest.json` URL (swap in the tag you want to test updating to).
 
-```json
-"version": "0.0.1"
-```
-
-Build locally:
+Build and install:
 
 ```bash
 bun tauri build
+# Installer is in src-tauri/target/release/bundle/
 ```
-
-Install the resulting app from `src-tauri/target/release/bundle/`.
 
 **Revert `tauri.conf.json` before committing anything.**
 
-### Step 3: Trigger an update
+### Step 2: Trigger the update
 
-Launch the locally-built "old" app. Go to Settings → Check for Updates.
+Launch the installed build. Go to Settings → Check for Updates.
 
-Expected behavior:
-- App detects the target version as newer
+Expected:
+- Detects the target release as newer
 - Prompts to install
-- Downloads, installs, relaunches
-- New version is running
-
-### Step 4: Verify post-update state
-
-- [ ] App version reflects the target release
-- [ ] User data intact
-- [ ] No errors in the app on first launch post-update
+- Downloads, installs, relaunches on the new version
+- User data is intact after relaunch
 
 ---
 
-## Post-Release Verification (After Shipping)
-
-After every production release, run these to confirm users will receive the update:
+## Post-Release Verification (Run After Every Production Release)
 
 ```bash
-# 1. Confirm workflow completed
+# 1. Confirm workflow succeeded
 gh run list --workflow=release.yml --limit=1
 
-# 2. Check latest.json version matches the tag
+# 2. Confirm latest.json version matches the tag
 curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json \
   | jq '{version, pub_date}'
 
-# 3. Check release assets are all present
+# 3. Confirm all artifacts are present
 gh release view vX.Y.Z --json assets --jq '.assets[].name'
 ```
 
-To manually trigger an update check from a real installed build:
+The `version` in `latest.json` must match the release tag (without `v`). If it shows the previous version, see `PRODUCTION_RELEASE_WORKFLOW.md` → Incident Response.
 
-1. Open the app
-2. Settings → Account Settings → Check for Updates
-
-The auto-check on launch is throttled to once every 12 hours — the manual button bypasses the throttle.
+To force an immediate update check without waiting for the 12-hour auto-check throttle: Settings → Account Settings → Check for Updates.
 
 ---
 
@@ -132,52 +115,38 @@ rm -rf ~/.local/share/com.tyler.subtrkr
 
 ## Troubleshooting
 
-### "No published app updates are available yet"
+### No update prompt even though a new version was released
 
-`latest.json` either doesn't exist or is unreachable.
-
-```bash
-curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | jq .
-```
-
-If that 404s, the CI workflow didn't publish `latest.json`. Check:
+Check what `latest.json` actually says:
 
 ```bash
-gh run list --workflow=release.yml --limit=3
-gh release view vX.Y.Z --json assets --jq '.assets[].name' | grep latest
-```
-
-### latest.json version matches installed version (no update offered)
-
-The workflow's version sync step didn't run or failed. The release was built with the version from `tauri.conf.json` in the repo rather than the tag.
-
-```bash
-# Check what version latest.json actually reports
 curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/latest.json | jq .version
 ```
 
-Fix: delete and recreate the tag — see `PRODUCTION_RELEASE_WORKFLOW.md` → Incident Response.
+If it shows the previous version rather than the new one, the workflow's version sync step failed — see `PRODUCTION_RELEASE_WORKFLOW.md` → Incident Response.
+
+If it shows the correct version, the installed app may have already checked within the past 12 hours and cached the "up to date" result. Use the manual Check for Updates button to bypass the throttle.
 
 ### macOS "app is damaged and can't be opened"
 
-The release uses ad-hoc signing (not notarized). Clear the quarantine flag:
+Clear the quarantine flag:
 
 ```bash
-xattr -cr /path/to/SubTrkr.dmg
-# or after install:
 xattr -cr /Applications/SubTrkr.app
+# or on the DMG before installing:
+xattr -cr ~/Downloads/SubTrkr-darwin-aarch64.dmg
 ```
 
 ### "Signature verification failed"
 
-The `pubkey` in `tauri.conf.json` doesn't match `TAURI_SIGNING_PRIVATE_KEY` in GitHub Actions secrets. These must be a matching pair. If they got out of sync, you need to ship a new build with the matching pubkey before the updater will work again.
+The `pubkey` in `tauri.conf.json` doesn't match `TAURI_SIGNING_PRIVATE_KEY` in GitHub Actions. These must be a matching pair. If they diverged, ship a new build with the correct pubkey before the updater will work again.
 
 ### Update downloads but install fails
 
-- Check disk space
+- Check available disk space
 - Verify the app isn't installed in a read-only location
-- macOS: check Console.app for errors around the time of install
-- Fallback: direct download from GitHub Releases
+- macOS: check Console.app for errors at the time of install
+- Fallback: direct download from the GitHub Release page
 
 ---
 
@@ -185,4 +154,4 @@ The `pubkey` in `tauri.conf.json` doesn't match `TAURI_SIGNING_PRIVATE_KEY` in G
 
 - [Production Release Workflow](PRODUCTION_RELEASE_WORKFLOW.md)
 - [Release Captain Checklist](RELEASE_CAPTAIN_CHECKLIST.md)
-- [Tauri Updater Plugin](https://v2.tauri.app/plugin/updater/)
+- [Tauri Updater Plugin docs](https://v2.tauri.app/plugin/updater/)
