@@ -15,6 +15,12 @@ dist-ssr
 
 .worktrees
 
+# Override global gitignore to commit shared .claude/ config
+!.claude/
+!.claude/skills/
+!.claude/skills/**
+.claude/settings.local.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
