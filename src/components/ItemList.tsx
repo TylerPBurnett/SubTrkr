@@ -4,9 +4,13 @@ import { useItemFilters } from "@/hooks/useItemFilters";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
+  History,
   MoreVertical,
   Pencil,
   Trash2,
+  Archive,
+  Calendar,
+  Clock3,
   Pause,
   Play,
   XCircle,
@@ -45,6 +49,7 @@ interface ItemListProps {
   onDelete: (id: string) => void;
   onToggleActive: (id: string) => void; // DEPRECATED: kept for compatibility
   onStatusChange?: (itemId: string, action: StatusChangeData["action"]) => void;
+  onViewHistory?: (item: ItemWithCategory) => void;
   onAddNew?: () => void;
 }
 
@@ -95,6 +100,7 @@ function ItemList({
   onDelete,
   onToggleActive,
   onStatusChange,
+  onViewHistory,
   onAddNew,
 }: ItemListProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -297,8 +303,8 @@ function ItemList({
         <DropdownMenuTrigger asChild>
           <button
             onClick={(event) => event.stopPropagation()}
-            className="p-2 rounded-lg transition-colors interactive-hover-bg"
-            style={{ color: "var(--text-muted)" }}
+            className="p-2 rounded-lg transition-colors interactive-hover-bg !shadow-none outline-none"
+            style={{ color: "var(--text-muted)", boxShadow: "none" }}
             aria-label="Actions"
           >
             <MoreVertical className="w-5 h-5" />
@@ -351,6 +357,17 @@ function ItemList({
                 <XCircle className="w-4 h-4" />
                 Cancel Trial
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, "archive")}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <Archive className="w-4 h-4" />
+                Archive
+              </DropdownMenuItem>
             </>
           )}
 
@@ -377,6 +394,28 @@ function ItemList({
               >
                 <XCircle className="w-4 h-4" />
                 Cancel
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, "start_trial")}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <Clock3 className="w-4 h-4" />
+                Start Trial
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, "archive")}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <Archive className="w-4 h-4" />
+                Archive
               </DropdownMenuItem>
             </>
           )}
@@ -405,11 +444,33 @@ function ItemList({
                 <XCircle className="w-4 h-4" />
                 Cancel
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, "archive")}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <Archive className="w-4 h-4" />
+                Archive
+              </DropdownMenuItem>
             </>
           )}
 
-          {(item.status === "cancelled" || item.status === "archived") &&
-            onStatusChange && (
+          {item.status === "cancelled" && onStatusChange && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, "edit_cancellation")}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <Calendar className="w-4 h-4" />
+                Edit Cancel Date
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onStatusChange(item.id, "reactivate")}
                 className="gap-2.5 menu-item-success"
@@ -418,7 +479,30 @@ function ItemList({
                 <RotateCcw className="w-4 h-4" />
                 Reactivate
               </DropdownMenuItem>
-            )}
+              <DropdownMenuItem
+                onClick={() => onStatusChange(item.id, "archive")}
+                className="gap-2.5 menu-item"
+                style={{
+                  color: "var(--text-secondary)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                <Archive className="w-4 h-4" />
+                Archive
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {item.status === "archived" && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, "reactivate")}
+              className="gap-2.5 menu-item-success"
+              style={{ letterSpacing: "-0.005em" }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reactivate
+            </DropdownMenuItem>
+          )}
 
           {/* Fallback for old onToggleActive prop */}
           {!onStatusChange && (
@@ -457,6 +541,20 @@ function ItemList({
                 <ExternalLink className="w-4 h-4" />
                 Visit Website
               </a>
+            </DropdownMenuItem>
+          )}
+
+          {onViewHistory && (
+            <DropdownMenuItem
+              onClick={() => onViewHistory(item)}
+              className="gap-2.5 menu-item"
+              style={{
+                color: "var(--text-secondary)",
+                letterSpacing: "-0.005em",
+              }}
+            >
+              <History className="w-4 h-4" />
+              View History
             </DropdownMenuItem>
           )}
 
@@ -661,7 +759,6 @@ function ItemList({
                     key={item.id}
                     className={`stagger-item card group cursor-pointer ${statusStyles[item.status]}`}
                     style={{
-                      borderLeft: `6px solid ${categoryColor}`,
                       filter:
                         item.status === "cancelled" ||
                         item.status === "archived"
@@ -707,12 +804,21 @@ function ItemList({
                         >
                           {item.name}
                         </button>
-                        <p
-                          className="text-sm"
-                          style={{ color: "var(--text-secondary)" }}
+                        <div
+                          className="flex items-center gap-1.5 mt-0.5"
+                          style={{ color: "var(--text-secondary)", fontSize: "0.8125rem" }}
                         >
-                          {item.category?.name || "Uncategorized"}
-                        </p>
+                          <span
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: categoryColor,
+                              boxShadow: `0 0 0 2px ${categoryColor}20`
+                            }}
+                          />
+                          <span className="font-medium truncate">
+                            {item.category?.name || "Uncategorized"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Menu */}

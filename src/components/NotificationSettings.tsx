@@ -416,8 +416,7 @@ export default function NotificationSettings() {
                   ? 'https://discord.com/api/webhooks/...'
                   : 'https://hooks.slack.com/services/...'
               }
-              className="input w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2"
-              style={{ '--tw-ring-color': config.color } as React.CSSProperties}
+              className="input w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
               autoFocus
             />
             <div className="flex items-center gap-2">
@@ -472,8 +471,7 @@ export default function NotificationSettings() {
                   value={telegramBotToken}
                   onChange={(e) => setTelegramBotToken(e.target.value)}
                   placeholder="Paste your bot token here"
-                  className="input w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2"
-                  style={{ '--tw-ring-color': config.color } as React.CSSProperties}
+                  className="input w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
                   autoFocus
                 />
                 <div className="flex items-center gap-2">

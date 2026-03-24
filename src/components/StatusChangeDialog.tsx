@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar, Check } from 'lucide-react';
+import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar, Check, Archive, Clock3 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import type { ItemWithCategory, StatusChangeData } from '@/types';
 import { formatISODate, getToday, formatDisplayDate } from '../utils/dates';
@@ -7,7 +7,7 @@ import { formatISODate, getToday, formatDisplayDate } from '../utils/dates';
 interface StatusChangeDialogProps {
   isOpen: boolean;
   item: ItemWithCategory;
-  action: 'pause' | 'cancel' | 'resume' | 'reactivate' | 'convert';
+  action: StatusChangeData['action'];
   onConfirm: (data: StatusChangeData) => Promise<void>;
   onCancel: () => void;
 }
@@ -21,11 +21,12 @@ export default function StatusChangeDialog({
 }: StatusChangeDialogProps) {
   const today = formatISODate(getToday());
   const itemStartDate = item.start_date.split('T')[0];
+  const minimumAutoResumeDate = formatISODate(addDays(getToday(), 1));
 
-  const [pausedOn, setPausedOn] = useState(today);
   const [cancelledOn, setCancelledOn] = useState(today);
   const [resumedOn, setResumedOn] = useState(today);
   const [convertedOn, setConvertedOn] = useState(today);
+  const [trialEndDate, setTrialEndDate] = useState(formatISODate(addDays(getToday(), 14)));
   const [pauseUntil, setPauseUntil] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -35,6 +36,29 @@ export default function StatusChangeDialog({
   const [isVisible, setIsVisible] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const isoDateOnly = (value: string | null | undefined): string | null =>
+    value ? value.split('T')[0] : null;
+  const clampDate = (value: string, minimum: string): string => (value < minimum ? minimum : value);
+  const latestDate = (...dates: Array<string | null | undefined>): string | null => {
+    const validDates = dates.filter((date): date is string => Boolean(date));
+    if (validDates.length === 0) return null;
+
+    validDates.sort();
+    return validDates[validDates.length - 1];
+  };
+
+  const cancelMinimumDate = itemStartDate;
+  const resumeMinimumDate = latestDate(itemStartDate, isoDateOnly(item.paused_at)) ?? itemStartDate;
+  const reactivateMinimumDate = latestDate(
+    itemStartDate,
+    item.cancellation_date,
+    isoDateOnly(item.cancelled_at),
+    isoDateOnly(item.archived_at)
+  ) ?? itemStartDate;
+  const convertMinimumDate = latestDate(itemStartDate, isoDateOnly(item.trial_started_at)) ?? itemStartDate;
+  const archiveRecordedOn = formatDisplayDate(today);
+  const defaultTrialEndDate = formatISODate(addDays(getToday(), 14));
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => setIsVisible(true), 10);
@@ -42,6 +66,49 @@ export default function StatusChangeDialog({
       setIsVisible(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setErrors([]);
+    setReason('');
+    setNotes('');
+    setPauseUntil('');
+
+    switch (action) {
+      case 'cancel':
+        setCancelledOn(clampDate(today, cancelMinimumDate));
+        break;
+      case 'edit_cancellation':
+        setCancelledOn(clampDate(item.cancellation_date || today, cancelMinimumDate));
+        break;
+      case 'resume':
+        setResumedOn(clampDate(today, resumeMinimumDate));
+        break;
+      case 'reactivate':
+        setResumedOn(clampDate(today, reactivateMinimumDate));
+        break;
+      case 'convert':
+        setConvertedOn(clampDate(today, convertMinimumDate));
+        break;
+      case 'start_trial':
+        setTrialEndDate(item.trial_end_date || defaultTrialEndDate);
+        break;
+      case 'archive':
+        break;
+    }
+  }, [
+    action,
+    cancelMinimumDate,
+    convertMinimumDate,
+    isOpen,
+    reactivateMinimumDate,
+    resumeMinimumDate,
+    today,
+    item.cancellation_date,
+    item.trial_end_date,
+    defaultTrialEndDate,
+  ]);
 
   if (!isOpen) return null;
 
@@ -53,7 +120,7 @@ export default function StatusChangeDialog({
       gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
       glowColor: 'rgba(245, 158, 11, 0.3)',
       textColor: '#f59e0b',
-      message: 'Subscription paused. Spending analytics adjusted from your specified date.',
+      message: 'Pause takes effect immediately. You can optionally set when recurring tracking should resume.',
     },
     cancel: {
       icon: XCircle,
@@ -64,6 +131,15 @@ export default function StatusChangeDialog({
       textColor: '#ef4444',
       message: 'Subscription cancelled. Historical data preserved for accurate analytics.',
     },
+    edit_cancellation: {
+      icon: Calendar,
+      verb: 'Edit',
+      title: 'Edit Cancellation Date',
+      gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      glowColor: 'rgba(59, 130, 246, 0.3)',
+      textColor: '#3b82f6',
+      message: 'Update the effective cancellation date without fabricating a new cancellation event.',
+    },
     resume: {
       icon: Play,
       verb: 'Resume',
@@ -71,7 +147,7 @@ export default function StatusChangeDialog({
       gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
       glowColor: 'rgba(59, 130, 246, 0.3)',
       textColor: '#3b82f6',
-      message: 'Billing resumes. Next payment recalculated from your specified date.',
+      message: 'Billing resumes while keeping the existing billing cadence whenever possible.',
     },
     reactivate: {
       icon: RotateCcw,
@@ -91,6 +167,24 @@ export default function StatusChangeDialog({
       textColor: '#10b981',
       message: 'Trial converted to paid subscription. Billing starts from your specified date.',
     },
+    archive: {
+      icon: Archive,
+      verb: 'Archive',
+      title: 'Archive Item',
+      gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
+      glowColor: 'rgba(100, 116, 139, 0.28)',
+      textColor: '#64748b',
+      message: 'Archive the item while preserving its full status history and notes.',
+    },
+    start_trial: {
+      icon: Clock3,
+      verb: 'Start Trial',
+      title: 'Start Trial',
+      gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+      glowColor: 'rgba(139, 92, 246, 0.3)',
+      textColor: '#8b5cf6',
+      message: 'Move the item into trial status and set when the trial should end.',
+    },
   };
 
   const currentConfig = config[action];
@@ -99,20 +193,12 @@ export default function StatusChangeDialog({
   const validate = (): string[] => {
     const newErrors: string[] = [];
 
-    if (action === 'pause') {
-      if (pausedOn < itemStartDate) {
-        newErrors.push('Paused date cannot be before subscription start');
-      }
-      if (pausedOn > today) {
-        newErrors.push('Paused date cannot be in the future');
-      }
-      if (pauseUntil && pauseUntil <= pausedOn) {
-        newErrors.push('Resume date must be after pause date');
-      }
+    if (action === 'pause' && pauseUntil && pauseUntil <= today) {
+      newErrors.push('Auto-resume date must be after today');
     }
 
     if (action === 'cancel') {
-      if (cancelledOn < itemStartDate) {
+      if (cancelledOn < cancelMinimumDate) {
         newErrors.push('Cancellation date cannot be before subscription start');
       }
       if (cancelledOn > today) {
@@ -120,9 +206,27 @@ export default function StatusChangeDialog({
       }
     }
 
-    if (action === 'resume' || action === 'reactivate') {
-      if (resumedOn < itemStartDate) {
-        newErrors.push('Resume date cannot be before subscription start');
+    if (action === 'edit_cancellation') {
+      if (cancelledOn < cancelMinimumDate) {
+        newErrors.push('Cancellation date cannot be before subscription start');
+      }
+      if (cancelledOn > today) {
+        newErrors.push('Cancellation date cannot be in the future');
+      }
+    }
+
+    if (action === 'resume') {
+      if (resumedOn < resumeMinimumDate) {
+        newErrors.push('Resume date cannot be before the item was paused');
+      }
+      if (resumedOn > today) {
+        newErrors.push('Resume date cannot be in the future');
+      }
+    }
+
+    if (action === 'reactivate') {
+      if (resumedOn < reactivateMinimumDate) {
+        newErrors.push('Reactivation date cannot be before the item was cancelled or archived');
       }
       if (resumedOn > today) {
         newErrors.push('Resume date cannot be in the future');
@@ -130,12 +234,16 @@ export default function StatusChangeDialog({
     }
 
     if (action === 'convert') {
-      if (convertedOn < itemStartDate) {
-        newErrors.push('Conversion date cannot be before subscription start');
+      if (convertedOn < convertMinimumDate) {
+        newErrors.push('Conversion date cannot be before the trial started');
       }
       if (convertedOn > today) {
         newErrors.push('Conversion date cannot be in the future');
       }
+    }
+
+    if (action === 'start_trial' && trialEndDate < today) {
+      newErrors.push('Trial end date cannot be in the past');
     }
 
     setErrors(newErrors);
@@ -162,14 +270,15 @@ export default function StatusChangeDialog({
       };
 
       if (action === 'pause') {
-        data.pausedOn = pausedOn;
         if (pauseUntil) data.pauseUntil = pauseUntil;
-      } else if (action === 'cancel') {
+      } else if (action === 'cancel' || action === 'edit_cancellation') {
         data.cancelledOn = cancelledOn;
       } else if (action === 'resume' || action === 'reactivate') {
         data.resumedOn = resumedOn;
       } else if (action === 'convert') {
         data.convertedOn = convertedOn;
+      } else if (action === 'start_trial') {
+        data.trialEndDate = trialEndDate;
       }
 
       await onConfirm(data);
@@ -261,8 +370,12 @@ export default function StatusChangeDialog({
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .status-dialog-input:focus {
+        .status-dialog-input:focus,
+        .status-dialog-input:focus-visible {
           transform: translateY(-1px);
+          outline: none !important;
+          box-shadow: none !important;
+          border-color: var(--brand-primary) !important;
         }
 
         .status-dialog-date-input::-webkit-calendar-picker-indicator {
@@ -481,30 +594,6 @@ export default function StatusChangeDialog({
                 <div className="mb-5 status-dialog-field">
                   <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>Paused On</span>
-                    <span style={{ color: currentConfig.textColor }}>*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={pausedOn}
-                    onChange={(e) => setPausedOn(e.target.value)}
-                    min={itemStartDate}
-                    max={today}
-                    className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                    style={{
-                      border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
-                      background: 'var(--bg-default)',
-                      color: 'var(--text-primary)',
-                    }}
-                  />
-                  <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                    Actual pause date → affects analytics from {formatDisplayDate(pausedOn)}
-                  </p>
-                </div>
-
-                <div className="mb-5 status-dialog-field">
-                  <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    <Calendar className="w-3.5 h-3.5" />
                     <span>Auto-Resume Date</span>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
                   </label>
@@ -512,7 +601,7 @@ export default function StatusChangeDialog({
                     type="date"
                     value={pauseUntil}
                     onChange={(e) => setPauseUntil(e.target.value)}
-                    min={formatISODate(addDays(new Date(pausedOn), 1))}
+                    min={minimumAutoResumeDate}
                     className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                     style={{
                       border: '2px solid var(--border-default)',
@@ -521,24 +610,24 @@ export default function StatusChangeDialog({
                     }}
                   />
                   <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                    {pauseUntil ? `Subscription resumes automatically on ${formatDisplayDate(pauseUntil)}` : 'Leave empty for indefinite pause'}
+                    {pauseUntil ? `Subscription resumes automatically on ${formatDisplayDate(pauseUntil)}` : 'Leave empty for an indefinite pause'}
                   </p>
                 </div>
               </>
             )}
 
-            {action === 'cancel' && (
+            {(action === 'cancel' || action === 'edit_cancellation') && (
               <div className="mb-5 status-dialog-field">
                 <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Cancelled On</span>
+                  <span>{action === 'edit_cancellation' ? 'Cancellation Date' : 'Cancelled On'}</span>
                   <span style={{ color: currentConfig.textColor }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={cancelledOn}
                   onChange={(e) => setCancelledOn(e.target.value)}
-                  min={itemStartDate}
+                  min={cancelMinimumDate}
                   max={today}
                   className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                   style={{
@@ -548,7 +637,9 @@ export default function StatusChangeDialog({
                   }}
                 />
                 <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  Actual cancellation date → analytics exclude spending from {formatDisplayDate(cancelledOn)}
+                  {action === 'edit_cancellation'
+                    ? `Effective cancellation date now reads ${formatDisplayDate(cancelledOn)}`
+                    : `Actual cancellation date → analytics exclude spending from ${formatDisplayDate(cancelledOn)}`}
                 </p>
               </div>
             )}
@@ -557,14 +648,14 @@ export default function StatusChangeDialog({
               <div className="mb-5 status-dialog-field">
                 <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Resumed On</span>
+                  <span>{action === 'reactivate' ? 'Reactivated On' : 'Resumed On'}</span>
                   <span style={{ color: currentConfig.textColor }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={resumedOn}
                   onChange={(e) => setResumedOn(e.target.value)}
-                  min={itemStartDate}
+                  min={action === 'resume' ? resumeMinimumDate : reactivateMinimumDate}
                   max={today}
                   className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                   style={{
@@ -574,7 +665,9 @@ export default function StatusChangeDialog({
                   }}
                 />
                 <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  Actual resume date → billing recalculates from {formatDisplayDate(resumedOn)}
+                  {action === 'reactivate'
+                    ? `Reactivation date → billing restarts from ${formatDisplayDate(resumedOn)}`
+                    : 'Actual resume date → keep the current billing schedule unless a due date was missed while paused'}
                 </p>
               </div>
             )}
@@ -590,7 +683,7 @@ export default function StatusChangeDialog({
                   type="date"
                   value={convertedOn}
                   onChange={(e) => setConvertedOn(e.target.value)}
-                  min={itemStartDate}
+                  min={convertMinimumDate}
                   max={today}
                   className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                   style={{
@@ -601,6 +694,53 @@ export default function StatusChangeDialog({
                 />
                 <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                   Date when trial converted to paid → billing starts from {formatDisplayDate(convertedOn)}
+                </p>
+              </div>
+            )}
+
+            {action === 'start_trial' && (
+              <div className="mb-5 status-dialog-field">
+                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Trial Ends On</span>
+                  <span style={{ color: currentConfig.textColor }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={trialEndDate}
+                  onChange={(e) => setTrialEndDate(e.target.value)}
+                  min={today}
+                  className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                  style={{
+                    border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
+                    background: 'var(--bg-default)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  Trial starts immediately and ends on {formatDisplayDate(trialEndDate)}
+                </p>
+              </div>
+            )}
+
+            {action === 'archive' && (
+              <div className="mb-5 status-dialog-field">
+                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Recorded On</span>
+                </label>
+                <div
+                  className="status-dialog-input w-full px-4 py-3.5 rounded-xl"
+                  style={{
+                    border: '2px solid var(--border-default)',
+                    background: 'var(--bg-default)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {archiveRecordedOn}
+                </div>
+                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  Archive entries are recorded immediately and remain in status history.
                 </p>
               </div>
             )}

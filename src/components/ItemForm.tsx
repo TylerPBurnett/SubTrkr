@@ -357,8 +357,14 @@ export default function ItemForm({
           box-shadow: none !important;
         }
 
-        .item-form-input:focus {
+        .item-form-input:focus,
+        .item-form-input:focus-visible {
           transform: translateY(-1px);
+          border-color: var(--brand-primary) !important;
+        }
+
+        .item-form-amount-container:focus-within {
+          border-color: var(--brand-primary) !important;
         }
 
         /* Hide number input spinners */
@@ -678,7 +684,7 @@ export default function ItemForm({
                 </label>
                 {/* Unified currency + amount input */}
                 <div
-                  className="flex items-center rounded-xl overflow-hidden transition-all"
+                  className="item-form-amount-container flex items-center rounded-xl overflow-hidden transition-all"
                   style={{
                     border: `2px solid ${errors.amount ? '#ef4444' : 'var(--border-default)'}`,
                     background: 'var(--bg-default)',

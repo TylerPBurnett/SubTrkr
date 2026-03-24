@@ -23,7 +23,6 @@ import {
   deleteItem,
   toggleItemActive,
   advancePastDueItems,
-  archivePastCancellations,
   resumePausedItems,
   handleExpiredTrials,
   executeStatusChange,
@@ -40,6 +39,7 @@ import ItemList from './components/ItemList';
 import ItemForm from './components/ItemForm';
 import AuthScreen from './components/AuthScreen';
 import StatusChangeDialog from './components/StatusChangeDialog';
+import StatusHistoryDialog from './components/StatusHistoryDialog';
 import SetNewPassword from './components/SetNewPassword';
 import { LazyComponentFallback } from './components/LazyComponentFallback';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
@@ -69,6 +69,7 @@ function App() {
     item: ItemWithCategory;
     action: StatusChangeData['action'];
   } | null>(null);
+  const [historyDialogItem, setHistoryDialogItem] = useState<ItemWithCategory | null>(null);
   const [storedTheme, setStoredTheme] = useLocalStorage<string>('subtrkr-theme', DEFAULT_THEME);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>('subtrkr-sidebar-collapsed', false);
   const [windowNarrow, setWindowNarrow] = useState(() => window.innerWidth < 900);
@@ -94,7 +95,6 @@ function App() {
       // Run maintenance and notifications in background (don't block UI)
       Promise.allSettled([
         advancePastDueItems(),
-        archivePastCancellations(),
         resumePausedItems(),
         handleExpiredTrials(),
         checkAndNotifyUpcomingRenewals(itemsData),
@@ -298,13 +298,12 @@ function App() {
 
     const runDailyJobs = async () => {
       try {
-        const [archived, resumed, advanced] = await Promise.all([
-          archivePastCancellations(),
+        const [resumed, advanced] = await Promise.all([
           resumePausedItems(),
           advancePastDueItems(),
         ]);
-        if (archived > 0 || resumed > 0 || advanced > 0) {
-          console.log(`Daily jobs: ${archived} archived, ${resumed} resumed, ${advanced} advanced`);
+        if (resumed > 0 || advanced > 0) {
+          console.log(`Daily jobs: ${resumed} resumed, ${advanced} advanced`);
           loadData(); // Reload data if any changes were made
         }
       } catch (error) {
@@ -443,6 +442,8 @@ function App() {
       const actionLabels: Record<string, string> = {
         pause: 'paused', resume: 'resumed', cancel: 'cancelled',
         reactivate: 'reactivated', convert: 'converted to paid',
+        archive: 'archived', edit_cancellation: 'cancellation date updated',
+        start_trial: 'moved to trial',
       };
       toast.success(`Item ${actionLabels[data.action] || 'updated'}`);
     } catch (err) {
@@ -453,6 +454,10 @@ function App() {
 
   const handleStatusChangeCancel = () => {
     setStatusChangeDialog(null);
+  };
+
+  const handleViewHistory = (item: ItemWithCategory) => {
+    setHistoryDialogItem(item);
   };
 
   const handleEdit = (item: ItemWithCategory) => {
@@ -558,112 +563,87 @@ function App() {
           className="sidebar shrink-0 h-full flex flex-col transition-all duration-200"
           style={{ width: isCollapsed ? '64px' : '256px' }}
         >
-          {/* Draggable title bar area with branding */}
+          {/* Draggable title bar area */}
           <div
             data-tauri-drag-region
-            className="h-12 shrink-0 flex items-center"
+            className="h-12 shrink-0 flex items-center justify-end px-3"
             style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
           >
-            {!isCollapsed && (
-              <>
-                {/* Traffic light reservation zone — macOS puts the buttons here (~76px) */}
-                <div data-tauri-drag-region className="w-[76px] shrink-0 h-full" />
-                {/* Brand centered in the remaining space */}
-                <span
-                  className="text-lg select-none flex-1 text-center"
-                  style={{
-                    fontWeight: 800,
-                    letterSpacing: '-0.03em',
-                    color: 'var(--text-primary)',
-                    WebkitAppRegion: 'drag',
-                  } as React.CSSProperties}
-                >
-                  Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
-                </span>
-                {/* Hide toggle when window forces collapse */}
-                {!windowNarrow && (
-                  <button
-                    onClick={() => setSidebarCollapsed((prev) => !prev)}
-                    className="p-1.5 rounded-lg transition-colors interactive-hover-bg shrink-0"
-                    style={{
-                      color: 'var(--text-muted)',
-                      WebkitAppRegion: 'no-drag',
-                      marginRight: '8px',
-                    } as React.CSSProperties}
-                    title="Collapse sidebar"
-                  >
-                    <PanelLeftClose className="w-4 h-4" />
-                  </button>
-                )}
-              </>
+            {!isCollapsed && !windowNarrow && (
+              <button
+                onClick={() => setSidebarCollapsed((prev) => !prev)}
+                className="p-1.5 rounded-lg transition-colors interactive-hover-bg shrink-0"
+                style={{
+                  color: 'var(--text-muted)',
+                  WebkitAppRegion: 'no-drag',
+                } as React.CSSProperties}
+                title="Collapse sidebar"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
             )}
           </div>
 
-          <nav className={`flex-1 overflow-auto ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
+          <nav className={`flex-1 overflow-auto flex flex-col ${isCollapsed ? 'px-2 pt-2' : 'px-3 pt-2'}`}>
             {/* Expand button lives here when collapsed — clears the traffic light zone */}
             {isCollapsed && !windowNarrow && (
               <button
                 onClick={() => setSidebarCollapsed((prev) => !prev)}
-                className="w-full flex items-center justify-center rounded-xl mb-1 py-3 transition-all duration-200 nav-item"
-                style={{ borderLeft: '4px solid transparent' }}
+                className="w-full flex items-center justify-center rounded-lg mb-2 py-2.5 transition-all duration-200 nav-item"
                 title="Expand sidebar"
               >
-                <PanelLeftOpen className="w-5 h-5 shrink-0" />
+                <PanelLeftOpen className="w-4 h-4 shrink-0" />
               </button>
             )}
-            {navItems.map((item, index) => (
+            
+            <div className="flex flex-col gap-1">
+              {navItems.map((item, index) => (
+                <button
+                  key={item.id}
+                  onClick={() => startTransition(() => setView(item.id))}
+                  title={isCollapsed ? item.label : undefined}
+                  className={`stagger-item w-full flex items-center rounded-lg transition-all duration-200 ${
+                    view === item.id ? 'nav-item-active' : 'nav-item'
+                  } ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'}`}
+                  style={{
+                    animationDelay: `${index * 0.05}s`,
+                  }}
+                >
+                  <item.icon className="w-[18px] h-[18px] shrink-0" style={{ opacity: view === item.id ? 1 : 0.7 }} />
+                  {!isCollapsed && item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Bottom actions (pushed down by mt-auto) */}
+            <div className="mt-auto pb-4 pt-4 flex flex-col gap-1">
               <button
-                key={item.id}
-                onClick={() => startTransition(() => setView(item.id))}
-                title={isCollapsed ? item.label : undefined}
-                className={`stagger-item w-full flex items-center rounded-xl mb-1 transition-all duration-200 ${
-                  view === item.id ? 'nav-item-active font-medium' : 'nav-item'
-                } ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'}`}
-                style={{
-                  animationDelay: `${index * 0.05}s`,
-                  borderLeft: view === item.id ? '4px solid var(--brand-primary)' : '4px solid transparent',
-                }}
+                onClick={toggleTheme}
+                title={`Theme: ${theme}`}
+                aria-label={`Switch theme (current: ${theme})`}
+                className={`w-full flex items-center rounded-lg transition-all duration-200 nav-item ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'}`}
               >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!isCollapsed && item.label}
+                <div style={{
+                  transition: 'transform 0.3s var(--ease-spring)',
+                  transform: themeTone === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
+                }}>
+                  {themeTone === 'dark' ? <Sun className="w-[18px] h-[18px] opacity-70" /> : <Moon className="w-[18px] h-[18px] opacity-70" />}
+                </div>
+                {!isCollapsed && <span className="flex-1 text-left">Theme</span>}
               </button>
-            ))}
+
+              <button
+                onClick={() => startTransition(() => setView('settings'))}
+                title={isCollapsed ? 'Settings' : undefined}
+                className={`w-full flex items-center rounded-lg transition-all duration-200 ${
+                  view === 'settings' ? 'nav-item-active' : 'nav-item'
+                } ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'}`}
+              >
+                <SettingsIcon className="w-[18px] h-[18px] shrink-0" style={{ opacity: view === 'settings' ? 1 : 0.7 }} />
+                {!isCollapsed && <span className="flex-1 text-left">Settings</span>}
+              </button>
+            </div>
           </nav>
-
-          <div
-            className={`flex items-center ${isCollapsed ? 'flex-col gap-2 p-2' : 'gap-2 p-4'}`}
-            style={{ borderTop: '1px solid var(--shell-divider)' }}
-          >
-            {/* Theme Toggle Icon Button */}
-            <button
-              onClick={toggleTheme}
-              title={`Theme: ${theme}`}
-              aria-label={`Switch theme (current: ${theme})`}
-              className={`flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg ${isCollapsed ? 'w-full' : 'flex-1'}`}
-            >
-              <div style={{
-                transition: 'transform 0.3s var(--ease-spring)',
-                transform: themeTone === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
-              }}>
-                {themeTone === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </div>
-            </button>
-
-            {/* Settings Icon Button */}
-            <button
-              onClick={() => startTransition(() => setView('settings'))}
-              title={isCollapsed ? 'Settings' : undefined}
-              className={`flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
-                view === 'settings' ? 'nav-item-active' : 'btn-secondary interactive-hover-bg'
-              } ${isCollapsed ? 'w-full' : 'flex-1'}`}
-              style={{
-                color: view === 'settings' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent',
-              }}
-            >
-              <SettingsIcon className="w-5 h-5" />
-            </button>
-          </div>
         </aside>
 
         {/* Main Content */}
@@ -742,6 +722,7 @@ function App() {
               onDelete={handleDeleteItem}
               onToggleActive={handleToggleActive}
               onStatusChange={handleStatusChange}
+              onViewHistory={handleViewHistory}
               onAddNew={() => handleAddNew('bill')}
             />
           )}
@@ -754,6 +735,7 @@ function App() {
               onDelete={handleDeleteItem}
               onToggleActive={handleToggleActive}
               onStatusChange={handleStatusChange}
+              onViewHistory={handleViewHistory}
               onAddNew={() => handleAddNew('subscription')}
             />
           )}
@@ -810,6 +792,14 @@ function App() {
           action={statusChangeDialog.action}
           onConfirm={handleStatusChangeConfirm}
           onCancel={handleStatusChangeCancel}
+        />
+      )}
+
+      {historyDialogItem && (
+        <StatusHistoryDialog
+          isOpen={true}
+          item={historyDialogItem}
+          onClose={() => setHistoryDialogItem(null)}
         />
       )}
 

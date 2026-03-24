@@ -8,7 +8,6 @@ import {
   Receipt,
   AlertCircle,
   ChevronRight,
-  RotateCcw,
   Plus,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
@@ -52,7 +51,7 @@ function calculatePreviousMonthSpending(items: ItemWithCategory[], type?: ItemTy
 
   const filtered = items.filter(
     (item) =>
-      (item.status === 'active' || item.status === 'trial') &&
+      item.status === 'active' &&
       (!type || item.item_type === type) &&
       new Date(item.start_date) < startOfThisMonth
   );
@@ -168,7 +167,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Monthly Spending Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
+        <div className="stagger-item card">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">MONTHLY SPENDING</p>
@@ -193,7 +192,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         </div>
 
         {/* Yearly Spending Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
+        <div className="stagger-item card">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">YEARLY SPENDING</p>
@@ -218,7 +217,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         </div>
 
         {/* Active Items Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
+        <div className="stagger-item card">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">
@@ -249,7 +248,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         </div>
 
         {/* Due This Week Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-amber)' }}>
+        <div className="stagger-item card">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <p className="label">DUE THIS WEEK</p>
@@ -288,9 +287,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
           ) : (
             <div className="space-y-3">
               {upcomingItems.slice(0, 5).map((item, index) => {
-                const isPaused = item.status === 'paused' && item.paused_until;
-                const targetDate = isPaused ? item.paused_until! : item.next_billing_date;
-                const daysUntil = getDaysUntil(targetDate);
+                const daysUntil = getDaysUntil(item.next_billing_date);
 
                 return (
                   <button
@@ -301,11 +298,6 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                       animationDelay: `${index * 0.05}s`
                     }}
                   >
-                    {isPaused && (
-                      <div className="absolute top-2 left-2">
-                        <RotateCcw className="w-4 h-4" style={{ color: 'var(--accent-amber)' }} />
-                      </div>
-                    )}
                     <ServiceLogo
                       logoUrl={item.logo_url}
                       name={item.name}
@@ -317,11 +309,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-                        {isPaused ? (
-                          <>Resumes on {formatShortDate(targetDate)}</>
-                        ) : (
-                          <>{formatCurrency(item.amount, item.currency)} · {item.billing_cycle}</>
-                        )}
+                        {formatCurrency(item.amount, item.currency)} · {item.billing_cycle}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -332,7 +320,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
                       <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                        {isPaused ? 'Auto-resume' : formatShortDate(item.next_billing_date)}
+                        {formatShortDate(item.next_billing_date)}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />

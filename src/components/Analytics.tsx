@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 import {
   AreaChart,
   Area,
@@ -13,14 +13,20 @@ import {
   Cell
 } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Receipt, CreditCard } from 'lucide-react';
-import type { Category, ItemWithCategory, ItemType } from '@/types';
+import type { Category, ItemStatus, ItemWithCategory, ItemType, Payment, StatusHistory } from '@/types';
 import {
   calculateMonthlySpending,
   calculateYearlySpending,
   calculateMonthlySavings,
-  getSpendingByCategory
+  getSpendingByCategory,
+  getPayments,
+  getAllStatusHistory,
 } from '../services/database';
 import { parseLocalDate, formatDisplayDate } from '../utils/dates';
+import {
+  getResolvedStatusHistoryAction,
+  getResolvedStatusHistoryEffectiveDate,
+} from '../utils/statusHistory';
 import ServiceLogo from './ui/ServiceLogo';
 import { GlowFilter, GradientFill, lightenColor } from './ui/ChartEffects';
 import SegmentedControl from './ui/SegmentedControl';
@@ -56,8 +62,210 @@ function getMonthlyAmount(item: ItemWithCategory): number {
   }
 }
 
+function getCancelledInsightDate(item: ItemWithCategory): string | null {
+  return item.cancellation_date || item.cancelled_at || item.archived_at || null;
+}
+
+type StatusTransition = {
+  status: ItemStatus;
+  effectiveDate: Date;
+  action: string | null;
+  recordedAt: Date | null;
+};
+
+function parseDateValue(value: string | null | undefined): Date | null {
+  if (!value) return null;
+
+  const parsed = value.includes('T') ? new Date(value) : parseLocalDate(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeToStartOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isOnOrBeforeDay(date: Date, comparedTo: Date): boolean {
+  return normalizeToStartOfDay(date).getTime() <= normalizeToStartOfDay(comparedTo).getTime();
+}
+
+function getMonthKey(date: Date): string {
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}`;
+}
+
+function getMonthRange(date: Date): { start: Date; endExclusive: Date } {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const endExclusive = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  return { start, endExclusive };
+}
+
+function getStatusTransitions(statusHistory: StatusHistory[]): StatusTransition[] {
+  return statusHistory
+    .map((entry) => {
+      const effectiveDate =
+        parseDateValue(getResolvedStatusHistoryEffectiveDate(entry)) ?? parseDateValue(entry.changed_at);
+      if (!effectiveDate) return null;
+
+      return {
+        status: entry.status,
+        effectiveDate: normalizeToStartOfDay(effectiveDate),
+        action: getResolvedStatusHistoryAction(entry),
+        recordedAt: parseDateValue(entry.changed_at),
+      };
+    })
+    .filter((entry): entry is StatusTransition => entry !== null)
+    .sort((lhs, rhs) => {
+      if (lhs.effectiveDate.getTime() !== rhs.effectiveDate.getTime()) {
+        return lhs.effectiveDate.getTime() - rhs.effectiveDate.getTime();
+      }
+
+      const lhsRecordedAt = lhs.recordedAt ?? lhs.effectiveDate;
+      const rhsRecordedAt = rhs.recordedAt ?? rhs.effectiveDate;
+      return lhsRecordedAt.getTime() - rhsRecordedAt.getTime();
+    });
+}
+
+function inferredInitialStatus(item: ItemWithCategory, transitions: StatusTransition[]): ItemStatus {
+  if (transitions[0]?.action === 'convert_trial') {
+    return 'trial';
+  }
+
+  if (item.status === 'trial' || item.trial_started_at) {
+    return 'trial';
+  }
+
+  return 'active';
+}
+
+function wasItemActiveUsingCurrentFields(
+  item: ItemWithCategory,
+  monthStart: Date,
+  monthEndExclusive: Date
+): boolean {
+  const monthEnd = new Date(monthEndExclusive.getTime() - 1000);
+  const startDate = parseDateValue(item.start_date) ?? parseDateValue(item.created_at);
+
+  if (!startDate || startDate > monthEnd || item.status === 'trial') {
+    return false;
+  }
+
+  const cancellationDate = parseDateValue(item.cancellation_date);
+  if (cancellationDate && isOnOrBeforeDay(cancellationDate, monthStart)) {
+    return false;
+  }
+
+  const cancelledAt = parseDateValue(item.cancelled_at);
+  if (cancelledAt && isOnOrBeforeDay(cancelledAt, monthStart)) {
+    return false;
+  }
+
+  const archivedAt = parseDateValue(item.archived_at);
+  if (archivedAt && isOnOrBeforeDay(archivedAt, monthStart)) {
+    return false;
+  }
+
+  const pausedAt = parseDateValue(item.paused_at);
+  if (pausedAt && isOnOrBeforeDay(pausedAt, monthStart)) {
+    const pausedUntil = parseDateValue(item.paused_until);
+    if (pausedUntil) {
+      return !isOnOrBeforeDay(monthEnd, pausedUntil);
+    }
+
+    return item.status !== 'paused';
+  }
+
+  return true;
+}
+
+function wasItemActive(
+  item: ItemWithCategory,
+  monthStart: Date,
+  monthEndExclusive: Date,
+  statusHistory: StatusHistory[]
+): boolean {
+  if (statusHistory.length === 0) {
+    return wasItemActiveUsingCurrentFields(item, monthStart, monthEndExclusive);
+  }
+
+  const startDate = parseDateValue(item.start_date) ?? parseDateValue(item.created_at);
+  if (!startDate) return false;
+
+  const normalizedStartDate = normalizeToStartOfDay(startDate);
+  if (normalizedStartDate >= monthEndExclusive) {
+    return false;
+  }
+
+  const transitions = getStatusTransitions(statusHistory);
+  let currentStatus = inferredInitialStatus(item, transitions);
+  let segmentStart = normalizedStartDate;
+
+  for (const transition of transitions) {
+    const transitionDate = transition.effectiveDate;
+
+    if (transitionDate <= segmentStart) {
+      currentStatus = transition.status;
+      continue;
+    }
+
+    if (currentStatus === 'active' && segmentStart < monthEndExclusive && transitionDate > monthStart) {
+      return true;
+    }
+
+    if (transitionDate >= monthEndExclusive) {
+      break;
+    }
+
+    currentStatus = transition.status;
+    segmentStart = transitionDate;
+  }
+
+  return currentStatus === 'active' && segmentStart < monthEndExclusive;
+}
+
 function Analytics({ items, categories }: AnalyticsProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [statusHistoryByItem, setStatusHistoryByItem] = useState<Record<string, StatusHistory[]>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (items.length === 0) {
+      setPayments([]);
+      setStatusHistoryByItem({});
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const itemIds = new Set(items.map((item) => item.id));
+
+    Promise.all([getPayments(), getAllStatusHistory()])
+      .then(([paymentsData, historyData]) => {
+        if (cancelled) return;
+
+        setPayments(paymentsData.filter((payment) => itemIds.has(payment.item_id)));
+
+        const groupedHistory = historyData.reduce<Record<string, StatusHistory[]>>((acc, entry) => {
+          if (!itemIds.has(entry.item_id)) return acc;
+          (acc[entry.item_id] ||= []).push(entry);
+          return acc;
+        }, {});
+
+        setStatusHistoryByItem(groupedHistory);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('Failed to load analytics support data:', error);
+          setPayments([]);
+          setStatusHistoryByItem({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
 
   // Filter items by type
   const filteredItems = useMemo(() => {
@@ -90,36 +298,43 @@ function Analytics({ items, categories }: AnalyticsProps) {
   const monthlyTrendData = useMemo(() => {
     const months: { month: string; amount: number }[] = [];
     const now = new Date();
+    const paymentIndex = payments.reduce<Record<string, Record<string, number>>>((acc, payment) => {
+      const paidAt = parseDateValue(payment.paid_at);
+      if (!paidAt) return acc;
+
+      const monthKey = getMonthKey(paidAt);
+      (acc[payment.item_id] ||= {});
+      acc[payment.item_id][monthKey] = (acc[payment.item_id][monthKey] || 0) + payment.amount;
+      return acc;
+    }, {});
 
     for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const { start: monthStart, endExclusive: monthEndExclusive } = getMonthRange(monthDate);
       const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' });
+      const monthKey = getMonthKey(monthStart);
 
       const amount = filteredItems.reduce((total, item) => {
-        const startDate = parseLocalDate(item.start_date);
-
-        // Skip if item hadn't started yet
-        if (startDate > monthEnd) return total;
-
-        // For cancelled/archived items, check if they were active during this month
-        if (item.status === 'cancelled' || item.status === 'archived') {
-          if (item.cancellation_date) {
-            const cancelDate = parseLocalDate(item.cancellation_date);
-            // If cancelled before the month started, don't include
-            if (cancelDate < monthStart) return total;
-          }
+        const paidAmount = paymentIndex[item.id]?.[monthKey];
+        if (typeof paidAmount === 'number') {
+          return total + paidAmount;
         }
 
-        // Item was active during this month period
-        return total + getMonthlyAmount(item);
+        return wasItemActive(
+          item,
+          monthStart,
+          monthEndExclusive,
+          statusHistoryByItem[item.id] ?? []
+        )
+          ? total + getMonthlyAmount(item)
+          : total;
       }, 0);
 
       months.push({ month: monthName, amount: Math.round(amount) });
     }
 
     return months;
-  }, [filteredItems]);
+  }, [filteredItems, payments, statusHistoryByItem]);
 
   // Top items by cost (monthly normalized) - active only
   const topItems = useMemo(() => {
@@ -136,9 +351,10 @@ function Analytics({ items, categories }: AnalyticsProps) {
       .filter(s => s.status === 'cancelled' || s.status === 'archived')
       .map((item) => ({ ...item, monthlyAmount: getMonthlyAmount(item) }))
       .sort((a, b) => {
-        // Sort by cancellation date, most recent first
-        const dateA = a.cancelled_at ? new Date(a.cancelled_at) : new Date(0);
-        const dateB = b.cancelled_at ? new Date(b.cancelled_at) : new Date(0);
+        const insightDateA = getCancelledInsightDate(a);
+        const insightDateB = getCancelledInsightDate(b);
+        const dateA = insightDateA ? parseLocalDate(insightDateA) : new Date(0);
+        const dateB = insightDateB ? parseLocalDate(insightDateB) : new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
   }, [filteredItems]);
@@ -162,6 +378,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
     amount: Math.round(item.total),
     color: item.category.color,
   }));
+  const hasTrendData = monthlyTrendData.some((entry) => entry.amount > 0);
 
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
     { id: 'all', label: 'All' },
@@ -177,7 +394,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
+        <div className="stagger-item card">
           <p className="label mb-2">MONTHLY AVERAGE</p>
           <div className="flex items-end gap-2">
             <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
@@ -196,7 +413,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
           </div>
         </div>
 
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-emerald)' }}>
+        <div className="stagger-item card">
           <p className="label mb-2">MONTHLY SAVINGS</p>
           <p className="text-3xl font-bold font-mono" style={{ color: 'var(--accent-green)' }}>
             {formatCurrency(monthlySavings)}
@@ -206,14 +423,14 @@ function Analytics({ items, categories }: AnalyticsProps) {
           </p>
         </div>
 
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
+        <div className="stagger-item card">
           <p className="label mb-2">YEARLY TOTAL</p>
           <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
             {formatCurrency(yearlySpending)}
           </p>
         </div>
 
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
+        <div className="stagger-item card">
           <p className="label mb-2">ACTIVE {itemTypeLabel.toUpperCase()}</p>
           <p className="text-3xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
             {filteredItems.filter(s => s.status === 'active').length}
@@ -229,7 +446,7 @@ function Analytics({ items, categories }: AnalyticsProps) {
             Monthly Spending Trend
           </h3>
           
-          {monthlySpending === 0 ? (
+          {!hasTrendData ? (
             <div className="h-64 flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
               No spending data to display
             </div>
@@ -501,7 +718,9 @@ function Analytics({ items, categories }: AnalyticsProps) {
                         {item.name}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        Cancelled {item.cancelled_at && formatDisplayDate(item.cancelled_at)}
+                        {getCancelledInsightDate(item)
+                          ? `Ended ${formatDisplayDate(getCancelledInsightDate(item)!)}`
+                          : 'Ended date unavailable'}
                       </p>
                     </div>
                     <div className="text-right">
