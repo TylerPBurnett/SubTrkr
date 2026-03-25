@@ -71,6 +71,13 @@ function App() {
   } | null>(null);
   const [historyDialogItem, setHistoryDialogItem] = useState<ItemWithCategory | null>(null);
   const [storedTheme, setStoredTheme] = useLocalStorage<string>('subtrkr-theme', DEFAULT_THEME);
+  const [useVibrancy, setUseVibrancy] = useLocalStorage<boolean>('subtrkr-vibrancy', true);
+
+  // Sync vibrancy preference to <html> for CSS selectors that need to reach body
+  useEffect(() => {
+    document.documentElement.setAttribute('data-vibrancy', useVibrancy ? 'true' : 'false');
+  }, [useVibrancy]);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>('subtrkr-sidebar-collapsed', false);
   const [windowNarrow, setWindowNarrow] = useState(() => window.innerWidth < 900);
   const isCollapsed = sidebarCollapsed || windowNarrow;
@@ -556,7 +563,7 @@ function App() {
   }
 
   return (
-    <div className="app-layout h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div className="app-layout h-screen flex">
       <div className="app-shell flex w-full h-screen">
         {/* Sidebar */}
         <aside
@@ -656,55 +663,57 @@ function App() {
             />
           )}
 
-          <div className="flex-1 overflow-auto mt-2" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-          <div className="px-8 pb-8">
-            {/* Header — also serves as drag region */}
+          <div className="flex-1 overflow-auto mt-2 relative" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+            {/* Sticky Header — also serves as drag region */}
             <div
               data-tauri-drag-region
-              className="flex items-center justify-between pt-5 pb-6"
-              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+              className="sticky top-0 z-50 flex items-center justify-between px-8 pt-5 pb-6 vibrant-header"
+              style={{
+                WebkitAppRegion: 'drag',
+              } as React.CSSProperties}
             >
-            <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-              <h2 className="text-3xl" style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}>
-                {view === 'dashboard' && 'Dashboard'}
-                {view === 'bills' && 'Bills'}
-                {view === 'subscriptions' && 'Subscriptions'}
-                {view === 'analytics' && 'Analytics'}
-                {view === 'settings' && 'Settings'}
-              </h2>
-              <p className="mt-2 text-base" style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '-0.01em' }}>
-                {view === 'dashboard' && 'Your spending overview at a glance'}
-                {view === 'bills' && 'Manage your recurring bills and utilities'}
-                {view === 'subscriptions' && 'Manage all your recurring subscriptions'}
-                {view === 'analytics' && 'Spending insights and trends'}
-                {view === 'settings' && 'Configure your preferences'}
-              </p>
+              <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+                <h2 className="text-3xl" style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                  {view === 'dashboard' && 'Dashboard'}
+                  {view === 'bills' && 'Bills'}
+                  {view === 'subscriptions' && 'Subscriptions'}
+                  {view === 'analytics' && 'Analytics'}
+                  {view === 'settings' && 'Settings'}
+                </h2>
+                <p className="mt-2 text-base" style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '-0.01em' }}>
+                  {view === 'dashboard' && 'Your spending overview at a glance'}
+                  {view === 'bills' && 'Manage your recurring bills and utilities'}
+                  {view === 'subscriptions' && 'Manage all your recurring subscriptions'}
+                  {view === 'analytics' && 'Spending insights and trends'}
+                  {view === 'settings' && 'Configure your preferences'}
+                </p>
+              </div>
+
+              {view === 'bills' && (
+                <button
+                  onClick={() => handleAddNew('bill')}
+                  className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
+                  style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Bill
+                </button>
+              )}
+              {view === 'subscriptions' && (
+                <button
+                  onClick={() => handleAddNew('subscription')}
+                  className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
+                  style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Subscription
+                </button>
+              )}
             </div>
 
-            {view === 'bills' && (
-              <button
-                onClick={() => handleAddNew('bill')}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
-                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              >
-                <Plus className="w-5 h-5" />
-                Add Bill
-              </button>
-            )}
-            {view === 'subscriptions' && (
-              <button
-                onClick={() => handleAddNew('subscription')}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
-                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              >
-                <Plus className="w-5 h-5" />
-                Add Subscription
-              </button>
-            )}
-          </div>
-
-          {/* Content */}
-          {view === 'dashboard' && (
+          <div className="px-8 pb-8">
+            {/* Content */}
+            {view === 'dashboard' && (
             <Dashboard
               items={items}
               categories={categories}
@@ -749,7 +758,7 @@ function App() {
           {view === 'settings' && (
             <ErrorBoundary>
               <Suspense fallback={<LazyComponentFallback />}>
-                <Settings categories={categories} onCategoriesChange={loadData} />
+                <Settings categories={categories} onCategoriesChange={loadData} useVibrancy={useVibrancy} setUseVibrancy={setUseVibrancy} />
               </Suspense>
             </ErrorBoundary>
           )}

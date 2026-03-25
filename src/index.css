@@ -16,7 +16,9 @@
   color-scheme: light;
   /* Backgrounds */
   --bg-base: #e3e5e8;
+  --bg-base-translucent: rgba(227, 229, 232, 0.45);
   --bg-surface: #edeef2;
+  --bg-surface-translucent: rgba(237, 238, 242, 0.45);
   --bg-card: #ffffff;
   --bg-input: #ffffff;
   --bg-hover: #e4e6ea;
@@ -132,7 +134,9 @@
   color-scheme: dark;
   /* Backgrounds */
   --bg-base: #0c0d0e;
+  --bg-base-translucent: rgba(12, 13, 14, 0.45);
   --bg-surface: #131415;
+  --bg-surface-translucent: rgba(19, 20, 21, 0.45);
   --bg-card: #1e2022;
   --bg-input: #252729;
   --bg-hover: #252729;
@@ -361,6 +365,7 @@ button, a, input, select, textarea {
 /* App shell frame (sidebar + content as one surface) */
 .app-layout {
   padding: 0;
+  background-color: var(--bg-base);
 }
 
 .app-shell {
@@ -837,4 +842,41 @@ button, a, input, select, textarea {
 .chart-pie-sector .recharts-sector:hover {
   opacity: 0.85;
   transform: scale(1.04);
+}
+
+/* ============================================
+   GLASSMORPHISM & VIBRANCY
+   ============================================ */
+
+/* Base opaque styles (always applied) */
+.vibrant-header {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* Native vibrancy overrides — only when OS vibrancy is active AND user has it enabled.
+   On unsupported platforms (Linux, Windows 10, bun run dev), data-vibrancy-supported
+   is never set, so these rules never match and backgrounds stay opaque. */
+html[data-vibrancy-supported="true"][data-vibrancy="true"] body {
+  background: transparent;
+  transition: none; /* Prevent 200ms flash when toggling vibrancy */
+}
+
+html[data-vibrancy-supported="true"][data-vibrancy="true"] .app-layout {
+  background: transparent;
+}
+
+html[data-vibrancy-supported="true"][data-vibrancy="true"] .app-shell {
+  background-color: transparent;
+}
+
+html[data-vibrancy-supported="true"][data-vibrancy="true"] .sidebar {
+  background: transparent;
+}
+
+html[data-vibrancy-supported="true"][data-vibrancy="true"] .vibrant-header {
+  background-color: var(--bg-surface-translucent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border-default);
 }
