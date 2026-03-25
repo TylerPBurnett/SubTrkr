@@ -1,6 +1,7 @@
 import { useState, Suspense, lazy } from 'react';
-import { Tag, Bell, User } from 'lucide-react';
+import { Tag, Bell, User, Monitor } from 'lucide-react';
 import type { Category } from '../types';
+import { Switch } from './ui/Switch';
 import CategorySettings from './CategorySettings';
 import AccountSettings from './AccountSettings';
 
@@ -9,23 +10,27 @@ const NotificationSettings = lazy(() => import('./NotificationSettings'));
 interface SettingsProps {
   categories: Category[];
   onCategoriesChange: () => void;
+  useVibrancy: boolean;
+  setUseVibrancy: (val: boolean | ((prev: boolean) => boolean)) => void;
 }
 
-type SettingsTab = 'categories' | 'notifications' | 'account';
+type SettingsTab = 'categories' | 'notifications' | 'appearance' | 'account';
 
 const TabIcons = {
   categories: Tag,
   notifications: Bell,
+  appearance: Monitor,
   account: User,
 } as const;
 
 const tabs: { key: SettingsTab; label: string; Icon: typeof Tag }[] = [
   { key: 'categories', label: 'Categories', Icon: TabIcons.categories },
   { key: 'notifications', label: 'Notifications', Icon: TabIcons.notifications },
+  { key: 'appearance', label: 'Appearance', Icon: TabIcons.appearance },
   { key: 'account', label: 'Account', Icon: TabIcons.account },
 ];
 
-export default function Settings({ categories, onCategoriesChange }: SettingsProps) {
+export default function Settings({ categories, onCategoriesChange, useVibrancy, setUseVibrancy }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('categories');
   const [hoveredTab, setHoveredTab] = useState<SettingsTab | null>(null);
 
@@ -133,6 +138,45 @@ export default function Settings({ categories, onCategoriesChange }: SettingsPro
         >
           <NotificationSettings />
         </Suspense>
+      ) : null}
+
+      {activeTab === 'appearance' ? (
+        <div className="space-y-8 animate-in">
+          <div className="card">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                <Monitor className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Appearance
+                </h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Customize the look and feel of your app
+                </p>
+              </div>
+            </div>
+
+            <div className="label mb-3">Interface Styles</div>
+            <div className="space-y-4">
+              <div className="flex flex-row items-center justify-between">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Translucent Backgrounds
+                  </label>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Enable frosted glass effects on the sidebar and headers
+                  </p>
+                </div>
+                <Switch
+                  checked={useVibrancy}
+                  onCheckedChange={setUseVibrancy}
+                  aria-label="Toggle translucent backgrounds"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {activeTab === 'account' ? <AccountSettings /> : null}
