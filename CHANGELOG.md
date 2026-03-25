@@ -135,7 +135,7 @@ This release includes a substantial documentation investment across auth archite
 
 - `docs/architecture/AUTHENTICATION.md` — comprehensive guide (520 lines) covering every auth flow: email/password, magic link, OAuth, password recovery, deep-link callbacks, PKCE vs implicit token exchange, session lifecycle, and RLS integration
 - `docs/architecture/README.md` — index of the architecture docs directory
-- `docs/AUTH_DEEP_LINKS.md` — focused guide for the deep-link integration: OS-level registration, URL scheme format, startup vs. runtime handling, and testing instructions
+- `docs/architecture/AUTH_DEEP_LINKS.md` — focused guide for the deep-link integration: OS-level registration, URL scheme format, startup vs. runtime handling, and testing instructions
 
 #### Email Templates
 
@@ -144,25 +144,25 @@ This release includes a substantial documentation investment across auth archite
   - Magic link
   - Reset password
   - Change email
-- Templates use the SubTrkr SVG logo and consistent styling; documented alongside usage notes in `docs/EMAIL_TEMPLATES.md`
+- Templates use the SubTrkr SVG logo and consistent styling; documented alongside usage notes in `docs/reference/EMAIL_TEMPLATES.md`
 
 #### Release Operations
 
-- `docs/PRODUCTION_RELEASE.md` — end-to-end production release workflow
-- `docs/RELEASE_CHECKLIST.md` — release captain checklist for consistent deployments
+- `docs/PRODUCTION_RELEASE_WORKFLOW.md` — end-to-end production release workflow
+- `docs/RELEASE_CAPTAIN_CHECKLIST.md` — release captain checklist for consistent deployments
 - `docs/UPDATER_TESTING_GUIDE.md` — strategy for testing the Tauri updater via RC/pre-release flow before shipping to users
 
 #### Developer Guides
 
-- `docs/ADDING_SERVICES.md` — step-by-step guide for adding new entries to `knownServices.ts`: service structure, required fields, category conventions, and testing
+- `docs/guides/adding-services.md` — step-by-step guide for adding new entries to `knownServices.ts`: service structure, required fields, category conventions, and testing
 
 #### Design System
 
-- `docs/THEMING.md` updated with the 3-tier background hierarchy principle, the ≥10 RGB unit rule for card separation, brand color usage guidelines, and form accent rules
+- `docs/reference/THEMING.md` updated with the 3-tier background hierarchy principle, the ≥10 RGB unit rule for card separation, brand color usage guidelines, and form accent rules
 
 #### Settings UX Planning
 
-- `docs/SettingsUXplan.md` — design spec for an upcoming tabbed Settings page restructure; documents proposed tab layout, component decomposition, and implementation sequence
+- `docs/completed-plans/SettingsUXplan.md` — design spec for an upcoming tabbed Settings page restructure; documents proposed tab layout, component decomposition, and implementation sequence
 
 ---
 
@@ -200,7 +200,7 @@ No action required. The app updater handles everything. After updating:
 - **`advancePastDueItems()`** now runs all DB writes in parallel — if you add new per-item writes to maintenance functions, prefer `Promise.all` over sequential loops.
 - **Dashboard / Analytics stats** are `useMemo` values, not async state. New stats derived from `items` or `categories` should follow the same pattern.
 - **ErrorBoundary** is now on `Analytics` and `Settings` lazy views. Apply the same wrapper to any new lazy-loaded view.
-- **Known services**: see `docs/ADDING_SERVICES.md` for the full guide on adding new entries.
+- **Known services**: see `docs/guides/adding-services.md` for the full guide on adding new entries.
 
 ---
 

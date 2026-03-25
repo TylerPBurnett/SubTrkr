@@ -27,4 +27,4 @@ Gradient: `linear-gradient(135deg, #22c55e 0%, #16a34a 100%)`
 - CSS custom properties defined in `src/index.css`
 - Toggled via `dark` class on `documentElement`
 - Use `var(--text-primary)`, `var(--bg-hover)`, etc.
-- Full token reference: `docs/THEMING.md`
+- Full token reference: `docs/reference/THEMING.md`
