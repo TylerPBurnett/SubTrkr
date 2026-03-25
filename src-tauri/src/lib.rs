@@ -339,6 +339,30 @@ pub fn run() {
                 // URLs are forwarded to the frontend via the plugin's JS listener
                 let _ = &event;
             });
+
+            // Apply native window vibrancy (macOS / Windows)
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+                    if apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None).is_ok() {
+                        let _ = window.eval(
+                            "document.documentElement.setAttribute('data-vibrancy-supported', 'true')"
+                        );
+                    }
+                }
+
+                #[cfg(target_os = "windows")]
+                {
+                    use window_vibrancy::apply_mica;
+                    if apply_mica(&window, None).is_ok() {
+                        let _ = window.eval(
+                            "document.documentElement.setAttribute('data-vibrancy-supported', 'true')"
+                        );
+                    }
+                }
+            }
+
             Ok(())
         })
         .build(tauri::generate_context!())
