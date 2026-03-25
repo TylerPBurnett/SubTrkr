@@ -22,6 +22,7 @@ import type {
   NotificationPreferences,
   NotificationLogEntry,
 } from '../types';
+import { getLogoUrl } from '../config/logoApi';
 import {
   getNotificationChannels,
   upsertNotificationChannel,
@@ -31,31 +32,65 @@ import {
   sendTestNotification,
   getNotificationLog,
 } from '../services/notificationChannels';
-
+import { Switch } from './ui/Switch';
 // Channel display config
 const CHANNEL_CONFIG: Record<
   NotificationChannelType,
-  { label: string; icon: React.ReactNode; color: string; description: string }
+  { label: string; icon: React.ReactNode; color: string; description: string; domain: string }
 > = {
   telegram: {
     label: 'Telegram',
     icon: <Send className="w-5 h-5" />,
     color: '#0088cc',
     description: 'Get notified via Telegram bot',
+    domain: 'telegram.org',
   },
   discord: {
     label: 'Discord',
     icon: <Hash className="w-5 h-5" />,
     color: '#5865F2',
     description: 'Send notifications to a Discord channel',
+    domain: 'discord.com',
   },
   slack: {
     label: 'Slack',
     icon: <MessageCircle className="w-5 h-5" />,
     color: '#4A154B',
     description: 'Send notifications to a Slack channel',
+    domain: 'slack.com',
   },
 };
+
+// Brand logo component with Lucide icon fallback
+function ChannelLogo({ domain, fallbackIcon, color, size = 36 }: {
+  domain: string;
+  fallbackIcon: React.ReactNode;
+  color: string;
+  size?: number;
+}) {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div
+        className="rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ width: size, height: size, backgroundColor: color + '20', color }}
+      >
+        {fallbackIcon}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={getLogoUrl(domain, size * 2)}
+      alt=""
+      className="rounded-lg object-contain flex-shrink-0"
+      style={{ width: size, height: size }}
+      onError={() => setError(true)}
+    />
+  );
+}
 
 // Common timezones for the selector
 const TIMEZONES = [
@@ -294,12 +329,7 @@ export default function NotificationSettings() {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: config.color + '20', color: config.color }}
-            >
-              {config.icon}
-            </div>
+            <ChannelLogo domain={config.domain} fallbackIcon={config.icon} color={config.color} />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -324,21 +354,11 @@ export default function NotificationSettings() {
             {connected && (
               <>
                 {/* Toggle */}
-                <button
-                  onClick={() => handleToggleChannel(type)}
-                  className="relative w-10 h-5 rounded-full transition-colors"
-                  style={{
-                    backgroundColor: channel?.enabled ? 'var(--brand-primary)' : 'var(--bg-active)',
-                  }}
-                >
-                  <div
-                    className="absolute top-0.5 w-4 h-4 rounded-full transition-transform"
-                    style={{
-                      backgroundColor: 'white',
-                      transform: channel?.enabled ? 'translateX(22px)' : 'translateX(2px)',
-                    }}
-                  />
-                </button>
+                <Switch
+                  checked={!!channel?.enabled}
+                  onCheckedChange={() => handleToggleChannel(type)}
+                  aria-label={`Toggle ${config.label} notifications`}
+                />
 
                 {/* Test */}
                 <button
@@ -642,12 +662,11 @@ export default function NotificationSettings() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: '#25D36620', color: '#25D366' }}
-                >
-                  <MessageCircle className="w-5 h-5" />
-                </div>
+                <ChannelLogo
+                  domain="whatsapp.com"
+                  fallbackIcon={<MessageCircle className="w-5 h-5" />}
+                  color="#25D366"
+                />
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -760,15 +779,14 @@ export default function NotificationSettings() {
                     style={{ backgroundColor: 'var(--bg-hover)' }}
                   >
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded flex items-center justify-center"
-                        style={{
-                          backgroundColor: channelConfig?.color + '20',
-                          color: channelConfig?.color,
-                        }}
-                      >
-                        {channelConfig?.icon}
-                      </div>
+                      {channelConfig && (
+                        <ChannelLogo
+                          domain={channelConfig.domain}
+                          fallbackIcon={channelConfig.icon}
+                          color={channelConfig.color}
+                          size={24}
+                        />
+                      )}
                     <span style={{ color: 'var(--text-primary)' }}>
                       {entry.event_type === 'renewal_reminder' ? 'Renewal' : 'Trial'} reminder
                     </span>
