@@ -61,6 +61,14 @@ See `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
 
 See `docs/notifications/NOTIFICATION_IMPROVEMENTS.md`.
 
+### 4. UI Modernization & Polish
+
+- **Glassmorphism / Vibrancy:** Add translucent backgrounds (like `backdrop-filter: blur()`) to the sidebar and headers for a native macOS/Windows 11 feel.
+- **Spring Physics Animations:** Swap standard CSS easing for Framer Motion `spring` physics on layout changes (modals, expanding cards) for fluid, tactile weight.
+- **Native Toggle Switches:** Replace standard binary settings checkboxes with animated iOS/macOS style toggle switches.
+- **Overlay Scrollbars:** Style the custom web scrollbars to float over content and disappear when inactive, mimicking native OS behaviors.
+- **Bespoke Empty States:** Design highly customized illustrations or subtle dashed drop-zones for empty tables and zero-data charts to elevate the premium feel.
+
 ---
 
 ## Suggested Next Session

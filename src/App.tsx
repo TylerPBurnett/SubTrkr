@@ -584,7 +584,7 @@ function App() {
             )}
           </div>
 
-          <nav className={`flex-1 overflow-auto flex flex-col ${isCollapsed ? 'px-2 pt-2' : 'px-3 pt-2'}`}>
+          <nav className={`flex-1 overflow-auto flex flex-col ${isCollapsed ? 'px-2 mt-2' : 'px-3 mt-2'}`}>
             {/* Expand button lives here when collapsed — clears the traffic light zone */}
             {isCollapsed && !windowNarrow && (
               <button
@@ -656,7 +656,7 @@ function App() {
             />
           )}
 
-          <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+          <div className="flex-1 overflow-auto mt-2" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
           <div className="px-8 pb-8">
             {/* Header — also serves as drag region */}
             <div

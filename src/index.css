@@ -13,6 +13,7 @@
 /* Light Theme (Default) */
 :root,
 [data-theme="light"] {
+  color-scheme: light;
   /* Backgrounds */
   --bg-base: #e3e5e8;
   --bg-surface: #edeef2;
@@ -128,6 +129,7 @@
 /* Dark Theme */
 [data-theme="dark"],
 .dark {
+  color-scheme: dark;
   /* Backgrounds */
   --bg-base: #0c0d0e;
   --bg-surface: #131415;
@@ -633,26 +635,8 @@ button, a, input, select, textarea {
 }
 
 /* ============================================
-   SCROLLBAR STYLING
+   SCROLLBAR STYLING (Letting Native OS Overlay Handle It)
    ============================================ */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: var(--border-strong);
-  border-radius: 9999px;
-  border: 2px solid var(--bg-base);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--text-muted);
-}
 
 /* ============================================
    ANIMATIONS
