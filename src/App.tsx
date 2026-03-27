@@ -1,6 +1,16 @@
-import { useState, useEffect, useCallback, useRef, Suspense, lazy, useTransition } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import type { Session } from '@supabase/supabase-js';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  Suspense,
+  lazy,
+  useTransition,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { useLocalStorage } from "./hooks/useLocalStorage";
+import type { Session } from "@supabase/supabase-js";
 import {
   LayoutDashboard,
   CreditCard,
@@ -8,13 +18,18 @@ import {
   BarChart3,
   Settings as SettingsIcon,
   Plus,
+  ChevronLeft,
+  ChevronRight,
   Moon,
   Sun,
   WifiOff,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from 'lucide-react';
-import type { ItemWithCategory, Category, ItemType, StatusChangeData } from './types';
+} from "lucide-react";
+import type {
+  ItemWithCategory,
+  Category,
+  ItemType,
+  StatusChangeData,
+} from "./types";
 import {
   getItems,
   getCategories,
@@ -26,30 +41,55 @@ import {
   resumePausedItems,
   handleExpiredTrials,
   executeStatusChange,
-} from './services/database';
-import { supabase } from './services/supabase';
-import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
-import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './services/notifications';
-import { checkForUpdatesOnLaunch } from './services/updater';
-import { onOpenUrl, getCurrent as getCurrentDeepLinks } from '@tauri-apps/plugin-deep-link';
-import { toast, Toaster } from 'sonner';
-import ErrorBoundary from './components/ErrorBoundary';
-import Dashboard from './components/Dashboard';
-import ItemList from './components/ItemList';
-import ItemForm from './components/ItemForm';
-import AuthScreen from './components/AuthScreen';
-import StatusChangeDialog from './components/StatusChangeDialog';
-import StatusHistoryDialog from './components/StatusHistoryDialog';
-import SetNewPassword from './components/SetNewPassword';
-import { LazyComponentFallback } from './components/LazyComponentFallback';
-import EmailVerificationBanner from './components/EmailVerificationBanner';
-import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from './theme';
+} from "./services/database";
+import { supabase } from "./services/supabase";
+import { seedDefaultCategoriesIfNeeded } from "./services/seedCategories";
+import {
+  checkAndNotifyUpcomingRenewals,
+  checkAndNotifyExpiringTrials,
+} from "./services/notifications";
+import { checkForUpdatesOnLaunch } from "./services/updater";
+import {
+  onOpenUrl,
+  getCurrent as getCurrentDeepLinks,
+} from "@tauri-apps/plugin-deep-link";
+import { toast, Toaster } from "sonner";
+import ErrorBoundary from "./components/ErrorBoundary";
+import Dashboard from "./components/Dashboard";
+import ItemList from "./components/ItemList";
+import ItemForm from "./components/ItemForm";
+import AuthScreen from "./components/AuthScreen";
+import StatusChangeDialog from "./components/StatusChangeDialog";
+import StatusHistoryDialog from "./components/StatusHistoryDialog";
+import SetNewPassword from "./components/SetNewPassword";
+import { LazyComponentFallback } from "./components/LazyComponentFallback";
+import EmailVerificationBanner from "./components/EmailVerificationBanner";
+import TitleBar from "./components/TitleBar";
+import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from "./theme";
 
 // Lazy load heavier components for code splitting
 const Analytics = lazy(() => import('./components/Analytics'));
 const Settings = lazy(() => import('./components/Settings'));
 
 type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
+
+const SIDEBAR_COLLAPSED_WIDTH = 64;
+const SIDEBAR_MAC_COLLAPSED_WIDTH = 76;
+const SIDEBAR_DEFAULT_WIDTH = 256;
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 420;
+const SIDEBAR_AUTO_COLLAPSE_BREAKPOINT = 900;
+const SIDEBAR_SEAM_TOGGLE_TOP = 56;
+const SIDEBAR_MAC_SEAM_TOGGLE_TOP = 84;
+
+function clampSidebarWidth(width: number) {
+  const safeWidth = Number.isFinite(width) ? width : SIDEBAR_DEFAULT_WIDTH;
+
+  return Math.min(
+    SIDEBAR_MAX_WIDTH,
+    Math.max(SIDEBAR_MIN_WIDTH, Math.round(safeWidth)),
+  );
+}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -78,9 +118,29 @@ function App() {
     document.documentElement.setAttribute('data-vibrancy', useVibrancy ? 'true' : 'false');
   }, [useVibrancy]);
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>('subtrkr-sidebar-collapsed', false);
-  const [windowNarrow, setWindowNarrow] = useState(() => window.innerWidth < 900);
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>(
+    "subtrkr-sidebar-collapsed",
+    false,
+  );
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
+    "subtrkr-sidebar-width",
+    SIDEBAR_DEFAULT_WIDTH,
+  );
+  const [sidebarResizing, setSidebarResizing] = useState(false);
+  const [windowNarrow, setWindowNarrow] = useState(
+    () => window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT,
+  );
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const isCollapsed = sidebarCollapsed || windowNarrow;
+  const collapsedSidebarWidth = isMac
+    ? SIDEBAR_MAC_COLLAPSED_WIDTH
+    : SIDEBAR_COLLAPSED_WIDTH;
+  const sidebarToggleTop = isMac
+    ? SIDEBAR_MAC_SEAM_TOGGLE_TOP
+    : SIDEBAR_SEAM_TOGGLE_TOP;
+  const resolvedSidebarWidth = isCollapsed
+    ? collapsedSidebarWidth
+    : clampSidebarWidth(sidebarWidth);
   const theme = isTheme(storedTheme) ? storedTheme : DEFAULT_THEME;
   const themeTone = getThemeTone(theme);
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
@@ -92,6 +152,8 @@ function App() {
   showFormRef.current = showForm;
   const statusChangeDialogRef = useRef(statusChangeDialog);
   statusChangeDialogRef.current = statusChangeDialog;
+  const sidebarResizeStartXRef = useRef(0);
+  const sidebarResizeStartWidthRef = useRef(clampSidebarWidth(sidebarWidth));
 
   const loadData = useCallback(async () => {
     try {
@@ -272,10 +334,56 @@ function App() {
 
   // Auto-collapse sidebar on narrow windows (<900px)
   useEffect(() => {
-    const handleResize = () => setWindowNarrow(window.innerWidth < 900);
-    window.addEventListener('resize', handleResize, { passive: true });
-    return () => window.removeEventListener('resize', handleResize);
+    const handleResize = () =>
+      setWindowNarrow(window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT);
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Normalize corrupted sidebar widths from localStorage
+  useEffect(() => {
+    const clampedWidth = clampSidebarWidth(sidebarWidth);
+    if (sidebarWidth !== clampedWidth) {
+      setSidebarWidth(clampedWidth);
+    }
+  }, [sidebarWidth, setSidebarWidth]);
+
+  useEffect(() => {
+    if (!sidebarResizing) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = clampSidebarWidth(
+        sidebarResizeStartWidthRef.current +
+          (event.clientX - sidebarResizeStartXRef.current),
+      );
+
+      setSidebarWidth((current) =>
+        current === nextWidth ? current : nextWidth,
+      );
+    };
+
+    const stopResizing = () => setSidebarResizing(false);
+
+    document.body.classList.add("sidebar-resizing");
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResizing);
+    window.addEventListener("pointercancel", stopResizing);
+    window.addEventListener("blur", stopResizing);
+
+    return () => {
+      document.body.classList.remove("sidebar-resizing");
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResizing);
+      window.removeEventListener("pointercancel", stopResizing);
+      window.removeEventListener("blur", stopResizing);
+    };
+  }, [sidebarResizing, setSidebarWidth]);
+
+  useEffect(() => {
+    if (windowNarrow && sidebarResizing) {
+      setSidebarResizing(false);
+    }
+  }, [windowNarrow, sidebarResizing]);
 
   // Normalize corrupted/unknown theme values from localStorage
   useEffect(() => {
@@ -363,7 +471,7 @@ function App() {
       }
 
       // Cmd/Ctrl+\: toggle sidebar (only when window isn't forcing collapse)
-      if (mod && e.key === '\\') {
+      if (mod && e.key === "\\") {
         e.preventDefault();
         if (!windowNarrow) setSidebarCollapsed((prev) => !prev);
         return;
@@ -382,7 +490,21 @@ function App() {
   }, [session]); // refs read latest showForm/statusChangeDialog without re-subscribing
 
   const toggleTheme = () => {
-    setStoredTheme((prev) => getNextTheme(isTheme(prev) ? prev : DEFAULT_THEME));
+    setStoredTheme((prev) =>
+      getNextTheme(isTheme(prev) ? prev : DEFAULT_THEME),
+    );
+  };
+
+  const handleSidebarResizePointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (windowNarrow || isCollapsed) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    sidebarResizeStartXRef.current = event.clientX;
+    sidebarResizeStartWidthRef.current = clampSidebarWidth(sidebarWidth);
+    setSidebarResizing(true);
   };
 
   const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
@@ -567,42 +689,22 @@ function App() {
       <div className="app-shell flex w-full h-screen">
         {/* Sidebar */}
         <aside
-          className="sidebar shrink-0 h-full flex flex-col transition-all duration-200"
-          style={{ width: isCollapsed ? '64px' : '256px' }}
+          className="sidebar relative shrink-0 h-full flex flex-col transition-all duration-200"
+          style={{
+            width: `${resolvedSidebarWidth}px`,
+            transition: sidebarResizing ? "none" : undefined,
+          }}
         >
           {/* Draggable title bar area */}
           <div
             data-tauri-drag-region
-            className="h-12 shrink-0 flex items-center justify-end px-3"
-            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-          >
-            {!isCollapsed && !windowNarrow && (
-              <button
-                onClick={() => setSidebarCollapsed((prev) => !prev)}
-                className="p-1.5 rounded-lg transition-colors interactive-hover-bg shrink-0"
-                style={{
-                  color: 'var(--text-muted)',
-                  WebkitAppRegion: 'no-drag',
-                } as React.CSSProperties}
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+            className="h-12 shrink-0"
+            style={{ WebkitAppRegion: "drag" } as CSSProperties}
+          />
 
-          <nav className={`flex-1 overflow-auto flex flex-col ${isCollapsed ? 'px-2 mt-2' : 'px-3 mt-2'}`}>
-            {/* Expand button lives here when collapsed — clears the traffic light zone */}
-            {isCollapsed && !windowNarrow && (
-              <button
-                onClick={() => setSidebarCollapsed((prev) => !prev)}
-                className="w-full flex items-center justify-center rounded-lg mb-2 py-2.5 transition-all duration-200 nav-item"
-                title="Expand sidebar"
-              >
-                <PanelLeftOpen className="w-4 h-4 shrink-0" />
-              </button>
-            )}
-            
+          <nav
+            className={`flex-1 overflow-auto flex flex-col ${isCollapsed ? "px-2 mt-2" : "px-3 mt-2"}`}
+          >
             <div className="flex flex-col gap-1">
               {navItems.map((item, index) => (
                 <button
@@ -651,10 +753,45 @@ function App() {
               </button>
             </div>
           </nav>
+
+          {!windowNarrow && (
+            <button
+              type="button"
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="sidebar-seam-toggle"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              style={
+                {
+                  top: `${sidebarToggleTop}px`,
+                  WebkitAppRegion: "no-drag",
+                } as CSSProperties
+              }
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronLeft className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
+
+          {!isCollapsed && !windowNarrow && (
+            <button
+              type="button"
+              aria-label="Resize sidebar"
+              className={`sidebar-resize-handle ${sidebarResizing ? "is-active" : ""}`}
+              onPointerDown={handleSidebarResizePointerDown}
+              style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+              title="Resize sidebar"
+            />
+          )}
         </aside>
 
         {/* Main Content */}
         <main className="main-content flex-1 min-w-0 h-full flex flex-col">
+          <TitleBar />
+
           {/* Email verification banner */}
           {session?.user && !session.user.email_confirmed_at && !emailBannerDismissed && (
             <EmailVerificationBanner
