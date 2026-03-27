@@ -1,6 +1,6 @@
 # SubTrkr Desktop — Roadmap & Next Steps
 
-> Last updated: 2026-03-25
+> Last updated: 2026-03-27
 > Navigation: `docs/TASKS.md` is the operational queue for actionable work. `docs/plans/` contains active work only. Finished implementation/design docs live in `docs/completed-plans/`; completed summaries and legacy notes live in `docs/completed/`.
 
 ---
@@ -39,21 +39,28 @@ See `docs/PRODUCTION_RELEASE_WORKFLOW.md`, `docs/UPDATER_TESTING_GUIDE.md`, and 
 
 ## Up Next — Prioritized
 
-### 1. Transactional Status-Change Write Path
+### 1. Production Hardening Sweep
+
+- Pre-production hardening pass for the current desktop app across safety, correctness, performance, and maintainability.
+- Priority order: billing-anchor fix and version alignment, secret/CSP hardening, transactional lifecycle writes, realtime/analytics load reduction, then file decomposition.
+
+See `docs/plans/PRODUCTION_HARDENING_PLAN.md`.
+
+### 2. Transactional Status-Change Write Path
 
 - Remaining hardening item from the status-history rollout.
 - This is blocked on shared backend migration ownership and must be coordinated through the mobile repo workflow.
 
 See `docs/SUPABASE_BACKEND_WORKFLOW.md` and `docs/reference/SUPABASE_BACKEND_SOURCE_OF_TRUTH.md`.
 
-### 2. Trial Pricing Data Split
+### 3. Trial Pricing Data Split
 
 - The current model overloads one `amount` field for both free-trial and post-trial pricing.
 - The next desktop-owned follow-up is to split trial pricing from paid pricing in the data model, UI, and notifications.
 
 See `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
 
-### 3. Notification Quality-of-Life Backlog
+### 4. Notification Quality-of-Life Backlog
 
 - Quiet hours
 - Smart annual subscription alerts
@@ -61,7 +68,7 @@ See `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
 
 See `docs/notifications/NOTIFICATION_IMPROVEMENTS.md`.
 
-### 4. UI Modernization & Polish
+### 5. UI Modernization & Polish
 
 - **Glassmorphism / Vibrancy:** Add translucent backgrounds (like `backdrop-filter: blur()`) to the sidebar and headers for a native macOS/Windows 11 feel.
 - **Spring Physics Animations:** Swap standard CSS easing for Framer Motion `spring` physics on layout changes (modals, expanding cards) for fluid, tactile weight.
@@ -73,6 +80,7 @@ See `docs/notifications/NOTIFICATION_IMPROVEMENTS.md`.
 
 ## Suggested Next Session
 
-1. If the work is desktop-only, start with `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
-2. If the work changes shared Supabase schema or writes, start with `docs/SUPABASE_BACKEND_WORKFLOW.md` before touching code.
-3. If the work is release-related, use `docs/PRODUCTION_RELEASE_WORKFLOW.md` plus `docs/RELEASE_CAPTAIN_CHECKLIST.md`.
+1. If the goal is production readiness, start with `docs/plans/PRODUCTION_HARDENING_PLAN.md`.
+2. If the work is desktop-only feature work, start with `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
+3. If the work changes shared Supabase schema or writes, start with `docs/SUPABASE_BACKEND_WORKFLOW.md` before touching code.
+4. If the work is release-related, use `docs/PRODUCTION_RELEASE_WORKFLOW.md` plus `docs/RELEASE_CAPTAIN_CHECKLIST.md`.

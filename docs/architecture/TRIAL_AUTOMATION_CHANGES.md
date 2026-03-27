@@ -32,7 +32,8 @@ export async function getExpiringTrials(days: number = 7): Promise<ItemWithCateg
 #### New Function: `handleExpiredTrials()`
 ```typescript
 export async function handleExpiredTrials(): Promise<number> {
-  // Records expired trials in item_status_history table
+  // Transitions expired trials to cancelled
+  // Records the automatic transition in item_status_history
   // Runs automatically on app load
 }
 ```

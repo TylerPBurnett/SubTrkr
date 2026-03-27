@@ -12,6 +12,7 @@ Use this folder as a queue, not a dump.
 
 ## Current Active Plans
 
+- `docs/plans/PRODUCTION_HARDENING_PLAN.md` — ordered pre-production hardening pass for security, correctness, performance, and maintainability
 - `docs/plans/TRIAL_PRICING_FOLLOW_UP.md` — split free-trial pricing from post-trial pricing in the data model, UI, and notifications
 
 ## Structure
