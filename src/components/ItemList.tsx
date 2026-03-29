@@ -19,6 +19,7 @@ import {
   CreditCard,
   Receipt,
   Check,
+  Plus,
 } from "lucide-react";
 import SearchFilterToolbar from "./SearchFilterToolbar";
 import { Checkbox } from "./ui/checkbox";
@@ -648,6 +649,12 @@ function ItemList({
 
   const selectedLabel = selectedCount === 1 ? labels.singular : labels.plural;
   const Icon = labels.icon;
+  const addButtonLabel =
+    itemType === "bill"
+      ? "Add Bill"
+      : itemType === "subscription"
+        ? "Add Subscription"
+        : "Add Item";
 
   return (
     <div className="space-y-6">
@@ -684,33 +691,46 @@ function ItemList({
         onSortDirectionChange={setSortDirection}
         sortOptions={SORT_OPTIONS}
       >
-        {/* Bulk actions - only shown in list mode when items are selected */}
-        {viewMode === "list" && selectedCount > 0 && (
-          <div className="flex items-center gap-2">
-            <span
-              className="px-2.5 py-1 rounded-full text-xs font-semibold"
-              style={{
-                backgroundColor: "var(--bg-active)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              {selectedCount} selected
-            </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {onAddNew ? (
             <button
               type="button"
-              onClick={() => setBulkDeleteConfirmOpen(true)}
-              className="flex items-center gap-2 h-9 px-3 rounded-lg border-2 text-xs font-semibold transition-colors interactive-hover-danger"
-              style={{
-                backgroundColor: "var(--bg-input)",
-                borderColor: "var(--accent-red-muted)",
-                color: "var(--accent-red)",
-              }}
+              onClick={onAddNew}
+              className="btn-primary flex h-9 items-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-semibold transition-all duration-200"
             >
-              <Trash2 className="w-4 h-4" />
-              Delete selected
+              <Plus className="w-4 h-4" />
+              {addButtonLabel}
             </button>
-          </div>
-        )}
+          ) : null}
+
+          {/* Bulk actions - only shown in list mode when items are selected */}
+          {viewMode === "list" && selectedCount > 0 && (
+            <div className="flex items-center gap-2">
+              <span
+                className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                style={{
+                  backgroundColor: "var(--bg-active)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {selectedCount} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirmOpen(true)}
+                className="flex items-center gap-2 h-9 px-3 rounded-lg border-2 text-xs font-semibold transition-colors interactive-hover-danger"
+                style={{
+                  backgroundColor: "var(--bg-input)",
+                  borderColor: "var(--accent-red-muted)",
+                  color: "var(--accent-red)",
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete selected
+              </button>
+            </div>
+          )}
+        </div>
       </SearchFilterToolbar>
 
       {/* Item List */}
@@ -799,20 +819,26 @@ function ItemList({
                             onEdit(item);
                           }}
                           className="block w-full text-left font-semibold text-lg truncate transition-colors hover:underline focus-visible:outline-none"
-                          style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+                          style={{
+                            color: "var(--text-primary)",
+                            letterSpacing: "-0.01em",
+                          }}
                           aria-label={`Edit ${item.name}`}
                         >
                           {item.name}
                         </button>
                         <div
                           className="flex items-center gap-1.5 mt-0.5"
-                          style={{ color: "var(--text-secondary)", fontSize: "0.8125rem" }}
+                          style={{
+                            color: "var(--text-secondary)",
+                            fontSize: "0.8125rem",
+                          }}
                         >
                           <span
                             className="w-1.5 h-1.5 rounded-full shrink-0"
                             style={{
                               backgroundColor: categoryColor,
-                              boxShadow: `0 0 0 2px ${categoryColor}20`
+                              boxShadow: `0 0 0 2px ${categoryColor}20`,
                             }}
                           />
                           <span className="font-medium truncate">
@@ -832,7 +858,8 @@ function ItemList({
                           <span
                             className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                             style={{
-                              background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                              background:
+                                "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
                               color: "white",
                               boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
                               letterSpacing: "0.02em",
@@ -845,28 +872,32 @@ function ItemList({
                           <span
                             className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                             style={{
-                              background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                              background:
+                                "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                               color: "white",
                               boxShadow: "0 2px 8px rgba(245, 158, 11, 0.3)",
                               letterSpacing: "0.02em",
                             }}
                           >
                             PAUSED{" "}
-                            {item.paused_until && `· ${formatShortDate(item.paused_until)}`}
+                            {item.paused_until &&
+                              `· ${formatShortDate(item.paused_until)}`}
                           </span>
                         )}
                         {item.status === "cancelled" && (
                           <span
                             className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
                             style={{
-                              background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                              background:
+                                "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                               color: "white",
                               boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
                               letterSpacing: "0.02em",
                             }}
                           >
                             CANCELLED{" "}
-                            {item.cancellation_date && `· ${formatShortDate(item.cancellation_date)}`}
+                            {item.cancellation_date &&
+                              `· ${formatShortDate(item.cancellation_date)}`}
                           </span>
                         )}
                         {item.status === "archived" && (
@@ -964,22 +995,40 @@ function ItemList({
                             onClick={(event) => event.stopPropagation()}
                           />
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           Company
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           Renews
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           Recurrence
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           Cost
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                        <th
+                          className="px-4 py-3 text-right text-xs font-medium"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           Actions
                         </th>
                       </tr>
@@ -1111,7 +1160,8 @@ function ItemList({
                             <td className="px-5 py-4">
                               <div className="flex flex-col items-start gap-1">
                                 {renderStatusPill(item)}
-                                {item.status === "trial" && item.trial_end_date ? (
+                                {item.status === "trial" &&
+                                item.trial_end_date ? (
                                   <span
                                     className="text-[11px] font-mono"
                                     style={{ color: "var(--text-secondary)" }}
