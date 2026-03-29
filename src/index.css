@@ -1122,3 +1122,39 @@ html[data-theme="dark"][data-vibrancy-supported="true"][data-vibrancy="true"]
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border-default);
 }
+
+/* ============================================
+   GHOST PREVIEW ANIMATIONS
+   ============================================ */
+
+@keyframes ghost-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ghost-shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text-muted) 8%, transparent) 0%,
+    color-mix(in srgb, var(--text-muted) 16%, transparent) 50%,
+    color-mix(in srgb, var(--text-muted) 8%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: ghost-shimmer 3s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.empty-state-enter {
+  animation: zoomIn95 0.3s var(--ease-out-expo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost-shimmer-bar {
+    animation: none !important;
+  }
+  .empty-state-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
