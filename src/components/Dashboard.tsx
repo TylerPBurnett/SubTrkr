@@ -21,6 +21,8 @@ import {
 import { formatShortDate, getDaysUntil } from '../utils/dates';
 import ServiceLogo from './ui/ServiceLogo';
 import EmptyState from './ui/EmptyState';
+import GhostListPreview from './ui/GhostListPreview';
+import GhostChartPreview from './ui/GhostChartPreview';
 import SegmentedControl from './ui/SegmentedControl';
 
 interface DashboardProps {
@@ -178,17 +180,19 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     <div className="space-y-6">
       <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={setFilterTab} />
 
-      {/* Empty state when no items exist */}
-      {items.length === 0 && (
+      {/* First-run: show only the welcome state, hide everything else */}
+      {items.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={Plus}
             title="Welcome to SubTrkr"
             description="Start tracking your subscriptions and bills to see spending insights, upcoming payments, and more."
             action={onAddNew ? { label: 'Add Your First Item', onClick: onAddNew } : undefined}
+            preview={<GhostListPreview variant="item-card" count={3} />}
           />
         </div>
-      )}
+      ) : (
+        <>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -306,10 +310,13 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
           </h3>
           
           {upcomingItems.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>No payments due in the next 7 days</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="No upcoming payments"
+              description="Payments due in the next 7 days will appear here."
+              compact
+              preview={<GhostListPreview variant="payment-row" count={2} />}
+            />
           ) : (
             <div className="space-y-3">
               {upcomingItems.slice(0, 5).map((item, index) => {
@@ -379,10 +386,13 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
           )}
           
           {dashboardCategoryData.length === 0 ? (
-            <div className="text-center py-8">
-              <CreditCard className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>No spending data yet</p>
-            </div>
+            <EmptyState
+              icon={CreditCard}
+              title="No spending data yet"
+              description="Category breakdown will appear once you add items."
+              compact
+              preview={<GhostChartPreview variant="pie-chart" />}
+            />
           ) : (
             <div className="flex items-center gap-6">
               <div className="w-40 h-40 relative shrink-0">
@@ -456,6 +466,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
