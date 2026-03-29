@@ -731,11 +731,11 @@ export function getSpendingByCategory(
     .sort((a, b) => b.total - a.total);
 }
 
-export async function getUpcomingItems(
+export function getUpcomingItems(
   items: ItemWithCategory[],
   days: number = 7,
   type?: ItemType
-): Promise<ItemWithCategory[]> {
+): ItemWithCategory[] {
   const filtered = items.filter((item) => {
     const activeDue = item.status === 'active' && isDueWithinDays(item.next_billing_date, days);
     return (!type || item.item_type === type) && activeDue;

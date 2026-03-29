@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -96,7 +96,6 @@ function TrendBadge({ current, previous }: { current: number; previous: number }
 
 function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
-  const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
 
   // Get the type filter for database queries
   const typeFilter = filterTab === 'all' ? undefined : filterTab;
@@ -124,10 +123,10 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     [items, categories, typeFilter]
   );
 
-  // Load upcoming items (async query)
-  useEffect(() => {
-    getUpcomingItems(items, 7, typeFilter).then(setUpcomingItems);
-  }, [items, typeFilter]);
+  const upcomingItems = useMemo(
+    () => getUpcomingItems(items, 7, typeFilter),
+    [items, typeFilter]
+  );
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
@@ -135,11 +134,38 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
   const pausedCount = filteredItems.filter(s => s.status === 'paused').length;
   const cancelledCount = filteredItems.filter(s => s.status === 'cancelled').length;
 
-  const chartData = spendingByCategory.map(item => ({
-    name: item.category.name,
-    value: item.total,
-    color: item.category.color
-  }));
+  const dashboardCategoryData = useMemo(() => {
+    const categorySlices = spendingByCategory.map((item) => ({
+      color: item.category.color,
+      id: item.category.id,
+      name: item.category.name,
+      value: item.total,
+    }));
+
+    const total = categorySlices.reduce((sum, item) => sum + item.value, 0);
+    const withShare = categorySlices.map((item) => ({
+      ...item,
+      share: total === 0 ? 0 : item.value / total,
+    }));
+
+    if (withShare.length <= 5) return withShare;
+
+    const visible = withShare.slice(0, 4);
+    const otherTotal = withShare.slice(4).reduce((sum, item) => sum + item.value, 0);
+
+    return [
+      ...visible,
+      {
+        id: 'other',
+        name: 'Other',
+        value: otherTotal,
+        color: 'var(--accent-gray)',
+        share: total === 0 ? 0 : otherTotal / total,
+      },
+    ];
+  }, [spendingByCategory]);
+
+  const topCategory = dashboardCategoryData[0] ?? null;
 
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
@@ -170,7 +196,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         <div className="stagger-item card">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <p className="label">MONTHLY SPENDING</p>
+              <p className="label">PROJECTED MONTHLY</p>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
                 <TrendingUp className="w-5 h-5" style={{ color: 'var(--brand-primary)' }} />
               </div>
@@ -195,7 +221,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         <div className="stagger-item card">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <p className="label">YEARLY SPENDING</p>
+              <p className="label">YEARLY RUN RATE</p>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-purple-muted)' }}>
                 <Calendar className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
               </div>
@@ -346,8 +372,13 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
           <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
             Spending by Category
           </h3>
+          {topCategory && (
+            <p className="mb-4 text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
+              Largest share: {topCategory.name} · {Math.round(topCategory.share * 100)}%
+            </p>
+          )}
           
-          {chartData.length === 0 ? (
+          {dashboardCategoryData.length === 0 ? (
             <div className="text-center py-8">
               <CreditCard className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
               <p style={{ color: 'var(--text-secondary)' }}>No spending data yet</p>
@@ -358,7 +389,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData}
+                      data={dashboardCategoryData}
                       cx="50%"
                       cy="50%"
                       innerRadius={45}
@@ -369,9 +400,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                       isAnimationActive={true}
                       animationDuration={300}
                       animationEasing="ease-out"
-                      className="chart-pie-sector"
                     >
-                      {chartData.map((entry, index) => (
+                      {dashboardCategoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -392,7 +422,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     />
                     {/* Center label */}
                     <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
-                      MONTHLY
+                      RUN RATE
                     </text>
                     <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
                       {formatCurrency(monthlySpending)}
@@ -402,18 +432,23 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
               </div>
               
               <div className="flex-1 space-y-2">
-                {spendingByCategory.slice(0, 5).map(item => (
-                  <div key={item.category.id} className="flex items-center gap-3">
+                {dashboardCategoryData.map(item => (
+                  <div key={item.id} className="flex items-center gap-3">
                     <div
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: item.category.color }}
+                      style={{ backgroundColor: item.color }}
                     />
                     <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {item.category.name}
+                      {item.name}
                     </span>
-                    <span className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {formatCurrency(item.total)}
-                    </span>
+                    <div className="text-right">
+                      <p className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {formatCurrency(item.value)}
+                      </p>
+                      <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {Math.round(item.share * 100)}%
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
