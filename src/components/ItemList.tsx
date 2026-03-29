@@ -41,6 +41,7 @@ import ConfirmDialog from "./ui/ConfirmDialog";
 import EmptyState from "./ui/EmptyState";
 import ServiceLogo from "./ui/ServiceLogo";
 import { formatDisplayDate, formatShortDate } from "../utils/dates";
+import GhostListPreview from './ui/GhostListPreview';
 
 interface ItemListProps {
   items: ItemWithCategory[];
@@ -714,6 +715,12 @@ function ItemList({
                     onClick: onAddNew,
                   }
                 : undefined
+            }
+            preview={
+              <GhostListPreview
+                variant={viewMode === 'list' ? 'item-row' : 'item-card'}
+                count={2}
+              />
             }
           />
         </div>
