@@ -100,7 +100,7 @@ function getMonthRange(date: Date): { start: Date; endExclusive: Date } {
 }
 
 function getStatusTransitions(statusHistory: StatusHistory[]): StatusTransition[] {
-  return statusHistory
+  const historyEntries = statusHistory
     .map((entry) => {
       const effectiveDate =
         parseDateValue(getResolvedStatusHistoryEffectiveDate(entry)) ?? parseDateValue(entry.changed_at);
@@ -113,16 +113,46 @@ function getStatusTransitions(statusHistory: StatusHistory[]): StatusTransition[
         recordedAt: parseDateValue(entry.changed_at),
       };
     })
-    .filter((entry): entry is StatusTransition => entry !== null)
-    .sort((lhs, rhs) => {
-      if (lhs.effectiveDate.getTime() !== rhs.effectiveDate.getTime()) {
-        return lhs.effectiveDate.getTime() - rhs.effectiveDate.getTime();
-      }
+    .filter((entry): entry is StatusTransition => entry !== null);
 
-      const lhsRecordedAt = lhs.recordedAt ?? lhs.effectiveDate;
-      const rhsRecordedAt = rhs.recordedAt ?? rhs.effectiveDate;
-      return lhsRecordedAt.getTime() - rhsRecordedAt.getTime();
-    });
+  const byRecordedOrder = [...historyEntries].sort((lhs, rhs) => {
+    const lhsRecordedAt = lhs.recordedAt ?? lhs.effectiveDate;
+    const rhsRecordedAt = rhs.recordedAt ?? rhs.effectiveDate;
+    return lhsRecordedAt.getTime() - rhsRecordedAt.getTime();
+  });
+
+  const normalizedTransitions: StatusTransition[] = [];
+
+  for (const entry of byRecordedOrder) {
+    if (entry.action === 'edit_cancellation') {
+      for (let index = normalizedTransitions.length - 1; index >= 0; index -= 1) {
+        const previous = normalizedTransitions[index];
+        if (
+          previous.status === 'cancelled'
+          && (previous.action === 'cancel' || previous.action === 'trial_expired' || previous.action === null)
+        ) {
+          normalizedTransitions[index] = {
+            ...previous,
+            effectiveDate: entry.effectiveDate,
+          };
+          break;
+        }
+      }
+      continue;
+    }
+
+    normalizedTransitions.push(entry);
+  }
+
+  return normalizedTransitions.sort((lhs, rhs) => {
+    if (lhs.effectiveDate.getTime() !== rhs.effectiveDate.getTime()) {
+      return lhs.effectiveDate.getTime() - rhs.effectiveDate.getTime();
+    }
+
+    const lhsRecordedAt = lhs.recordedAt ?? lhs.effectiveDate;
+    const rhsRecordedAt = rhs.recordedAt ?? rhs.effectiveDate;
+    return lhsRecordedAt.getTime() - rhsRecordedAt.getTime();
+  });
 }
 
 function inferredInitialStatus(item: ItemWithCategory, transitions: StatusTransition[]): ItemStatus {

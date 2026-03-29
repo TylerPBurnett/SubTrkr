@@ -745,45 +745,49 @@ export default function StatusChangeDialog({
               </div>
             )}
 
-            {/* Reason */}
-            <div className="mb-5 status-dialog-field">
-              <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-                Reason
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>OPTIONAL</span>
-              </label>
-              <input
-                type="text"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={`e.g. Too expensive, Not using enough, Found alternative`}
-                className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                style={{
-                  border: '2px solid var(--border-default)',
-                  background: 'var(--bg-default)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-            </div>
+            {action !== 'edit_cancellation' && (
+              <>
+                {/* Reason */}
+                <div className="mb-5 status-dialog-field">
+                  <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+                    Reason
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>OPTIONAL</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder={`e.g. Too expensive, Not using enough, Found alternative`}
+                    className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                    style={{
+                      border: '2px solid var(--border-default)',
+                      background: 'var(--bg-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
 
-            {/* Notes */}
-            <div className="mb-6 status-dialog-field">
-              <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-                Notes
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>OPTIONAL</span>
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Additional context or details..."
-                className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
-                style={{
-                  border: '2px solid var(--border-default)',
-                  background: 'var(--bg-default)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-            </div>
+                {/* Notes */}
+                <div className="mb-6 status-dialog-field">
+                  <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+                    Notes
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>OPTIONAL</span>
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Additional context or details..."
+                    className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
+                    style={{
+                      border: '2px solid var(--border-default)',
+                      background: 'var(--bg-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>

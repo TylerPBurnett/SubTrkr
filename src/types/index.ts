@@ -53,17 +53,26 @@ export interface StatusHistory {
   status: ItemStatus;
   reason: string | null;
   notes: string | null;
+  action: string | null;
+  effective_date: string | null;
   changed_at: string;
 }
 
 export interface StatusChangeData {
-  action: 'pause' | 'cancel' | 'resume' | 'reactivate' | 'convert';
+  action:
+    | 'pause'
+    | 'cancel'
+    | 'resume'
+    | 'reactivate'
+    | 'convert'
+    | 'archive'
+    | 'edit_cancellation'
+    | 'start_trial';
   pauseUntil?: string; // Optional date for auto-resume (YYYY-MM-DD format)
-  pausedOn?: string; // Retroactive date when item was paused (YYYY-MM-DD format)
-  cancelledOn?: string; // Retroactive date when item was cancelled (YYYY-MM-DD format)
-  resumedOn?: string; // Retroactive date when item was resumed (YYYY-MM-DD format)
+  cancelledOn?: string; // Date when item was cancelled or cancellation date was edited
+  resumedOn?: string; // Date when item was resumed or reactivated (YYYY-MM-DD format)
   convertedOn?: string; // Date when trial converted to paid (YYYY-MM-DD format)
-  trialEndDate?: string; // For setting trial end date (YYYY-MM-DD format)
+  trialEndDate?: string; // Trial end date when starting a trial (YYYY-MM-DD format)
   reason?: string;
   notes?: string;
 }

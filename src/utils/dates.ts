@@ -121,6 +121,27 @@ export function getNextFutureBillingDate(anchorDateStr: string, cycle: BillingCy
 }
 
 /**
+ * Calculates the next scheduled billing date on or after a reference date
+ * while preserving the original billing anchor.
+ */
+export function getNextBillingDateOnOrAfter(
+  anchorDateStr: string,
+  cycle: BillingCycle,
+  referenceDateStr: string
+): string {
+  const anchor = parseLocalDate(anchorDateStr);
+  const referenceDate = parseLocalDate(referenceDateStr);
+
+  let nextDate = anchor;
+
+  while (nextDate < referenceDate) {
+    nextDate = addBillingCycle(nextDate, cycle);
+  }
+
+  return formatISODate(nextDate);
+}
+
+/**
  * Gets the number of days until a given date.
  * Returns negative if the date is in the past.
  */

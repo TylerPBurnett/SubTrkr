@@ -358,17 +358,6 @@ function ItemList({
                 <XCircle className="w-4 h-4" />
                 Cancel Trial
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, "archive")}
-                className="gap-2.5 menu-item"
-                style={{
-                  color: "var(--text-secondary)",
-                  letterSpacing: "-0.005em",
-                }}
-              >
-                <Archive className="w-4 h-4" />
-                Archive
-              </DropdownMenuItem>
             </>
           )}
 
@@ -407,17 +396,6 @@ function ItemList({
                 <Clock3 className="w-4 h-4" />
                 Start Trial
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, "archive")}
-                className="gap-2.5 menu-item"
-                style={{
-                  color: "var(--text-secondary)",
-                  letterSpacing: "-0.005em",
-                }}
-              >
-                <Archive className="w-4 h-4" />
-                Archive
-              </DropdownMenuItem>
             </>
           )}
 
@@ -444,17 +422,6 @@ function ItemList({
               >
                 <XCircle className="w-4 h-4" />
                 Cancel
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, "archive")}
-                className="gap-2.5 menu-item"
-                style={{
-                  color: "var(--text-secondary)",
-                  letterSpacing: "-0.005em",
-                }}
-              >
-                <Archive className="w-4 h-4" />
-                Archive
               </DropdownMenuItem>
             </>
           )}

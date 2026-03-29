@@ -17,8 +17,8 @@ import {
   getDaysUntil,
   isDueWithinDays,
   calculateNextBillingDate as calcNextBillingDate,
+  getNextBillingDateOnOrAfter,
   getNextFutureBillingDate,
-  parseLocalDate,
 } from '../utils/dates';
 
 // Helper to get current user ID
@@ -292,17 +292,48 @@ export async function toggleItemActive(id: string): Promise<void> {
 
 // ============ Status Management ============
 
+type TransactionalStatusAction =
+  | Exclude<StatusChangeData['action'], 'convert'>
+  | 'convert_trial'
+  | 'trial_expired';
+
+interface ExecuteItemStatusChangeRpcParams {
+  p_item_id: string;
+  p_action: TransactionalStatusAction;
+  p_effective_date: string | null;
+  p_pause_until: string | null;
+  p_trial_end_date: string | null;
+  p_next_billing_date: string | null;
+  p_clear_fields: string[];
+  p_reason: string | null;
+  p_notes: string | null;
+  p_today: string;
+  p_minimum_effective_date: string | null;
+}
+
+const ACTIVE_STATUS_CLEAR_FIELDS = [
+  'paused_at',
+  'paused_until',
+  'cancelled_at',
+  'cancellation_date',
+  'archived_at',
+  'trial_started_at',
+  'trial_end_date',
+] as const;
+
 function getTargetStatus(action: StatusChangeData['action'], currentStatus: ItemStatus): ItemStatus {
   const transitions: Record<string, ItemStatus> = {
     'active-pause': 'paused',
     'active-cancel': 'cancelled',
+    'active-start_trial': 'trial',
     'paused-resume': 'active',
     'paused-cancel': 'cancelled',
+    'cancelled-edit_cancellation': 'cancelled',
     'cancelled-reactivate': 'active',
+    'cancelled-archive': 'archived',
     'archived-reactivate': 'active',
     'trial-convert': 'active',
     'trial-cancel': 'cancelled',
-    'trial-pause': 'paused',
   };
 
   const key = `${currentStatus}-${action}`;
@@ -315,6 +346,81 @@ function getTargetStatus(action: StatusChangeData['action'], currentStatus: Item
   return newStatus;
 }
 
+function getCanonicalStatusChangeAction(action: StatusChangeData['action']): TransactionalStatusAction {
+  return action === 'convert' ? 'convert_trial' : action;
+}
+
+function resolveStatusChangeEffectiveDate(data: StatusChangeData, fallbackDate: string): string {
+  switch (data.action) {
+    case 'pause':
+      return fallbackDate;
+    case 'cancel':
+    case 'edit_cancellation':
+      return data.cancelledOn || fallbackDate;
+    case 'resume':
+    case 'reactivate':
+      return data.resumedOn || fallbackDate;
+    case 'convert':
+      return data.convertedOn || fallbackDate;
+    case 'archive':
+    case 'start_trial':
+      return fallbackDate;
+  }
+}
+
+function getNextBillingDateAfterResume(item: Item, resumedOn: string): string {
+  if (item.next_billing_date >= resumedOn) {
+    return item.next_billing_date;
+  }
+
+  const anchorDate = item.start_date || item.next_billing_date || resumedOn;
+  return getNextBillingDateOnOrAfter(anchorDate, item.billing_cycle, resumedOn);
+}
+
+function normalizeDateOnly(value: string | null | undefined): string | null {
+  return value ? value.split('T')[0] : null;
+}
+
+function latestDate(...dates: Array<string | null | undefined>): string | null {
+  const validDates = dates.filter((date): date is string => Boolean(date));
+  if (validDates.length === 0) {
+    return null;
+  }
+
+  validDates.sort();
+  return validDates[validDates.length - 1];
+}
+
+function getMinimumEffectiveDate(item: Item, action: StatusChangeData['action']): string | null {
+  const startDate = normalizeDateOnly(item.start_date);
+
+  switch (action) {
+    case 'cancel':
+    case 'edit_cancellation':
+      return startDate;
+    case 'resume':
+      return latestDate(startDate, normalizeDateOnly(item.paused_at)) ?? startDate;
+    case 'reactivate':
+      return latestDate(
+        startDate,
+        item.cancellation_date,
+        normalizeDateOnly(item.cancelled_at),
+        normalizeDateOnly(item.archived_at)
+      ) ?? startDate;
+    case 'convert':
+      return latestDate(startDate, normalizeDateOnly(item.trial_started_at)) ?? startDate;
+    case 'pause':
+    case 'archive':
+    case 'start_trial':
+      return null;
+  }
+}
+
+async function executeStatusChangeRpc(params: ExecuteItemStatusChangeRpcParams): Promise<void> {
+  const { error } = await supabase.rpc('execute_item_status_change', params);
+  if (error) throw error;
+}
+
 export async function executeStatusChange(
   itemId: string,
   data: StatusChangeData
@@ -324,43 +430,28 @@ export async function executeStatusChange(
   if (!item) throw new Error('Item not found');
 
   const newStatus = getTargetStatus(data.action, item.status);
-  const now = new Date().toISOString();
   const today = formatISODate(getToday());
-
-  // Prepare update data based on new status
-  const updateData: Record<string, unknown> = {
-    status: newStatus,
-  };
+  const action = getCanonicalStatusChangeAction(data.action);
+  const effectiveDate = resolveStatusChangeEffectiveDate(data, today);
+  const minimumEffectiveDate = getMinimumEffectiveDate(item, data.action);
+  let pauseUntil: string | null = null;
+  let trialEndDate: string | null = null;
+  let nextBillingDate: string | null = null;
+  let clearFields: string[] = [];
 
   switch (newStatus) {
     case 'trial':
-      updateData.trial_started_at = now;
-      if (data.trialEndDate) {
-        updateData.trial_end_date = data.trialEndDate;
-      }
+      trialEndDate = data.trialEndDate || null;
       break;
 
     case 'paused':
-      // Use retroactive date if provided, otherwise use now
-      if (data.pausedOn) {
-        const pausedDate = parseLocalDate(data.pausedOn);
-        updateData.paused_at = pausedDate.toISOString();
-      } else {
-        updateData.paused_at = now;
-      }
-      updateData.paused_until = data.pauseUntil || null;
+      pauseUntil = data.pauseUntil || null;
       break;
 
     case 'cancelled':
-      // Use retroactive date if provided, otherwise use now/today
-      if (data.cancelledOn) {
-        const cancelledDate = parseLocalDate(data.cancelledOn);
-        updateData.cancelled_at = cancelledDate.toISOString();
-        updateData.cancellation_date = data.cancelledOn; // Store as YYYY-MM-DD
-      } else {
-        updateData.cancelled_at = now;
-        updateData.cancellation_date = today;
-      }
+      break;
+
+    case 'archived':
       break;
 
     case 'active':
@@ -368,31 +459,20 @@ export async function executeStatusChange(
         throw new Error('Set an amount greater than 0 before converting this trial to paid');
       }
 
-      // Resume: clear all non-active status fields
-      updateData.paused_at = null;
-      updateData.paused_until = null;
-      updateData.cancelled_at = null;
-      updateData.cancellation_date = null;
-      updateData.archived_at = null;
-      updateData.trial_started_at = null;
-      updateData.trial_end_date = null;
+      clearFields = [...ACTIVE_STATUS_CLEAR_FIELDS];
 
       // Calculate next billing date
       if (data.convertedOn) {
-        // Converting from trial - use conversion date
-        updateData.next_billing_date = getNextFutureBillingDate(
+        nextBillingDate = getNextFutureBillingDate(
           data.convertedOn,
           item.billing_cycle
         );
       } else if (data.resumedOn) {
-        // Resuming from pause
-        updateData.next_billing_date = getNextFutureBillingDate(
-          data.resumedOn,
-          item.billing_cycle
-        );
+        nextBillingDate = data.action === 'resume'
+          ? getNextBillingDateAfterResume(item, data.resumedOn)
+          : getNextFutureBillingDate(data.resumedOn, item.billing_cycle);
       } else {
-        // Default: advance from current next_billing_date
-        updateData.next_billing_date = getNextFutureBillingDate(
+        nextBillingDate = getNextFutureBillingDate(
           item.next_billing_date,
           item.billing_cycle
         );
@@ -400,27 +480,19 @@ export async function executeStatusChange(
       break;
   }
 
-  // Update item status
-  const { error: updateError } = await supabase
-    .from('items')
-    .update(updateData)
-    .eq('id', itemId)
-    .eq('user_id', userId);
-
-  if (updateError) throw updateError;
-
-  // Record status change in history
-  const { error: historyError } = await supabase
-    .from('item_status_history')
-    .insert({
-      item_id: itemId,
-      user_id: userId,
-      status: newStatus,
-      reason: data.reason || null,
-      notes: data.notes || null,
-    });
-
-  if (historyError) throw historyError;
+  await executeStatusChangeRpc({
+    p_item_id: itemId,
+    p_action: action,
+    p_effective_date: effectiveDate,
+    p_pause_until: pauseUntil,
+    p_trial_end_date: trialEndDate,
+    p_next_billing_date: nextBillingDate,
+    p_clear_fields: clearFields,
+    p_reason: data.reason?.trim() || null,
+    p_notes: data.notes?.trim() || null,
+    p_today: today,
+    p_minimum_effective_date: minimumEffectiveDate,
+  });
 }
 
 export function calculateMonthlySavings(items: ItemWithCategory[], type?: ItemType): number {
@@ -453,30 +525,7 @@ export function calculateMonthlySavings(items: ItemWithCategory[], type?: ItemTy
 }
 
 export async function archivePastCancellations(): Promise<number> {
-  const todayStr = formatISODate(getToday());
-  const userId = await getUserId();
-
-  // Find cancelled items where cancellation_date < today
-  const { data: itemsToArchive, error: fetchError } = await supabase
-    .from('items')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'cancelled')
-    .lt('cancellation_date', todayStr);
-
-  if (fetchError) throw fetchError;
-  if (!itemsToArchive || itemsToArchive.length === 0) return 0;
-
-  const now = new Date().toISOString();
-
-  const { error: updateError } = await supabase
-    .from('items')
-    .update({ status: 'archived', archived_at: now })
-    .in('id', itemsToArchive.map(item => item.id))
-    .eq('user_id', userId);
-
-  if (updateError) throw updateError;
-  return itemsToArchive.length;
+  return 0;
 }
 
 export async function resumePausedItems(): Promise<number> {
@@ -496,7 +545,13 @@ export async function resumePausedItems(): Promise<number> {
   if (!itemsToResume || itemsToResume.length === 0) return 0;
 
   const results = await Promise.allSettled(
-    itemsToResume.map(item => executeStatusChange(item.id, { action: 'resume' }))
+    itemsToResume.map(item =>
+      executeStatusChange(item.id, {
+        action: 'resume',
+        resumedOn: item.paused_until || todayStr,
+        reason: 'Auto-resumed',
+      })
+    )
   );
 
   const failures = results.filter(r => r.status === 'rejected');
@@ -514,6 +569,19 @@ export async function getStatusHistory(itemId: string): Promise<StatusHistory[]>
     .from('item_status_history')
     .select('*')
     .eq('item_id', itemId)
+    .eq('user_id', userId)
+    .order('changed_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getAllStatusHistory(): Promise<StatusHistory[]> {
+  const userId = await getUserId();
+
+  const { data, error } = await supabase
+    .from('item_status_history')
+    .select('*')
     .eq('user_id', userId)
     .order('changed_at', { ascending: false });
 
@@ -558,7 +626,7 @@ export async function recordPayment(
 export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemType): number {
   const filtered = items.filter(
     (item) =>
-      (item.status === 'active' || item.status === 'trial') &&
+      item.status === 'active' &&
       (!type || item.item_type === type)
   );
 
@@ -587,7 +655,7 @@ export function calculateMonthlySpending(items: ItemWithCategory[], type?: ItemT
 export function calculateYearlySpending(items: ItemWithCategory[], type?: ItemType): number {
   const filtered = items.filter(
     (item) =>
-      (item.status === 'active' || item.status === 'trial') &&
+      item.status === 'active' &&
       (!type || item.item_type === type)
   );
 
@@ -632,7 +700,7 @@ export function getSpendingByCategory(
   });
 
   items.forEach((item) => {
-    if (item.status !== 'active' && item.status !== 'trial') return;
+    if (item.status !== 'active') return;
     if (type && item.item_type !== type) return;
     if (!item.category_id) return;
 
@@ -670,28 +738,12 @@ export async function getUpcomingItems(
 ): Promise<ItemWithCategory[]> {
   const filtered = items.filter((item) => {
     const activeDue = item.status === 'active' && isDueWithinDays(item.next_billing_date, days);
-    const pausedUntil = item.paused_until;
-    const pausedDue =
-      item.status === 'paused' && pausedUntil ? isDueWithinDays(pausedUntil, days) : false;
-    const trialExpiring =
-      item.status === 'trial' && item.trial_end_date
-        ? isDueWithinDays(item.trial_end_date, days)
-        : false;
-
-    return (!type || item.item_type === type) && (activeDue || pausedDue || trialExpiring);
+    return (!type || item.item_type === type) && activeDue;
   });
 
   return filtered.sort((a, b) => {
-    let dateA = a.next_billing_date;
-    if (a.status === 'paused' && a.paused_until) dateA = a.paused_until;
-    if (a.status === 'trial' && a.trial_end_date) dateA = a.trial_end_date;
-
-    let dateB = b.next_billing_date;
-    if (b.status === 'paused' && b.paused_until) dateB = b.paused_until;
-    if (b.status === 'trial' && b.trial_end_date) dateB = b.trial_end_date;
-
-    const daysA = getDaysUntil(dateA);
-    const daysB = getDaysUntil(dateB);
+    const daysA = getDaysUntil(a.next_billing_date);
+    const daysB = getDaysUntil(b.next_billing_date);
     return daysA - daysB;
   });
 }
@@ -776,18 +828,36 @@ export async function handleExpiredTrials(): Promise<number> {
   if (fetchError) throw fetchError;
   if (!expiredTrials || expiredTrials.length === 0) return 0;
 
-  const historyRecords = expiredTrials.map(item => ({
-    item_id: item.id,
-    user_id: userId,
-    status: 'trial' as const,
-    reason: 'trial_expired' as const,
-    notes: `Trial expired on ${item.trial_end_date}`,
-  }));
+  const results = await Promise.allSettled(
+    expiredTrials.map(async (item) => {
+      await executeStatusChangeRpc({
+        p_item_id: item.id,
+        p_action: 'trial_expired',
+        p_effective_date: item.trial_end_date,
+        p_pause_until: null,
+        p_trial_end_date: null,
+        p_next_billing_date: null,
+        p_clear_fields: [],
+        p_reason: 'Trial expired',
+        p_notes: `Trial expired on ${item.trial_end_date}`,
+        p_today: todayStr,
+        p_minimum_effective_date: normalizeDateOnly(item.start_date),
+      });
 
-  const { error: historyError } = await supabase
-    .from('item_status_history')
-    .insert(historyRecords);
+      return item.id;
+    })
+  );
 
-  if (historyError) throw historyError;
-  return historyRecords.length;
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length > 0) {
+    console.error(`Failed to expire ${failures.length} trial(s):`, failures);
+  }
+
+  return results.reduce((count, result) => {
+    if (result.status === 'fulfilled' && result.value) {
+      return count + 1;
+    }
+
+    return count;
+  }, 0);
 }
