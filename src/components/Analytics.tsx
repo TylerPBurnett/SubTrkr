@@ -6,7 +6,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ComposedChart,
+  AreaChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -26,7 +26,6 @@ import type {
   ItemStatus,
   ItemType,
   ItemWithCategory,
-  Payment,
   StatusHistory,
 } from '@/types';
 import {
@@ -34,7 +33,6 @@ import {
   calculateMonthlySpending,
   calculateYearlySpending,
   getAllStatusHistory,
-  getPayments,
   getSpendingByCategory,
 } from '../services/database';
 import { formatDisplayDate, parseLocalDate } from '../utils/dates';
@@ -69,7 +67,6 @@ type TrendSummary = {
 };
 
 type MonthlyTrendPoint = {
-  actual: number;
   month: string;
   projected: number;
   tooltipLabel: string;
@@ -159,11 +156,6 @@ function shiftDays(date: Date, days: number): Date {
 
 function isOnOrBeforeDay(date: Date, comparedTo: Date): boolean {
   return normalizeToStartOfDay(date).getTime() <= normalizeToStartOfDay(comparedTo).getTime();
-}
-
-function getMonthKey(date: Date): string {
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  return `${date.getFullYear()}-${month}`;
 }
 
 function getMonthRange(date: Date): { start: Date; endExclusive: Date } {
@@ -440,7 +432,6 @@ function Analytics({
 }: AnalyticsProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [statusHistoryEntries, setStatusHistoryEntries] = useState<StatusHistory[]>([]);
   const [trendRange, setTrendRange] = useState<TrendRange>('6m');
@@ -448,17 +439,15 @@ function Analytics({
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([getPayments(), getAllStatusHistory()])
-      .then(([paymentsData, historyData]) => {
-        if (cancelled) return;
-
-        setPayments(paymentsData);
-        setStatusHistoryEntries(historyData);
+    getAllStatusHistory()
+      .then((historyData) => {
+        if (!cancelled) {
+          setStatusHistoryEntries(historyData);
+        }
       })
       .catch((error) => {
         if (!cancelled) {
           console.error('Failed to load analytics support data:', error);
-          setPayments([]);
           setStatusHistoryEntries([]);
         }
       });
@@ -531,11 +520,6 @@ function Analytics({
     }));
   }, [spendingByCategory]);
 
-  const filteredPayments = useMemo(
-    () => payments.filter((payment) => itemIdSet.has(payment.item_id)),
-    [itemIdSet, payments]
-  );
-
   const statusHistoryByItem = useMemo(() => {
     return statusHistoryEntries.reduce<Record<string, StatusHistory[]>>((acc, entry) => {
       if (!itemIdSet.has(entry.item_id)) return acc;
@@ -549,57 +533,47 @@ function Analytics({
     return categoryInsights.some((category) => category.id === selectedCategoryId) ? selectedCategoryId : null;
   }, [categoryInsights, selectedCategoryId]);
 
-  const paymentWindowInsights = useMemo(() => {
-    const relevantItemIds = new Set(filteredItems.map((item) => item.id));
+  const upcomingObligationSummary = useMemo(() => {
     const today = normalizeToStartOfDay(new Date());
-    const thirtyDaysAgo = shiftDays(today, -29);
-    const sixtyDaysAgo = shiftDays(today, -59);
+    const nextThirtyDays = shiftDays(today, 30);
 
-    let last30Days = 0;
-    let previous30Days = 0;
+    let count = 0;
+    let total = 0;
+    let largestItem: ItemWithCategory | null = null;
 
-    for (const payment of filteredPayments) {
-      if (!relevantItemIds.has(payment.item_id)) continue;
+    for (const item of filteredItems) {
+      if (item.status !== 'active') continue;
 
-      const paidAt = parseDateValue(payment.paid_at);
-      if (!paidAt) continue;
+      const nextBillingDate = parseDateValue(item.next_billing_date);
+      if (!nextBillingDate) continue;
 
-      const normalizedPaidAt = normalizeToStartOfDay(paidAt);
+      const normalizedNextBillingDate = normalizeToStartOfDay(nextBillingDate);
+      if (normalizedNextBillingDate < today || normalizedNextBillingDate > nextThirtyDays) continue;
 
-      if (normalizedPaidAt >= thirtyDaysAgo && normalizedPaidAt <= today) {
-        last30Days += payment.amount;
-      } else if (normalizedPaidAt >= sixtyDaysAgo && normalizedPaidAt < thirtyDaysAgo) {
-        previous30Days += payment.amount;
+      count += 1;
+      total += item.amount;
+
+      if (!largestItem || item.amount > largestItem.amount) {
+        largestItem = item;
       }
     }
 
     return {
-      last30Days,
-      previous30Days,
+      count,
+      largestItem,
+      total,
     };
-  }, [filteredItems, filteredPayments]);
+  }, [filteredItems]);
 
   const monthlyTrendData = useMemo<MonthlyTrendPoint[]>(() => {
     const monthCount = trendRange === '12m' ? 12 : 6;
-    const paymentIndex = filteredPayments.reduce<Record<string, Record<string, number>>>((acc, payment) => {
-      const paidAt = parseDateValue(payment.paid_at);
-      if (!paidAt) return acc;
-
-      const monthKey = getMonthKey(paidAt);
-      (acc[payment.item_id] ||= {});
-      acc[payment.item_id][monthKey] = (acc[payment.item_id][monthKey] || 0) + payment.amount;
-      return acc;
-    }, {});
-
     const months: MonthlyTrendPoint[] = [];
     const now = new Date();
 
     for (let index = monthCount - 1; index >= 0; index -= 1) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - index, 1);
       const { endExclusive, start } = getMonthRange(monthDate);
-      const monthKey = getMonthKey(start);
 
-      const actual = filteredItems.reduce((total, item) => total + (paymentIndex[item.id]?.[monthKey] ?? 0), 0);
       const projected = filteredItems.reduce((total, item) => {
         return wasItemActive(item, start, endExclusive, statusHistoryByItem[item.id] ?? [])
           ? total + getMonthlyAmount(item)
@@ -607,7 +581,6 @@ function Analytics({
       }, 0);
 
       months.push({
-        actual: Math.round(actual),
         month: start.toLocaleDateString('en-US', { month: 'short' }),
         projected: Math.round(projected),
         tooltipLabel: start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
@@ -615,9 +588,9 @@ function Analytics({
     }
 
     return months;
-  }, [filteredItems, filteredPayments, statusHistoryByItem, trendRange]);
+  }, [filteredItems, statusHistoryByItem, trendRange]);
 
-  const hasTrendData = monthlyTrendData.some((entry) => entry.actual > 0 || entry.projected > 0);
+  const hasTrendData = monthlyTrendData.some((entry) => entry.projected > 0);
 
   const projectedTrend = useMemo(() => {
     if (monthlyTrendData.length < 2) return buildTrendSummary(0, 0);
@@ -625,11 +598,6 @@ function Analytics({
     const previous = monthlyTrendData[monthlyTrendData.length - 2]?.projected ?? 0;
     return buildTrendSummary(current, previous);
   }, [monthlyTrendData]);
-
-  const actualPaymentsTrend = useMemo(
-    () => buildTrendSummary(paymentWindowInsights.last30Days, paymentWindowInsights.previous30Days),
-    [paymentWindowInsights]
-  );
 
   const focusedItems = useMemo(() => {
     if (!resolvedSelectedCategoryId) return filteredItems;
@@ -738,15 +706,19 @@ function Analytics({
           accentMuted="var(--accent-blue-muted)"
           detail={
             <>
-              <TrendDelta baselineLabel="the prior 30 days" summary={actualPaymentsTrend} />
               <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                Recorded payments only
+                {upcomingObligationSummary.count} charges due soon
               </p>
+              {upcomingObligationSummary.largestItem ? (
+                <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+                  Largest: {upcomingObligationSummary.largestItem.name}
+                </p>
+              ) : null}
             </>
           }
-          icon={<Receipt className="h-5 w-5" />}
-          label="RECORDED LAST 30 DAYS"
-          value={formatCurrency(paymentWindowInsights.last30Days)}
+          icon={<Calendar className="h-5 w-5" />}
+          label="DUE NEXT 30 DAYS"
+          value={formatCurrency(upcomingObligationSummary.total)}
         />
 
         <MetricCard
@@ -783,21 +755,11 @@ function Analytics({
             <div className="space-y-2">
               <div>
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-                  Actual vs Projected Spend
+                  Monthly Spending Trend
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Recorded payments are shown against your recurring run rate.
+                  Projected recurring spend based on your active items each month.
                 </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
-                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: 'linear-gradient(180deg, var(--accent-blue) 0%, color-mix(in srgb, var(--accent-blue) 50%, transparent) 100%)' }} />
-                  Actual payments
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                  <span className="h-[2px] w-5 rounded-full" style={{ backgroundColor: 'var(--brand-primary)' }} />
-                  Projected run rate
-                </span>
               </div>
             </div>
 
@@ -831,14 +793,10 @@ function Analytics({
           ) : (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={monthlyTrendData} margin={{ left: 4, right: 4, top: 8 }}>
+                <AreaChart data={monthlyTrendData} margin={{ left: 4, right: 4, top: 8 }}>
                   <defs>
                     <GlowFilter id="projected-glow" blur={5} opacity={0.45} />
                     <GradientFill id="projected-fill" startColor="var(--brand-primary)" startOpacity={0.18} endOpacity={0} />
-                    <linearGradient id="actual-bar-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--accent-blue)" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="var(--accent-blue)" stopOpacity={0.25} />
-                    </linearGradient>
                   </defs>
                   <CartesianGrid stroke="var(--border-default)" strokeOpacity={0.4} vertical={false} />
                   <XAxis
@@ -886,15 +844,6 @@ function Analytics({
                     }}
                     separator=""
                   />
-                  <Bar
-                    animationDuration={prefersReducedMotion ? 0 : 450}
-                    barSize={18}
-                    dataKey="actual"
-                    fill="url(#actual-bar-fill)"
-                    isAnimationActive={!prefersReducedMotion}
-                    name="Actual"
-                    radius={[6, 6, 0, 0]}
-                  />
                   <Area
                     activeDot={{
                       className: 'chart-active-dot',
@@ -909,13 +858,13 @@ function Analytics({
                     filter="url(#projected-glow)"
                     fill="url(#projected-fill)"
                     isAnimationActive={!prefersReducedMotion}
-                    name="Projected"
+                    name="Monthly spend"
                     stroke="var(--brand-primary)"
                     strokeLinecap="round"
                     strokeWidth={3}
                     type="monotone"
                   />
-                </ComposedChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           )}
