@@ -1,6 +1,6 @@
 # SubTrkr Desktop — Roadmap & Next Steps
 
-> Last updated: 2026-03-27
+> Last updated: 2026-03-29
 > Navigation: `docs/TASKS.md` is the operational queue for actionable work. `docs/plans/` contains active work only. Finished implementation/design docs live in `docs/completed-plans/`; completed summaries and legacy notes live in `docs/completed/`.
 
 ---
@@ -33,7 +33,8 @@ See `docs/PRODUCTION_RELEASE_WORKFLOW.md`, `docs/UPDATER_TESTING_GUIDE.md`, and 
 
 - Cancelled items are no longer auto-archived during maintenance.
 - Trials are excluded from projected spend.
-- Desktop status-history coverage now includes timeline visibility and parity for archive, start-trial, and edit-cancellation flows.
+- Desktop status-history coverage now includes timeline visibility and parity for archive (as a cancelled-only follow-up), start-trial, and edit-cancellation flows.
+- The shared backend lifecycle contract now keeps status/history writes transactional and treats cancellation-date edits as corrections to the original cancellation event.
 
 ---
 
@@ -46,10 +47,10 @@ See `docs/PRODUCTION_RELEASE_WORKFLOW.md`, `docs/UPDATER_TESTING_GUIDE.md`, and 
 
 See `docs/plans/PRODUCTION_HARDENING_PLAN.md`.
 
-### 2. Transactional Status-Change Write Path
+### 2. Shared Backend Coordination
 
-- Remaining hardening item from the status-history rollout.
-- This is blocked on shared backend migration ownership and must be coordinated through the mobile repo workflow.
+- Shared lifecycle writes now live in the backend-owned `execute_item_status_change` RPC.
+- Future schema or write-path changes still need to follow the mobile-repo backend workflow so desktop stays aligned with the shared contract.
 
 See `docs/SUPABASE_BACKEND_WORKFLOW.md` and `docs/reference/SUPABASE_BACKEND_SOURCE_OF_TRUTH.md`.
 

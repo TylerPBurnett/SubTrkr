@@ -9,6 +9,12 @@
 
 This plan turns the current repo sweep into an ordered pre-production execution path. The goal is to close the highest-risk safety and correctness gaps first, then reduce the broad reload and analytics costs that will keep growing with the app, and finally split the biggest concentration points so future features do not keep increasing fragility.
 
+## Status Update
+
+- Shared lifecycle writes now flow through the backend-owned `execute_item_status_change` RPC instead of a two-step client write path.
+- Archive is enforced as `cancelled -> archived` across the shared backend contract and both clients.
+- `edit_cancellation` now rewrites the authoritative cancellation event instead of appending a second cancelled transition.
+
 ## Problem
 
 - Notification secrets and auth/session data currently live too close to the renderer boundary.
@@ -53,6 +59,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 - Replace the two-step `items` update plus `item_status_history` insert with a transactional RPC or Postgres function.
 - Route expired-trial cancellation through the same shared lifecycle write path.
+- Restrict archive transitions to `cancelled -> archived` across desktop and iOS so archive stays a decluttering step, not a substitute for cancellation.
 - Keep idempotent guards on status transitions so multi-device launch or repeated maintenance does not create partial failures.
 - Re-review analytics assumptions that reconstruct history from status rows once the write path is centralized.
 

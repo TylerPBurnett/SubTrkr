@@ -59,14 +59,14 @@ type ItemStatus = 'active' | 'paused' | 'cancelled' | 'archived' | 'trial';
 **Tables**: `items`, `categories` (type-scoped), `payments`, `item_status_history` (audit trail).
 All use RLS (`auth.uid() = user_id`). IDs are prefixed UUIDs (`cat-`, `item-`, `pay-`).
 
-**Status lifecycle**: `trial → active ↔ paused ↔ cancelled → archived`. Reactivate from cancelled/archived. All transitions go through `executeStatusChange()` in `database.ts`.
+**Status lifecycle**: `trial → active ↔ paused ↔ cancelled → archived`. Reactivate from cancelled/archived. Archive is an explicit follow-up action for cancelled items only. All transitions go through `executeStatusChange()` in `database.ts`.
 
 ---
 
 ## Key Patterns
 
 - **Real-time sync**: `App.tsx` subscribes to Supabase channels on `items`, `categories`, `payments`. Remote changes trigger `loadData()` with 100ms debounce.
-- **Auto-maintenance on launch**: archive old cancellations, resume paused items, advance past-due billing, handle expired trials, send reminders.
+- **Auto-maintenance on launch**: resume paused items, advance past-due billing, handle expired trials, send reminders.
 - **Type-aware components**: Components accept `itemType` prop and filter items + categories by type.
 - **Service autocomplete**: `ItemForm` searches `knownServices.ts` for names, logos, pricing.
 - **Theme system**: CSS custom properties in `index.css`, toggled via `dark` class. Persisted in localStorage.
