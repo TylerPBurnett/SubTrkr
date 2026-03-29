@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import {
+  BarChart3,
   Calendar,
   CreditCard,
   Minus,
@@ -43,6 +44,9 @@ import {
 import ServiceLogo from './ui/ServiceLogo';
 import { GlowFilter, GradientFill, lightenColor } from './ui/ChartEffects';
 import SegmentedControl from './ui/SegmentedControl';
+import EmptyState from './ui/EmptyState';
+import GhostListPreview from './ui/GhostListPreview';
+import GhostChartPreview from './ui/GhostChartPreview';
 
 type FilterTab = 'all' | ItemType;
 type TrendRange = '6m' | '12m';
@@ -787,9 +791,13 @@ function Analytics({
           </div>
 
           {!hasTrendData ? (
-            <div className="flex h-72 items-center justify-center" style={{ color: 'var(--text-muted)' }}>
-              No trend data to display yet
-            </div>
+            <EmptyState
+              icon={TrendingUp}
+              title="No spending data yet"
+              description="Your monthly spending trend will appear here."
+              compact
+              preview={<GhostChartPreview variant="area-chart" />}
+            />
           ) : (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -898,9 +906,13 @@ function Analytics({
           </div>
 
           {categoryInsights.length === 0 ? (
-            <div className="flex h-72 items-center justify-center" style={{ color: 'var(--text-muted)' }}>
-              No category data to display yet
-            </div>
+            <EmptyState
+              icon={BarChart3}
+              title="No category data yet"
+              description="Spending by category will be charted here."
+              compact
+              preview={<GhostChartPreview variant="bar-chart" />}
+            />
           ) : (
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
               <div className="h-72">
@@ -1060,9 +1072,13 @@ function Analytics({
           </div>
 
           {topItems.length === 0 ? (
-            <div className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>
-              No active {selectedCategoryLabel} to rank yet
-            </div>
+            <EmptyState
+              icon={CreditCard}
+              title="No active items"
+              description="Your top spending items will be ranked here."
+              compact
+              preview={<GhostListPreview variant="ranked-row" count={2} />}
+            />
           ) : (
             <div className="space-y-3">
               {topItems.map((item, index) => (
@@ -1117,9 +1133,13 @@ function Analytics({
           </div>
 
           {cancelledItems.length === 0 ? (
-            <div className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>
-              No cancelled {selectedCategoryLabel} yet
-            </div>
+            <EmptyState
+              icon={Receipt}
+              title="No cancellations yet"
+              description="Cancelled items and savings will be tracked here."
+              compact
+              preview={<GhostListPreview variant="cancelled-row" count={1} />}
+            />
           ) : (
             <>
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
