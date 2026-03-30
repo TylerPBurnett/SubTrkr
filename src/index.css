@@ -331,12 +331,14 @@ html {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
 }
 
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   min-height: 100vh;
+  overscroll-behavior: none;
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
