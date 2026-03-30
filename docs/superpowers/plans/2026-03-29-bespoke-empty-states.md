@@ -714,6 +714,8 @@ Find the closing `</div>` of the Dashboard's main content (after the Spending by
 
 This wraps the stat cards grid + the two-column grid (Upcoming Payments, Spending by Category) inside the `items.length > 0` branch. The segmented control above remains visible in both cases.
 
+**Important:** The check is `items.length === 0` (global first-run), NOT `filteredItems.length === 0` (type filter). When a user has items but filters to a type with none, the stat cards and sub-sections still render (with zeroed values and compact empty states). Only true first-run hides everything.
+
 - [ ] **Step 4: Replace Upcoming Payments inline empty state**
 
 Find the inline empty state at ~line 282-286:

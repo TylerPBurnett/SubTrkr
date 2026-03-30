@@ -25,6 +25,7 @@ interface EmptyStateProps {
   description: string;
   action?: { label: string; onClick: () => void };
   preview?: React.ReactNode;  // NEW
+  compact?: boolean;          // NEW — smaller layout for card-level empty states
 }
 ```
 
@@ -112,6 +113,19 @@ When `items.length === 0`, the Dashboard currently renders the welcome EmptyStat
 **When `items.length > 0`:** Show the full dashboard. Individual sub-sections (Upcoming Payments, Spending by Category) use their own compact empty states (#5, #8) when their specific data set is empty (e.g., no items due in the next 7 days).
 
 This gives first-run users a single, focused call-to-action instead of a wall of empty widgets.
+
+## Type-Filtered Empty States (Dashboard & Analytics)
+
+Both Dashboard (`filterTab`: all/bill/subscription) and Analytics (`itemType` filter) have type tabs that can produce zero results even when the user has items of the other type. This is distinct from first-run (zero items globally).
+
+**Rule:** When `items.length > 0` but the current type filter yields zero items (e.g., user has subscriptions but filters to "Bills"), treat this like a filtered-search empty state — show the existing compact empty states for each sub-section as normal. The stat cards still render (with $0 values) because they're filtered, not absent. Do NOT trigger the first-run welcome state.
+
+The key check is `items.length === 0` (global) vs `filteredItems.length === 0` (type-filtered):
+- `items.length === 0` → first-run welcome state, hide everything else
+- `items.length > 0 && filteredItems.length === 0` → normal dashboard with zeroed stats + compact empty sub-sections (this is the existing behavior, unchanged)
+- `items.length > 0 && filteredItems.length > 0` → normal populated dashboard
+
+Analytics follows the same pattern: its empty states (#6, #7, #9, #10) already trigger based on their own data arrays (`topItems`, `cancelledItems`, `categoryChartData`, `hasTrendData`), which naturally reflect the type filter. No special handling needed — the compact empty states render correctly when a type filter yields no data for that section.
 
 ## ItemList View Mode Matching
 
