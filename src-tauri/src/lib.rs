@@ -319,18 +319,38 @@ mod macos_icon {
     }
 }
 
+const SET_VIBRANCY_SUPPORTED_SCRIPT: &str =
+    "document.documentElement.setAttribute('data-vibrancy-supported', 'true')";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    use tauri::Manager;
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
+    use tauri::{webview::PageLoadEvent, Manager};
     use tauri_plugin_deep_link::DeepLinkExt;
 
+    let vibrancy_supported = Arc::new(AtomicBool::new(false));
+    let reload_vibrancy_supported = Arc::clone(&vibrancy_supported);
+
     let app = tauri::Builder::default()
+        .on_page_load(move |webview, payload| {
+            if webview.label() != "main"
+                || payload.event() != PageLoadEvent::Finished
+                || !reload_vibrancy_supported.load(Ordering::Relaxed)
+            {
+                return;
+            }
+
+            let _ = webview.eval(SET_VIBRANCY_SUPPORTED_SCRIPT);
+        })
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_deep_link::init())
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 if let Some(window) = handle.get_webview_window("main") {
@@ -345,10 +365,10 @@ pub fn run() {
                 #[cfg(target_os = "macos")]
                 {
                     use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
-                    if apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None).is_ok() {
-                        let _ = window.eval(
-                            "document.documentElement.setAttribute('data-vibrancy-supported', 'true')"
-                        );
+                    if apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None).is_ok()
+                    {
+                        vibrancy_supported.store(true, Ordering::Relaxed);
+                        let _ = window.eval(SET_VIBRANCY_SUPPORTED_SCRIPT);
                     }
                 }
 
@@ -356,9 +376,8 @@ pub fn run() {
                 {
                     use window_vibrancy::apply_mica;
                     if apply_mica(&window, None).is_ok() {
-                        let _ = window.eval(
-                            "document.documentElement.setAttribute('data-vibrancy-supported', 'true')"
-                        );
+                        vibrancy_supported.store(true, Ordering::Relaxed);
+                        let _ = window.eval(SET_VIBRANCY_SUPPORTED_SCRIPT);
                     }
                 }
             }
