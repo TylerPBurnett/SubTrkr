@@ -19,6 +19,7 @@ import {
   Minus,
   PiggyBank,
   Receipt,
+  RefreshCw,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
@@ -76,6 +77,11 @@ type MonthlyTrendPoint = {
   tooltipLabel: string;
 };
 
+type TrendOverview = {
+  average: number;
+  peak: MonthlyTrendPoint | null;
+};
+
 type CategoryInsight = {
   amount: number;
   color: string;
@@ -95,9 +101,21 @@ interface MetricCardProps {
   detail?: React.ReactNode;
   icon: React.ReactNode;
   label: string;
+  primary?: boolean;
   value: React.ReactNode;
   valueColor?: string;
 }
+
+const FILTER_TABS: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'bill', icon: <Receipt className="h-3.5 w-3.5" />, label: 'Bills' },
+  { id: 'subscription', icon: <CreditCard className="h-3.5 w-3.5" />, label: 'Subscriptions' },
+];
+
+const TREND_RANGE_TABS: { id: TrendRange; label: string }[] = [
+  { id: '6m', label: '6M' },
+  { id: '12m', label: '12M' },
+];
 
 function formatCurrency(amount: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
@@ -350,17 +368,27 @@ function MetricCard({
   detail,
   icon,
   label,
+  primary,
   value,
   valueColor,
 }: MetricCardProps) {
   return (
-    <div className="stagger-item card">
+    <div
+      className="stagger-item card"
+      style={primary ? {
+        borderLeft: `3px solid var(--brand-primary)`,
+      } : undefined}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-4">
-          <p className="label">{label}</p>
+          <p className="label-wide">{label}</p>
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-lg"
-            style={{ backgroundColor: accentMuted, color: accentColor }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{
+              backgroundColor: accentMuted,
+              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accentColor} 18%, transparent)`,
+              color: accentColor,
+            }}
           >
             {icon}
           </div>
@@ -377,7 +405,7 @@ function MetricCard({
         >
           {value}
         </p>
-        <div className="min-h-[2.5rem] text-sm">{detail}</div>
+        <div className="min-h-[2.75rem] text-sm">{detail}</div>
       </div>
     </div>
   );
@@ -603,6 +631,27 @@ function Analytics({
     return buildTrendSummary(current, previous);
   }, [monthlyTrendData]);
 
+  const trendOverview = useMemo<TrendOverview>(() => {
+    if (monthlyTrendData.length === 0) {
+      return { average: 0, peak: null };
+    }
+
+    let totalProjected = 0;
+    let peak = monthlyTrendData[0];
+
+    for (const entry of monthlyTrendData) {
+      totalProjected += entry.projected;
+      if (entry.projected > peak.projected) {
+        peak = entry;
+      }
+    }
+
+    return {
+      average: Math.round(totalProjected / monthlyTrendData.length),
+      peak,
+    };
+  }, [monthlyTrendData]);
+
   const focusedItems = useMemo(() => {
     if (!resolvedSelectedCategoryId) return filteredItems;
     return filteredItems.filter((item) => item.category_id === resolvedSelectedCategoryId);
@@ -670,23 +719,19 @@ function Analytics({
     return Math.min(148, Math.max(104, Math.min(maxLabelLength, 18) * 7));
   }, [categoryInsights]);
 
-  const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'bill', icon: <Receipt className="h-3.5 w-3.5" />, label: 'Bills' },
-    { id: 'subscription', icon: <CreditCard className="h-3.5 w-3.5" />, label: 'Subscriptions' },
-  ];
-
-  const trendRangeTabs: { id: TrendRange; label: string }[] = [
-    { id: '6m', label: '6M' },
-    { id: '12m', label: '12M' },
-  ];
-
   const itemCollectionLabel = activeTab === 'bill' ? 'bills' : activeTab === 'subscription' ? 'subscriptions' : 'items';
   const selectedCategoryLabel = selectedCategory ? `${selectedCategory.name} ${itemCollectionLabel}` : itemCollectionLabel;
+  const trendDescription =
+    activeTab === 'bill'
+      ? 'A month-by-month view of your projected bill obligations.'
+      : activeTab === 'subscription'
+      ? 'A month-by-month view of your projected subscription spend.'
+      : 'A month-by-month view of your projected recurring obligations.';
+  const trendRangeCopy = trendRange === '12m' ? 'Past 12 months' : 'Past 6 months';
 
   return (
     <div className="space-y-6">
-      <SegmentedControl tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      <SegmentedControl tabs={FILTER_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -696,12 +741,13 @@ function Analytics({
             <>
               <TrendDelta baselineLabel="last month" summary={projectedTrend} />
               <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                {activeCount} active, {pausedCount} paused
+                {activeCount} live · {pausedCount} paused
               </p>
             </>
           }
           icon={<TrendingUp className="h-5 w-5" />}
-          label="PROJECTED MONTHLY SPEND"
+          label="Monthly Spend"
+          primary
           value={formatCurrency(monthlySpending)}
         />
 
@@ -711,17 +757,17 @@ function Analytics({
           detail={
             <>
               <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                {upcomingObligationSummary.count} charges due soon
+                {upcomingObligationSummary.count} charges in the next 30 days
               </p>
               {upcomingObligationSummary.largestItem ? (
                 <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                  Largest: {upcomingObligationSummary.largestItem.name}
+                  Largest charge: {upcomingObligationSummary.largestItem.name}
                 </p>
               ) : null}
             </>
           }
           icon={<Calendar className="h-5 w-5" />}
-          label="DUE NEXT 30 DAYS"
+          label="Next 30 Days"
           value={formatCurrency(upcomingObligationSummary.total)}
         />
 
@@ -730,11 +776,11 @@ function Analytics({
           accentMuted="var(--accent-emerald-muted)"
           detail={
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-              {totalCancelledCount} cancelled or archived
+              From {totalCancelledCount} cancelled or archived
             </p>
           }
           icon={<PiggyBank className="h-5 w-5" />}
-          label="RECOVERED BUDGET"
+          label="Saved"
           value={formatCurrency(monthlySavings)}
           valueColor="var(--accent-emerald)"
         />
@@ -744,49 +790,82 @@ function Analytics({
           accentMuted="var(--accent-purple-muted)"
           detail={
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-              Current recurring commitments
+              Recurring commitments at today&apos;s pace
             </p>
           }
-          icon={<Calendar className="h-5 w-5" />}
-          label="YEARLY RUN RATE"
+          icon={<RefreshCw className="h-5 w-5" />}
+          label="Annual View"
           value={formatCurrency(yearlySpending)}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr_minmax(0,1fr)]">
         <div className="card animate-in" style={{ animationDelay: '0.2s' }}>
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-2">
-              <div>
+          <div
+            className="mb-5 rounded-[1.25rem] border p-4 sm:p-5"
+            style={{
+              background: 'linear-gradient(140deg, var(--trend-banner-bg-start) 0%, var(--trend-banner-bg-end) 100%)',
+              border: '1px solid var(--trend-banner-border)',
+            }}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <div
+                  className="label-wide inline-flex items-center gap-2 rounded-full px-3 py-1"
+                  style={{
+                    backgroundColor: 'var(--trend-badge-bg)',
+                    border: '1px solid var(--trend-banner-border)',
+                    color: 'var(--brand-text)',
+                  }}
+                >
+                  Projected obligations
+                </div>
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
                   Monthly Spending Trend
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Projected recurring spend based on your active items each month.
+                  {trendDescription}
                 </p>
               </div>
-            </div>
 
-            <div className="inline-flex rounded-xl p-1" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-default)' }}>
-              {trendRangeTabs.map((tab) => {
-                const isActive = tab.id === trendRange;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setTrendRange(tab.id)}
-                    aria-pressed={isActive}
-                    className="rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
-                    style={{
-                      backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
-                      boxShadow: isActive ? 'var(--shadow-card)' : 'none',
-                      color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    }}
+              <div className="flex flex-col items-start gap-2 lg:items-end">
+                <div
+                  className="inline-flex items-center gap-1 rounded-full p-1"
+                  style={{
+                    backgroundColor: 'var(--trend-toggle-bg)',
+                    border: '1px solid var(--trend-banner-border)',
+                  }}
+                >
+                  <span
+                    className="label-wide px-2"
+                    style={{ color: 'var(--text-muted)' }}
                   >
-                    {tab.label}
-                  </button>
-                );
-              })}
+                    View
+                  </span>
+                  {TREND_RANGE_TABS.map((tab) => {
+                    const isActive = tab.id === trendRange;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setTrendRange(tab.id)}
+                        aria-pressed={isActive}
+                        className="rounded-full px-3 py-2 text-xs font-semibold transition-colors"
+                        style={{
+                          backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
+                          boxShadow: isActive ? 'var(--shadow-card)' : 'none',
+                          color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+                  {trendRangeCopy}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -799,6 +878,7 @@ function Analytics({
               preview={<GhostChartPreview variant="area-chart" />}
             />
           ) : (
+            <>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={monthlyTrendData} margin={{ left: 4, right: 4, top: 8 }}>
@@ -875,34 +955,55 @@ function Analytics({
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div
+                className="rounded-2xl border px-4 py-3"
+                style={{
+                  backgroundColor: 'var(--trend-stat-bg)',
+                  border: '1px solid var(--border-default)',
+                }}
+              >
+                <p className="label-wide">Average month</p>
+                <p
+                  className="mt-2 font-mono text-xl font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {formatCurrency(trendOverview.average)}
+                </p>
+              </div>
+              <div
+                className="rounded-2xl border px-4 py-3"
+                style={{
+                  backgroundColor: 'var(--trend-stat-bg)',
+                  border: '1px solid var(--border-default)',
+                }}
+              >
+                <p className="label-wide">Peak month</p>
+                <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <p
+                    className="font-mono text-xl font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {formatCurrency(trendOverview.peak?.projected ?? 0)}
+                  </p>
+                  <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                    {trendOverview.peak?.tooltipLabel}
+                  </span>
+                </div>
+              </div>
+            </div>
+            </>
           )}
         </div>
 
         <div className="card animate-in" style={{ animationDelay: '0.25s' }}>
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-                Category Concentration
-              </h3>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Click a category to focus the ranking and cancellation insights below.
-              </p>
-            </div>
-            {selectedCategory && (
-              <button
-                type="button"
-                onClick={() => setSelectedCategoryId(null)}
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
-                style={{
-                  backgroundColor: 'var(--bg-hover)',
-                  border: '1px solid var(--border-default)',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                Focus: {selectedCategory.name}
-                <span style={{ color: 'var(--text-muted)' }}>Clear</span>
-              </button>
-            )}
+          <div className="mb-5">
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+              Category Concentration
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Tap a category to focus the ranking and cancellation insights below.
+            </p>
           </div>
 
           {categoryInsights.length === 0 ? (
@@ -914,7 +1015,39 @@ function Analytics({
               preview={<GhostChartPreview variant="bar-chart" />}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
+            <>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {categoryInsights.slice(0, 6).map((category) => {
+                  const isSelected = category.id === selectedCategoryId;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setSelectedCategoryId((current) => (current === category.id ? null : category.id))}
+                      aria-pressed={isSelected}
+                      className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all"
+                      style={{
+                        backgroundColor: isSelected
+                          ? `color-mix(in srgb, ${category.color} 14%, var(--bg-card))`
+                          : 'var(--bg-hover)',
+                        borderColor: isSelected ? category.color : 'var(--border-default)',
+                        boxShadow: isSelected ? `0 0 0 1px ${category.color}33 inset` : 'none',
+                      }}
+                    >
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
+                      <span className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {category.name}
+                      </span>
+                      <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {formatCurrency(category.amount)}
+                      </span>
+                      <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+                        {formatShare(category.share)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={categoryInsights} layout="vertical" margin={{ left: 4, right: 12, top: 8 }}>
@@ -1001,51 +1134,7 @@ function Analytics({
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              <div className="space-y-2">
-                {categoryInsights.slice(0, 6).map((category) => {
-                  const isSelected = category.id === selectedCategoryId;
-                  return (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => setSelectedCategoryId((current) => (current === category.id ? null : category.id))}
-                      aria-pressed={isSelected}
-                      className="w-full rounded-xl border px-3 py-3 text-left transition-all"
-                      style={{
-                        backgroundColor: isSelected
-                          ? `color-mix(in srgb, ${category.color} 14%, var(--bg-card))`
-                          : 'var(--bg-hover)',
-                        borderColor: isSelected ? category.color : 'var(--border-default)',
-                        boxShadow: isSelected ? `0 0 0 1px ${category.color}33 inset` : 'none',
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: category.color }} />
-                            <span className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                              {category.name}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                            {category.count} {category.count === 1 ? 'item' : 'items'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
-                            {formatCurrency(category.amount)}
-                          </p>
-                          <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                            {formatShare(category.share)}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -1144,7 +1233,7 @@ function Analytics({
             <>
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--accent-green-muted)' }}>
-                  <p className="label" style={{ color: 'var(--accent-green)' }}>
+                  <p className="label-wide" style={{ color: 'var(--accent-green)' }}>
                     RECOVERED / MONTH
                   </p>
                   <p className="mt-2 text-2xl font-bold font-mono" style={{ color: 'var(--accent-green)' }}>
@@ -1152,7 +1241,7 @@ function Analytics({
                   </p>
                 </div>
                 <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="label">NEW IN LAST 30 DAYS</p>
+                  <p className="label-wide">NEW IN LAST 30 DAYS</p>
                   <p className="mt-2 text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
                     {formatCurrency(cancellationInsights.recentSavings)}
                   </p>
@@ -1161,7 +1250,7 @@ function Analytics({
                   </p>
                 </div>
                 <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="label">BIGGEST CUT</p>
+                  <p className="label-wide">BIGGEST CUT</p>
                   <p className="mt-2 truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {cancellationInsights.largestCut?.name || 'N/A'}
                   </p>

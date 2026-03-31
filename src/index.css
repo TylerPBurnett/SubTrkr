@@ -60,6 +60,14 @@
   --accent-cyan: #06b6d4;
   --accent-gray: #6b7280;
 
+  /* Trend banner */
+  --trend-banner-bg-start: color-mix(in srgb, var(--brand-muted) 68%, var(--bg-card));
+  --trend-banner-bg-end: color-mix(in srgb, var(--bg-card) 96%, var(--bg-base));
+  --trend-banner-border: color-mix(in srgb, var(--brand-primary) 12%, var(--border-default));
+  --trend-badge-bg: color-mix(in srgb, var(--bg-card) 84%, white);
+  --trend-toggle-bg: color-mix(in srgb, var(--bg-card) 86%, var(--brand-muted));
+  --trend-stat-bg: color-mix(in srgb, var(--bg-card) 90%, var(--bg-base));
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-card:
@@ -202,6 +210,14 @@
   --accent-pink: #f472b6;
   --accent-cyan: #22d3ee;
   --accent-gray: #9ca3af;
+
+  /* Trend banner */
+  --trend-banner-bg-start: color-mix(in srgb, var(--brand-muted) 68%, var(--bg-card));
+  --trend-banner-bg-end: color-mix(in srgb, var(--bg-card) 96%, var(--bg-base));
+  --trend-banner-border: color-mix(in srgb, var(--brand-primary) 12%, var(--border-default));
+  --trend-badge-bg: color-mix(in srgb, var(--bg-card) 84%, #2a2a2a);
+  --trend-toggle-bg: color-mix(in srgb, var(--bg-card) 86%, var(--brand-muted));
+  --trend-stat-bg: color-mix(in srgb, var(--bg-card) 90%, var(--bg-base));
 
   /* Shadows (subtler in dark mode) */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -864,6 +880,14 @@ body.sidebar-resizing * {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.label-wide {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   color: var(--text-secondary);
 }
 
