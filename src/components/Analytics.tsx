@@ -727,6 +727,7 @@ function Analytics({
       : activeTab === 'subscription'
       ? 'A month-by-month view of your projected subscription spend.'
       : 'A month-by-month view of your projected recurring obligations.';
+  const trendAverageLabel = trendRange === '12m' ? '12M average' : '6M average';
   const trendRangeCopy = trendRange === '12m' ? 'Past 12 months' : 'Past 6 months';
 
   return (
@@ -963,7 +964,7 @@ function Analytics({
                   border: '1px solid var(--border-default)',
                 }}
               >
-                <p className="label-wide">Average month</p>
+                <p className="label-wide">{trendAverageLabel}</p>
                 <p
                   className="mt-2 font-mono text-xl font-semibold"
                   style={{ color: 'var(--text-primary)' }}
