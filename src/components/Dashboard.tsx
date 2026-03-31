@@ -96,6 +96,21 @@ function TrendBadge({ current, previous }: { current: number; previous: number }
   );
 }
 
+type DashboardCategoryEntry = { color: string; id: string; name: string; value: number; share: number };
+
+function DashboardCategoryTooltip({ active, payload }: { active?: boolean; payload?: { payload: DashboardCategoryEntry }[] }) {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div style={{ alignItems: 'center', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '10px', boxShadow: 'var(--shadow-elevated)', display: 'flex', gap: '8px', padding: '6px 10px' }}>
+      <span style={{ backgroundColor: data.color, borderRadius: '50%', boxShadow: `0 0 0 2px ${data.color}20`, flexShrink: 0, height: '6px', width: '6px' }} />
+      <span style={{ color: 'var(--text-secondary)', fontFamily: 'Inter, -apple-system, sans-serif', fontSize: '12px', fontWeight: 600 }}>{data.name}</span>
+      <span style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', fontWeight: 700 }}>{formatCurrency(data.value)}</span>
+      <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}>{Math.round(data.share * 100)}%</span>
+    </div>
+  );
+}
+
 function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
 
@@ -415,21 +430,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={(value) => [formatCurrency(value as number), '']}
-                      contentStyle={{
-                        backgroundColor: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '10px',
-                        boxShadow: 'var(--shadow-elevated)',
-                        padding: '6px 10px',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: '12px',
-                      }}
-                      labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
-                      itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
-                      separator=""
-                    />
+                    <Tooltip content={<DashboardCategoryTooltip />} />
                     {/* Center label */}
                     <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
                       RUN RATE
@@ -445,8 +446,11 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 {dashboardCategoryData.map(item => (
                   <div key={item.id} className="flex items-center gap-3">
                     <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: item.color,
+                        boxShadow: `0 0 0 2px ${item.color}20`,
+                      }}
                     />
                     <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {item.name}

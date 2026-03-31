@@ -458,6 +458,113 @@ function TrendDelta({
   );
 }
 
+function TrendTooltip({ active, payload }: { active?: boolean; payload?: { payload: MonthlyTrendPoint; value: number }[] }) {
+  if (!active || !payload?.length) return null;
+  const { tooltipLabel, projected } = payload[0].payload;
+  return (
+    <div
+      style={{
+        backgroundColor: 'var(--bg-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: '14px',
+        boxShadow: 'var(--shadow-elevated)',
+        padding: '10px 14px',
+        minWidth: '148px',
+      }}
+    >
+      <p
+        style={{
+          color: 'var(--text-secondary)',
+          fontFamily: 'Inter, -apple-system, sans-serif',
+          fontSize: '11px',
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          marginBottom: '8px',
+          textTransform: 'uppercase',
+        }}
+      >
+        {tooltipLabel}
+      </p>
+      <p
+        style={{
+          color: 'var(--text-primary)',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: '18px',
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          lineHeight: 1,
+          marginBottom: '4px',
+        }}
+      >
+        {formatCurrency(projected)}
+        <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 400, marginLeft: '3px' }}>/mo</span>
+      </p>
+      <p style={{ color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}>
+        Projected spend
+      </p>
+    </div>
+  );
+}
+
+function CategoryTooltip({ active, payload }: { active?: boolean; payload?: { payload: CategoryInsight }[] }) {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div
+      style={{
+        backgroundColor: 'var(--bg-card)',
+        border: '1px solid var(--border-default)',
+        borderRadius: '14px',
+        boxShadow: 'var(--shadow-elevated)',
+        padding: '10px 14px',
+        minWidth: '148px',
+      }}
+    >
+      <div style={{ alignItems: 'center', display: 'flex', gap: '6px', marginBottom: '8px' }}>
+        <span
+          style={{
+            backgroundColor: data.color,
+            borderRadius: '50%',
+            boxShadow: `0 0 0 2px ${data.color}20`,
+            flexShrink: 0,
+            height: '6px',
+            width: '6px',
+          }}
+        />
+        <span
+          style={{
+            color: 'var(--text-secondary)',
+            fontFamily: 'Inter, -apple-system, sans-serif',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {data.name}
+        </span>
+      </div>
+      <p
+        style={{
+          color: 'var(--text-primary)',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: '18px',
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          lineHeight: 1,
+          marginBottom: '4px',
+        }}
+      >
+        {formatCurrency(data.amount)}
+        <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 400, marginLeft: '3px' }}>/mo</span>
+      </p>
+      <p style={{ color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}>
+        {formatShare(data.share)} of spend · {data.count} {data.count === 1 ? 'item' : 'items'}
+      </p>
+    </div>
+  );
+}
+
 function Analytics({
   items,
   categories,
@@ -716,8 +823,17 @@ function Analytics({
 
   const categoryAxisWidth = useMemo(() => {
     const maxLabelLength = categoryInsights.reduce((maxLength, category) => Math.max(maxLength, category.name.length), 0);
-    return Math.min(148, Math.max(104, Math.min(maxLabelLength, 18) * 7));
+    return Math.min(132, Math.max(84, Math.min(maxLabelLength, 16) * 6.2));
   }, [categoryInsights]);
+
+  const CATEGORY_SCROLL_THRESHOLD = 8;
+  const CATEGORY_ROW_TARGET_HEIGHT = 44;
+  const categoryChartScrollable = categoryInsights.length > CATEGORY_SCROLL_THRESHOLD;
+  const categoryChartScrollHeight = categoryInsights.length * CATEGORY_ROW_TARGET_HEIGHT;
+
+  const CAT_TAB_MAX = 8;
+  const visibleCategoryTabs = categoryInsights.slice(0, CAT_TAB_MAX);
+  const hiddenCategoryCount = Math.max(0, categoryInsights.length - CAT_TAB_MAX);
 
   const itemCollectionLabel = activeTab === 'bill' ? 'bills' : activeTab === 'subscription' ? 'subscriptions' : 'items';
   const selectedCategoryLabel = selectedCategory ? `${selectedCategory.name} ${itemCollectionLabel}` : itemCollectionLabel;
@@ -800,8 +916,8 @@ function Analytics({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr_minmax(0,1fr)]">
-        <div className="card animate-in" style={{ animationDelay: '0.2s' }}>
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1.25fr_minmax(0,1fr)] xl:items-stretch">
+        <div className="card animate-in flex h-full flex-col" style={{ animationDelay: '0.2s' }}>
           <div
             className="mb-5 rounded-[1.25rem] border p-4 sm:p-5"
             style={{
@@ -907,32 +1023,7 @@ function Analytics({
                     tickLine={false}
                     width={64}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--bg-surface)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '12px',
-                      boxShadow: 'var(--shadow-elevated)',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontSize: '13px',
-                      padding: '8px 10px',
-                    }}
-                    formatter={(value, name) => [formatCurrency(Number(value)), name]}
-                    itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
-                    labelFormatter={(_label, payload) =>
-                      Array.isArray(payload) && payload[0]?.payload?.tooltipLabel
-                        ? payload[0].payload.tooltipLabel
-                        : ''
-                    }
-                    labelStyle={{
-                      color: 'var(--text-primary)',
-                      fontFamily: 'Inter, -apple-system, sans-serif',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      marginBottom: '4px',
-                    }}
-                    separator=""
-                  />
+                  <Tooltip content={<TrendTooltip />} />
                   <Area
                     activeDot={{
                       className: 'chart-active-dot',
@@ -997,7 +1088,7 @@ function Analytics({
           )}
         </div>
 
-        <div className="card animate-in" style={{ animationDelay: '0.25s' }}>
+        <div className="card animate-in flex h-full flex-col" style={{ animationDelay: '0.25s' }}>
           <div className="mb-5">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
               Category Concentration
@@ -1018,7 +1109,7 @@ function Analytics({
           ) : (
             <>
               <div className="mb-4 flex flex-wrap gap-2">
-                {categoryInsights.slice(0, 6).map((category) => {
+                {visibleCategoryTabs.map((category) => {
                   const isSelected = category.id === selectedCategoryId;
                   return (
                     <button
@@ -1035,7 +1126,13 @@ function Analytics({
                         boxShadow: isSelected ? `0 0 0 1px ${category.color}33 inset` : 'none',
                       }}
                     >
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: category.color,
+                          boxShadow: `0 0 0 2px ${category.color}20`,
+                        }}
+                      />
                       <span className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {category.name}
                       </span>
@@ -1048,10 +1145,26 @@ function Analytics({
                     </button>
                   );
                 })}
+                {hiddenCategoryCount > 0 && (
+                  <span
+                    className="inline-flex items-center rounded-xl border px-3 py-2 text-xs font-semibold"
+                    style={{
+                      backgroundColor: 'var(--bg-hover)',
+                      borderColor: 'var(--border-default)',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    +{hiddenCategoryCount} more
+                  </span>
+                )}
               </div>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryInsights} layout="vertical" margin={{ left: 4, right: 12, top: 8 }}>
+              <div
+                className="flex-1 min-h-[18rem]"
+                style={{ overflowY: categoryChartScrollable ? 'auto' : 'hidden' }}
+              >
+                <div style={{ height: categoryChartScrollable ? categoryChartScrollHeight : '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={categoryInsights} layout="vertical" margin={{ left: 0, right: 10, top: 8 }}>
                     <defs>
                       <GlowFilter id="bar-glow" blur={3} opacity={0.25} />
                       {categoryInsights.map((entry, index) => (
@@ -1078,36 +1191,13 @@ function Analytics({
                       fontSize={12}
                       fontWeight={600}
                       stroke="var(--text-muted)"
+                      tickMargin={6}
                       tickFormatter={(value: string) => (value.length > 16 ? `${value.slice(0, 16)}…` : value)}
                       tickLine={false}
                       type="category"
                       width={categoryAxisWidth}
                     />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '12px',
-                        boxShadow: 'var(--shadow-elevated)',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: '13px',
-                        padding: '8px 10px',
-                      }}
-                      cursor={false}
-                      formatter={(value, _name, item) => {
-                        const share = item?.payload?.share ?? 0;
-                        return [`${formatCurrency(Number(value))} / mo`, `${formatShare(share)} of spend`];
-                      }}
-                      itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
-                      labelStyle={{
-                        color: 'var(--text-primary)',
-                        fontFamily: 'Inter, -apple-system, sans-serif',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        marginBottom: '4px',
-                      }}
-                      separator=""
-                    />
+                    <Tooltip content={<CategoryTooltip />} cursor={false} />
                     <Bar
                       animationDuration={prefersReducedMotion ? 0 : 500}
                       dataKey="amount"
@@ -1132,8 +1222,9 @@ function Analytics({
                         );
                       })}
                     </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </>
           )}

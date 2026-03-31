@@ -876,6 +876,7 @@ body.sidebar-resizing * {
 
 /* Label styling */
 .label {
+  font-family: var(--font-body);
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -884,6 +885,7 @@ body.sidebar-resizing * {
 }
 
 .label-wide {
+  font-family: var(--font-body);
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
