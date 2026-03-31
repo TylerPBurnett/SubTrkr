@@ -35,6 +35,7 @@
 | TASK-004 | P2 | Notifications | Smart annual subscription alerts | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Prevent surprise renewals on high-cost annual plans |
 | TASK-005 | P2 | Notifications | Daily digest mode | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Consolidated delivery option for heavier notification users |
 | TASK-009 | P2 | Desktop / Calendar | Calendar workspace view | [docs/plans/CALENDAR_VIEW_PLAN.md](plans/CALENDAR_VIEW_PLAN.md) | Dedicated sidebar calendar view with weekly, monthly, zoomed-out, and yearly scheduling lenses; planned as a frontend-first feature unless backend limits show up |
+| TASK-010 | P3 | Desktop / UX | Modular dashboard & analytics | [docs/ROADMAP.md](ROADMAP.md) | Drag-to-reorder layout + per-user widget visibility toggles for dashboard and analytics; local-first persistence before Supabase sync |
 
 ## Active
 

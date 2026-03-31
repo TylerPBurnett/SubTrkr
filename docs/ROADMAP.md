@@ -78,7 +78,14 @@ See `docs/plans/CALENDAR_VIEW_PLAN.md`.
 
 See `docs/notifications/NOTIFICATION_IMPROVEMENTS.md`.
 
-### 6. UI Modernization & Polish
+### 7. Modular Dashboard & Analytics
+
+- Allow users to rearrange dashboard and analytics widgets to their own preferred layout (drag-to-reorder or a simpler up/down ordering).
+- Provide a settings panel to show/hide individual analytics cards and dashboard components (e.g. hide spend trend, show only upcoming renewals).
+- Goal: a layout that reflects how each user actually monitors their subscriptions rather than a one-size-fits-all arrangement.
+- Keep persistence local first (localStorage or a settings column) before syncing layout preferences to Supabase.
+
+### 8. UI Modernization & Polish
 
 - **Glassmorphism / Vibrancy:** Add translucent backgrounds (like `backdrop-filter: blur()`) to the sidebar and headers for a native macOS/Windows 11 feel.
 - **Spring Physics Animations:** Swap standard CSS easing for Framer Motion `spring` physics on layout changes (modals, expanding cards) for fluid, tactile weight.
