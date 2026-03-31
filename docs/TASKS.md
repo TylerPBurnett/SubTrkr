@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-03-27
+> Last updated: 2026-03-30
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -34,6 +34,7 @@
 | TASK-003 | P2 | Notifications | Quiet hours | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Quality-of-life follow-up after timezone-aware delivery shipped |
 | TASK-004 | P2 | Notifications | Smart annual subscription alerts | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Prevent surprise renewals on high-cost annual plans |
 | TASK-005 | P2 | Notifications | Daily digest mode | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Consolidated delivery option for heavier notification users |
+| TASK-009 | P2 | Desktop / Calendar | Calendar workspace view | [docs/plans/CALENDAR_VIEW_PLAN.md](plans/CALENDAR_VIEW_PLAN.md) | Dedicated sidebar calendar view with weekly, monthly, zoomed-out, and yearly scheduling lenses; planned as a frontend-first feature unless backend limits show up |
 
 ## Active
 

@@ -1,6 +1,6 @@
 # SubTrkr Desktop — Roadmap & Next Steps
 
-> Last updated: 2026-03-29
+> Last updated: 2026-03-30
 > Navigation: `docs/TASKS.md` is the operational queue for actionable work. `docs/plans/` contains active work only. Finished implementation/design docs live in `docs/completed-plans/`; completed summaries and legacy notes live in `docs/completed/`.
 
 ---
@@ -61,7 +61,16 @@ See `docs/SUPABASE_BACKEND_WORKFLOW.md` and `docs/reference/SUPABASE_BACKEND_SOU
 
 See `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
 
-### 4. Notification Quality-of-Life Backlog
+### 4. Calendar View Workspace
+
+- Add a dedicated calendar entry to the sidebar that turns the main workspace into a calendar-first view instead of a list/detail screen.
+- Support weekly, monthly, zoomed-out, and yearly lenses so recurring items can be scanned at different planning horizons.
+- Prefer a clean frontend-first implementation using the existing item schedule fields (`start_date`, `next_billing_date`, `billing_cycle`, lifecycle dates) before introducing any new backend tables or precomputed occurrences.
+- Revisit backend work only if the first pass needs persisted occurrence snapshots, calendar-specific settings sync, or heavier projection queries that do not fit the current client model cleanly.
+
+See `docs/plans/CALENDAR_VIEW_PLAN.md`.
+
+### 5. Notification Quality-of-Life Backlog
 
 - Quiet hours
 - Smart annual subscription alerts
@@ -69,7 +78,7 @@ See `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
 
 See `docs/notifications/NOTIFICATION_IMPROVEMENTS.md`.
 
-### 5. UI Modernization & Polish
+### 6. UI Modernization & Polish
 
 - **Glassmorphism / Vibrancy:** Add translucent backgrounds (like `backdrop-filter: blur()`) to the sidebar and headers for a native macOS/Windows 11 feel.
 - **Spring Physics Animations:** Swap standard CSS easing for Framer Motion `spring` physics on layout changes (modals, expanding cards) for fluid, tactile weight.
@@ -82,6 +91,6 @@ See `docs/notifications/NOTIFICATION_IMPROVEMENTS.md`.
 ## Suggested Next Session
 
 1. If the goal is production readiness, start with `docs/plans/PRODUCTION_HARDENING_PLAN.md`.
-2. If the work is desktop-only feature work, start with `docs/plans/TRIAL_PRICING_FOLLOW_UP.md`.
+2. If the work is desktop-only feature work, start with `docs/plans/TRIAL_PRICING_FOLLOW_UP.md` or `docs/plans/CALENDAR_VIEW_PLAN.md`, depending on whether the session is data-model or UI-calendar work.
 3. If the work changes shared Supabase schema or writes, start with `docs/SUPABASE_BACKEND_WORKFLOW.md` before touching code.
 4. If the work is release-related, use `docs/PRODUCTION_RELEASE_WORKFLOW.md` plus `docs/RELEASE_CAPTAIN_CHECKLIST.md`.
