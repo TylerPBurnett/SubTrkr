@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -10,15 +10,18 @@ import {
   ChevronRight,
   Plus,
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import type { Category, ItemWithCategory, ItemType } from '../types';
+import GlowDonutChart from './ui/GlowDonutChart';
+import type { Category, ItemWithCategory, StatusHistory } from '../types';
 import {
+  getAllStatusHistory,
   calculateMonthlySpending,
   calculateYearlySpending,
   getSpendingByCategory,
   getUpcomingItems
 } from '../services/database';
+import { formatCurrency } from '../utils/currency';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
+import { calculateProjectedMonthlySpendingForMonth } from '../utils/projectedSpending';
 import ServiceLogo from './ui/ServiceLogo';
 import EmptyState from './ui/EmptyState';
 import GhostListPreview from './ui/GhostListPreview';
@@ -35,43 +38,90 @@ interface DashboardProps {
 
 type FilterTab = 'all' | 'bill' | 'subscription';
 
-function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
+interface DashboardMetricCardProps {
+  accentColor: string;
+  accentMuted: string;
+  detail?: React.ReactNode;
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  valueColor?: string;
 }
 
-/**
- * Estimate last month's monthly spending by excluding items that started after
- * the beginning of the current month (i.e., items that didn't exist last month).
- */
-function calculatePreviousMonthSpending(items: ItemWithCategory[], type?: ItemType): number {
-  const now = new Date();
-  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const filtered = items.filter(
-    (item) =>
-      item.status === 'active' &&
-      (!type || item.item_type === type) &&
-      new Date(item.start_date) < startOfThisMonth
+function DashboardMetricCard({
+  accentColor,
+  accentMuted,
+  detail,
+  icon,
+  label,
+  value,
+  valueColor,
+}: DashboardMetricCardProps) {
+  return (
+    <div className="stagger-item card">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-4">
+          <p className="label-wide">{label}</p>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{
+              backgroundColor: accentMuted,
+              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accentColor} 18%, transparent)`,
+              color: accentColor,
+            }}
+          >
+            {icon}
+          </div>
+        </div>
+        <p
+          className="font-mono"
+          style={{
+            color: valueColor ?? 'var(--text-primary)',
+            fontSize: 'clamp(1.45rem, 3vw, 2rem)',
+            fontWeight: 650,
+            letterSpacing: '-0.02em',
+            lineHeight: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {value}
+        </p>
+        <div className="min-h-[2.75rem] text-sm">{detail}</div>
+      </div>
+    </div>
   );
-
-  return filtered.reduce((total, item) => {
-    let monthlyAmount = item.amount;
-    switch (item.billing_cycle) {
-      case 'weekly': monthlyAmount = (item.amount * 52) / 12; break;
-      case 'quarterly': monthlyAmount = item.amount / 3; break;
-      case 'yearly': monthlyAmount = item.amount / 12; break;
-    }
-    return total + monthlyAmount;
-  }, 0);
 }
 
-function TrendBadge({ current, previous }: { current: number; previous: number }) {
-  if (previous === 0 && current === 0) return null;
-  if (previous === 0) return null; // no baseline to compare
+function TrendBadge({
+  current,
+  previous,
+  showNoBaselineDash = false,
+}: {
+  current: number;
+  previous: number;
+  showNoBaselineDash?: boolean;
+}) {
+  if (previous === 0 && current === 0) {
+    if (!showNoBaselineDash) return null;
+
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium" style={{ color: 'var(--text-muted)' }}>
+        <Minus className="w-3 h-3" /> -
+      </span>
+    );
+  }
+
+  if (previous === 0) {
+    if (!showNoBaselineDash) return null;
+
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium" style={{ color: 'var(--text-muted)' }}>
+        <Minus className="w-3 h-3" /> -
+      </span>
+    );
+  }
 
   const diff = current - previous;
   const pct = Math.round((diff / previous) * 100);
@@ -96,26 +146,48 @@ function TrendBadge({ current, previous }: { current: number; previous: number }
   );
 }
 
-type DashboardCategoryEntry = { color: string; id: string; name: string; value: number; share: number };
-
-function DashboardCategoryTooltip({ active, payload }: { active?: boolean; payload?: { payload: DashboardCategoryEntry }[] }) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0].payload;
-  return (
-    <div style={{ alignItems: 'center', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '10px', boxShadow: 'var(--shadow-elevated)', display: 'flex', gap: '8px', padding: '6px 10px' }}>
-      <span style={{ backgroundColor: data.color, borderRadius: '50%', boxShadow: `0 0 0 2px ${data.color}20`, flexShrink: 0, height: '6px', width: '6px' }} />
-      <span style={{ color: 'var(--text-secondary)', fontFamily: 'Inter, -apple-system, sans-serif', fontSize: '12px', fontWeight: 600 }}>{data.name}</span>
-      <span style={{ color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', fontWeight: 700 }}>{formatCurrency(data.value)}</span>
-      <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}>{Math.round(data.share * 100)}%</span>
-    </div>
-  );
-}
-
 function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [statusHistoryEntries, setStatusHistoryEntries] = useState<StatusHistory[]>([]);
+  const [chartHover, setChartHover] = useState<number | null>(null);
 
   // Get the type filter for database queries
   const typeFilter = filterTab === 'all' ? undefined : filterTab;
+  const trackedItemIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
+  const statusHistoryKey = useMemo(
+    () =>
+      items
+        .map((item) => `${item.id}:${item.status}`)
+        .sort()
+        .join('|'),
+    [items],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (items.length === 0) {
+      setStatusHistoryEntries([]);
+      return;
+    }
+
+    getAllStatusHistory()
+      .then((historyData) => {
+        if (!cancelled) {
+          setStatusHistoryEntries(historyData.filter((entry) => trackedItemIds.has(entry.item_id)));
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('Failed to load dashboard trend history:', error);
+          setStatusHistoryEntries([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items.length, statusHistoryKey, trackedItemIds]);
 
   // Compute stats with useMemo (these are pure synchronous functions)
   const monthlySpending = useMemo(
@@ -127,13 +199,6 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     () => calculateYearlySpending(items, typeFilter),
     [items, typeFilter]
   );
-
-  const prevMonthlySpending = useMemo(
-    () => calculatePreviousMonthSpending(items, typeFilter),
-    [items, typeFilter]
-  );
-
-  const prevYearlySpending = prevMonthlySpending * 12;
 
   const spendingByCategory = useMemo(
     () => getSpendingByCategory(items, categories, typeFilter),
@@ -150,6 +215,35 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
   const activeCount = filteredItems.filter(s => s.status === 'active').length;
   const pausedCount = filteredItems.filter(s => s.status === 'paused').length;
   const cancelledCount = filteredItems.filter(s => s.status === 'cancelled').length;
+
+  const statusHistoryByItem = useMemo(() => {
+    return statusHistoryEntries.reduce<Record<string, StatusHistory[]>>((acc, entry) => {
+      (acc[entry.item_id] ||= []).push(entry);
+      return acc;
+    }, {});
+  }, [statusHistoryEntries]);
+
+  const prevMonthlySpending = useMemo(() => {
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    return calculateProjectedMonthlySpendingForMonth(
+      filteredItems,
+      statusHistoryByItem,
+      previousMonth
+    );
+  }, [filteredItems, statusHistoryByItem]);
+
+  const prevYearlySpending = useMemo(() => {
+    const now = new Date();
+    const sameMonthLastYear = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+
+    return calculateProjectedMonthlySpendingForMonth(
+      filteredItems,
+      statusHistoryByItem,
+      sameMonthLastYear
+    ) * 12;
+  }, [filteredItems, statusHistoryByItem]);
 
   const dashboardCategoryData = useMemo(() => {
     const categorySlices = spendingByCategory.map((item) => ({
@@ -182,7 +276,13 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     ];
   }, [spendingByCategory]);
 
-  const topCategory = dashboardCategoryData[0] ?? null;
+  const topCategory = useMemo(() => {
+    if (dashboardCategoryData.length === 0) return null;
+
+    return dashboardCategoryData.reduce((topEntry, entry) => {
+      return entry.value > topEntry.value ? entry : topEntry;
+    });
+  }, [dashboardCategoryData]);
 
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
@@ -190,6 +290,14 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     { id: 'bill', label: 'Bills', icon: <Receipt className="w-3.5 h-3.5" /> },
     { id: 'subscription', label: 'Subscriptions', icon: <CreditCard className="w-3.5 h-3.5" /> },
   ];
+
+  const activeItemsDetail = pausedCount > 0 || cancelledCount > 0
+    ? `${pausedCount > 0 ? `${pausedCount} paused` : ''}${pausedCount > 0 && cancelledCount > 0 ? ' / ' : ''}${cancelledCount > 0 ? `${cancelledCount} cancelled` : ''}`
+    : 'All current items are active';
+
+  const dueThisWeekDetail = upcomingItems[0]
+    ? `Next: ${upcomingItems[0].name}`
+    : 'Nothing due in the next 7 days';
 
   return (
     <div className="space-y-6">
@@ -211,116 +319,55 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Monthly Spending Card */}
-        <div className="stagger-item card">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">PROJECTED MONTHLY</p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
-                <TrendingUp className="w-5 h-5" style={{ color: 'var(--brand-primary)' }} />
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {formatCurrency(monthlySpending)}
-            </h1>
-            <TrendBadge current={monthlySpending} previous={prevMonthlySpending} />
-          </div>
-        </div>
+        <DashboardMetricCard
+          accentColor="var(--brand-primary)"
+          accentMuted="var(--brand-muted)"
+          detail={<TrendBadge current={monthlySpending} previous={prevMonthlySpending} />}
+          icon={<TrendingUp className="h-5 w-5" />}
+          label="Projected Monthly"
+          value={formatCurrency(monthlySpending, { display: 'summary' })}
+        />
 
-        {/* Yearly Spending Card */}
-        <div className="stagger-item card">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">YEARLY RUN RATE</p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-purple-muted)' }}>
-                <Calendar className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {formatCurrency(yearlySpending)}
-            </h1>
-            <TrendBadge current={yearlySpending} previous={prevYearlySpending} />
-          </div>
-        </div>
+        <DashboardMetricCard
+          accentColor="var(--accent-purple)"
+          accentMuted="var(--accent-purple-muted)"
+          detail={<TrendBadge current={yearlySpending} previous={prevYearlySpending} showNoBaselineDash />}
+          icon={<Calendar className="h-5 w-5" />}
+          label="Yearly Run Rate"
+          value={formatCurrency(yearlySpending, { display: 'summary' })}
+        />
 
-        {/* Active Items Card */}
-        <div className="stagger-item card">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">
-                {filterTab === 'bill' ? 'ACTIVE BILLS' : filterTab === 'subscription' ? 'ACTIVE SUBSCRIPTIONS' : 'ACTIVE ITEMS'}
-              </p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
-                {filterTab === 'bill' ? <Receipt className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} /> : <CreditCard className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />}
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {activeCount}
-            </h1>
+        <DashboardMetricCard
+          accentColor="var(--accent-blue)"
+          accentMuted="var(--accent-blue-muted)"
+          detail={
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-              {pausedCount > 0 && `${pausedCount} paused`}
-              {pausedCount > 0 && cancelledCount > 0 && ' / '}
-              {cancelledCount > 0 && `${cancelledCount} cancelled`}
+              {activeItemsDetail}
             </p>
-          </div>
-        </div>
+          }
+          icon={filterTab === 'bill' ? <Receipt className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
+          label={filterTab === 'bill' ? 'Active Bills' : filterTab === 'subscription' ? 'Active Subscriptions' : 'Active Items'}
+          value={activeCount}
+        />
 
-        {/* Due This Week Card */}
-        <div className="stagger-item card">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">DUE THIS WEEK</p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-amber-muted)' }}>
-                <AlertCircle className="w-5 h-5" style={{ color: 'var(--accent-amber)' }} />
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {upcomingItems.length}
-            </h1>
-          </div>
-        </div>
+        <DashboardMetricCard
+          accentColor="var(--accent-amber)"
+          accentMuted="var(--accent-amber-muted)"
+          detail={
+            <p className="truncate text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+              {dueThisWeekDetail}
+            </p>
+          }
+          icon={<AlertCircle className="h-5 w-5" />}
+          label="Due This Week"
+          value={upcomingItems.length}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Items */}
         <div className="card">
-          <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          <h3 className="mb-4 text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
             {filterTab === 'bill' ? 'Upcoming Bills' : filterTab === 'subscription' ? 'Upcoming Renewals' : 'Upcoming Payments'}
           </h3>
           
@@ -357,7 +404,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-                        {formatCurrency(item.amount, item.currency)} · {item.billing_cycle}
+                        {formatCurrency(item.amount, { currency: item.currency, display: 'precise' })} · {item.billing_cycle}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -391,7 +438,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
 
         {/* Spending by Category */}
         <div className="card">
-          <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          <h3 className="mb-4 text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
             Spending by Category
           </h3>
           {topCategory && (
@@ -410,61 +457,54 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
             />
           ) : (
             <div className="flex items-center gap-6">
-              <div className="w-40 h-40 relative shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dashboardCategoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={3}
-                      cornerRadius={4}
-                      dataKey="value"
-                      isAnimationActive={true}
-                      animationDuration={300}
-                      animationEasing="ease-out"
-                    >
-                      {dashboardCategoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<DashboardCategoryTooltip />} />
-                    {/* Center label */}
-                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
-                      RUN RATE
-                    </text>
-                    <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
-                      {formatCurrency(monthlySpending)}
-                    </text>
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="shrink-0">
+                <GlowDonutChart
+                  data={dashboardCategoryData}
+                  centerValue={formatCurrency(monthlySpending, { display: 'summary' })}
+                  size={263}
+                  hoveredIndex={chartHover}
+                  onHoverChange={setChartHover}
+                />
               </div>
-              
-              <div className="flex-1 space-y-2">
-                {dashboardCategoryData.map(item => (
-                  <div key={item.id} className="flex items-center gap-3">
+
+              <div className="space-y-0.5">
+                {dashboardCategoryData.map((item, index) => {
+                  const isHovered = chartHover === index;
+                  const isDimmed = chartHover !== null && !isHovered;
+
+                  return (
                     <div
-                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      key={item.id}
+                      className="flex items-center gap-1.5 rounded-md px-1.5 py-1 -mx-1.5 transition-all duration-300 whitespace-nowrap"
                       style={{
-                        backgroundColor: item.color,
-                        boxShadow: `0 0 0 2px ${item.color}20`,
+                        opacity: isDimmed ? 0.35 : 1,
+                        backgroundColor: isHovered ? 'var(--bg-hover)' : 'transparent',
+                        cursor: 'pointer',
                       }}
-                    />
-                    <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {item.name}
-                    </span>
-                    <div className="text-right">
-                      <p className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        {formatCurrency(item.value)}
-                      </p>
-                      <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                      onMouseEnter={() => setChartHover(index)}
+                      onMouseLeave={() => setChartHover(null)}
+                    >
+                      <div
+                        className="w-1.5 h-1.5 rounded-full shrink-0 transition-shadow duration-300"
+                        style={{
+                          backgroundColor: item.color,
+                          boxShadow: isHovered
+                            ? `0 0 6px 2px ${item.color}60`
+                            : 'none',
+                        }}
+                      />
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {item.name}
+                      </span>
+                      <span className="text-xs font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {formatCurrency(item.value, { display: 'summary' })}
+                      </span>
+                      <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
                         {Math.round(item.share * 100)}%
-                      </p>
+                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

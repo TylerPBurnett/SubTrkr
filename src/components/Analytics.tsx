@@ -37,7 +37,8 @@ import {
   getAllStatusHistory,
   getSpendingByCategory,
 } from '../services/database';
-import { formatDisplayDate, parseLocalDate } from '../utils/dates';
+import { formatCurrency } from '../utils/currency';
+import { addBillingCycle, formatDisplayDate, parseLocalDate } from '../utils/dates';
 import {
   getResolvedStatusHistoryAction,
   getResolvedStatusHistoryEffectiveDate,
@@ -117,25 +118,6 @@ const TREND_RANGE_TABS: { id: TrendRange; label: string }[] = [
   { id: '12m', label: '12M' },
 ];
 
-function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatCurrencyCompact(amount: number): string {
-  const absoluteAmount = Math.abs(amount);
-  if (absoluteAmount >= 1000) {
-    const compactValue = absoluteAmount >= 10000 ? (amount / 1000).toFixed(0) : (amount / 1000).toFixed(1);
-    return `$${compactValue}k`;
-  }
-
-  return `$${Math.round(amount)}`;
-}
-
 function formatShare(share: number): string {
   return `${Math.round(share * 100)}%`;
 }
@@ -178,6 +160,33 @@ function shiftDays(date: Date, days: number): Date {
 
 function isOnOrBeforeDay(date: Date, comparedTo: Date): boolean {
   return normalizeToStartOfDay(date).getTime() <= normalizeToStartOfDay(comparedTo).getTime();
+}
+
+function countBillingsWithinWindow(
+  item: ItemWithCategory,
+  windowStart: Date,
+  windowEnd: Date
+): number {
+  const nextBillingDate = parseDateValue(item.next_billing_date);
+  if (!nextBillingDate) return 0;
+
+  let occurrenceDate = normalizeToStartOfDay(nextBillingDate);
+  if (occurrenceDate < windowStart) return 0;
+
+  let occurrenceCount = 0;
+
+  while (occurrenceDate <= windowEnd) {
+    occurrenceCount += 1;
+
+    const nextOccurrenceDate = normalizeToStartOfDay(addBillingCycle(occurrenceDate, item.billing_cycle));
+    if (nextOccurrenceDate.getTime() === occurrenceDate.getTime()) {
+      break;
+    }
+
+    occurrenceDate = nextOccurrenceDate;
+  }
+
+  return occurrenceCount;
 }
 
 function getMonthRange(date: Date): { start: Date; endExclusive: Date } {
@@ -452,7 +461,7 @@ function TrendDelta({
       <Icon className="h-4 w-4" />
       <span>
         {isUp ? '+' : '-'}
-        {formatCurrency(Math.abs(summary.amountDelta))} ({summary.percentage.toFixed(1)}%) vs {baselineLabel}
+        {formatCurrency(Math.abs(summary.amountDelta), { display: 'summary' })} ({summary.percentage.toFixed(1)}%) vs {baselineLabel}
       </span>
     </div>
   );
@@ -496,7 +505,7 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: { paylo
           marginBottom: '4px',
         }}
       >
-        {formatCurrency(projected)}
+        {formatCurrency(projected, { display: 'summary' })}
         <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 400, marginLeft: '3px' }}>/mo</span>
       </p>
       <p style={{ color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}>
@@ -555,7 +564,7 @@ function CategoryTooltip({ active, payload }: { active?: boolean; payload?: { pa
           marginBottom: '4px',
         }}
       >
-        {formatCurrency(data.amount)}
+        {formatCurrency(data.amount, { display: 'summary' })}
         <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 400, marginLeft: '3px' }}>/mo</span>
       </p>
       <p style={{ color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}>
@@ -578,10 +587,17 @@ function Analytics({
   useEffect(() => {
     let cancelled = false;
 
+    if (items.length === 0) {
+      setStatusHistoryEntries([]);
+      return;
+    }
+
+    const itemIdSet = new Set(items.map((item) => item.id));
+
     getAllStatusHistory()
       .then((historyData) => {
         if (!cancelled) {
-          setStatusHistoryEntries(historyData);
+          setStatusHistoryEntries(historyData.filter((entry) => itemIdSet.has(entry.item_id)));
         }
       })
       .catch((error) => {
@@ -594,10 +610,7 @@ function Analytics({
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const itemIds = useMemo(() => items.map((item) => item.id), [items]);
-  const itemIdSet = useMemo(() => new Set(itemIds), [itemIds]);
+  }, [items]);
 
   const filteredItems = useMemo(() => {
     if (activeTab === 'all') return items;
@@ -661,11 +674,10 @@ function Analytics({
 
   const statusHistoryByItem = useMemo(() => {
     return statusHistoryEntries.reduce<Record<string, StatusHistory[]>>((acc, entry) => {
-      if (!itemIdSet.has(entry.item_id)) return acc;
       (acc[entry.item_id] ||= []).push(entry);
       return acc;
     }, {});
-  }, [itemIdSet, statusHistoryEntries]);
+  }, [statusHistoryEntries]);
 
   const resolvedSelectedCategoryId = useMemo(() => {
     if (!selectedCategoryId) return null;
@@ -674,7 +686,7 @@ function Analytics({
 
   const upcomingObligationSummary = useMemo(() => {
     const today = normalizeToStartOfDay(new Date());
-    const nextThirtyDays = shiftDays(today, 30);
+    const windowEnd = shiftDays(today, 6);
 
     let count = 0;
     let total = 0;
@@ -683,14 +695,11 @@ function Analytics({
     for (const item of filteredItems) {
       if (item.status !== 'active') continue;
 
-      const nextBillingDate = parseDateValue(item.next_billing_date);
-      if (!nextBillingDate) continue;
+      const occurrenceCount = countBillingsWithinWindow(item, today, windowEnd);
+      if (occurrenceCount === 0) continue;
 
-      const normalizedNextBillingDate = normalizeToStartOfDay(nextBillingDate);
-      if (normalizedNextBillingDate < today || normalizedNextBillingDate > nextThirtyDays) continue;
-
-      count += 1;
-      total += item.amount;
+      count += occurrenceCount;
+      total += item.amount * occurrenceCount;
 
       if (!largestItem || item.amount > largestItem.amount) {
         largestItem = item;
@@ -865,7 +874,7 @@ function Analytics({
           icon={<TrendingUp className="h-5 w-5" />}
           label="Monthly Spend"
           primary
-          value={formatCurrency(monthlySpending)}
+          value={formatCurrency(monthlySpending, { display: 'summary' })}
         />
 
         <MetricCard
@@ -874,7 +883,7 @@ function Analytics({
           detail={
             <>
               <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                {upcomingObligationSummary.count} charges in the next 30 days
+                {upcomingObligationSummary.count} charges in the next 7 days
               </p>
               {upcomingObligationSummary.largestItem ? (
                 <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -884,8 +893,8 @@ function Analytics({
             </>
           }
           icon={<Calendar className="h-5 w-5" />}
-          label="Next 30 Days"
-          value={formatCurrency(upcomingObligationSummary.total)}
+          label="Next 7 Days"
+          value={formatCurrency(upcomingObligationSummary.total, { display: 'summary' })}
         />
 
         <MetricCard
@@ -898,7 +907,7 @@ function Analytics({
           }
           icon={<PiggyBank className="h-5 w-5" />}
           label="Saved"
-          value={formatCurrency(monthlySavings)}
+          value={formatCurrency(monthlySavings, { display: 'summary' })}
           valueColor="var(--accent-emerald)"
         />
 
@@ -912,7 +921,7 @@ function Analytics({
           }
           icon={<RefreshCw className="h-5 w-5" />}
           label="Annual View"
-          value={formatCurrency(yearlySpending)}
+          value={formatCurrency(yearlySpending, { display: 'summary' })}
         />
       </div>
 
@@ -1019,7 +1028,7 @@ function Analytics({
                     fontFamily="JetBrains Mono, monospace"
                     fontSize={12}
                     stroke="var(--text-muted)"
-                    tickFormatter={formatCurrencyCompact}
+                    tickFormatter={(value: number) => formatCurrency(value, { display: 'compact' })}
                     tickLine={false}
                     width={64}
                   />
@@ -1060,7 +1069,7 @@ function Analytics({
                   className="mt-2 font-mono text-xl font-semibold"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {formatCurrency(trendOverview.average)}
+                  {formatCurrency(trendOverview.average, { display: 'summary' })}
                 </p>
               </div>
               <div
@@ -1076,7 +1085,7 @@ function Analytics({
                     className="font-mono text-xl font-semibold"
                     style={{ color: 'var(--text-primary)' }}
                   >
-                    {formatCurrency(trendOverview.peak?.projected ?? 0)}
+                    {formatCurrency(trendOverview.peak?.projected ?? 0, { display: 'summary' })}
                   </p>
                   <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                     {trendOverview.peak?.tooltipLabel}
@@ -1137,7 +1146,7 @@ function Analytics({
                         {category.name}
                       </span>
                       <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                        {formatCurrency(category.amount)}
+                        {formatCurrency(category.amount, { display: 'summary' })}
                       </span>
                       <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
                         {formatShare(category.share)}
@@ -1180,7 +1189,7 @@ function Analytics({
                       fontFamily="JetBrains Mono, monospace"
                       fontSize={12}
                       stroke="var(--text-muted)"
-                      tickFormatter={formatCurrencyCompact}
+                      tickFormatter={(value: number) => formatCurrency(value, { display: 'compact' })}
                       tickLine={false}
                       type="number"
                     />
@@ -1291,10 +1300,10 @@ function Analytics({
                   </div>
                   <div className="text-right">
                     <p className="font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
-                      {formatCurrency(item.monthlyAmount)}/mo
+                      {formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
                     </p>
                     <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-                      {formatCurrency(item.amount, item.currency)} {item.billing_cycle}
+                      {formatCurrency(item.amount, { currency: item.currency, display: 'precise' })} {item.billing_cycle}
                     </p>
                   </div>
                 </div>
@@ -1329,13 +1338,13 @@ function Analytics({
                     RECOVERED / MONTH
                   </p>
                   <p className="mt-2 text-2xl font-bold font-mono" style={{ color: 'var(--accent-green)' }}>
-                    {formatCurrency(cancellationInsights.totalSavings)}
+                    {formatCurrency(cancellationInsights.totalSavings, { display: 'summary' })}
                   </p>
                 </div>
                 <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-hover)' }}>
                   <p className="label-wide">NEW IN LAST 30 DAYS</p>
                   <p className="mt-2 text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
-                    {formatCurrency(cancellationInsights.recentSavings)}
+                    {formatCurrency(cancellationInsights.recentSavings, { display: 'summary' })}
                   </p>
                   <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                     {cancellationInsights.recentCount} recent cuts
@@ -1347,7 +1356,7 @@ function Analytics({
                     {cancellationInsights.largestCut?.name || 'N/A'}
                   </p>
                   <p className="mt-1 text-lg font-bold font-mono" style={{ color: 'var(--text-primary)' }}>
-                    {cancellationInsights.largestCut ? `+${formatCurrency(cancellationInsights.largestCut.monthlyAmount)}/mo` : '$0'}
+                    {cancellationInsights.largestCut ? `+${formatCurrency(cancellationInsights.largestCut.monthlyAmount, { display: 'precise' })}/mo` : '$0'}
                   </p>
                 </div>
               </div>
@@ -1380,7 +1389,7 @@ function Analytics({
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold font-mono" style={{ color: 'var(--accent-green)' }}>
-                        +{formatCurrency(item.monthlyAmount)}/mo
+                        +{formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
                       </p>
                       <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                         {item.category?.name || 'Uncategorized'}
