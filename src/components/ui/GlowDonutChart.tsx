@@ -20,9 +20,129 @@ interface GlowDonutChartProps {
 
 const RADIUS = 70;
 const STROKE_WIDTH = 13;
-const GAP_DEGREES = 4;
+const GAP_DEGREES = 2.5;
 const VIEWBOX = 200;
 const HALF = VIEWBOX / 2;
+const HOVER_RADIAL_PADDING = 10;
+const TINY_SLICE_THRESHOLD_DEGREES = 13;
+const TINY_SLICE_HOVER_PADDING = 1.8;
+const BASE_HOVER_PADDING = 0.65;
+
+const OUTER_R = RADIUS + STROKE_WIDTH / 2;
+const INNER_R = RADIUS - STROKE_WIDTH / 2;
+const MIN_GAP_DEGREES = 0.4;
+const CAP_R = STROKE_WIDTH / 2;
+const CAP_ANGLE_DEG = (CAP_R / RADIUS) * (180 / Math.PI);
+
+/** Point on a circle at angleDeg (0° = 12 o'clock, clockwise) */
+function ptAt(angleDeg: number, r: number) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return {
+    x: HALF + r * Math.sin(rad),
+    y: HALF - r * Math.cos(rad),
+  };
+}
+
+function tangentCapsulePath(midAngleDeg: number, length: number): string {
+  const center = ptAt(midAngleDeg, RADIUS);
+  const theta = (midAngleDeg * Math.PI) / 180;
+  const tangentX = Math.cos(theta);
+  const tangentY = Math.sin(theta);
+  const normalX = Math.sin(theta);
+  const normalY = -Math.cos(theta);
+  const bodyHalfLength = Math.max(0, (length - STROKE_WIDTH) / 2);
+
+  const startCenterX = center.x - tangentX * bodyHalfLength;
+  const startCenterY = center.y - tangentY * bodyHalfLength;
+  const endCenterX = center.x + tangentX * bodyHalfLength;
+  const endCenterY = center.y + tangentY * bodyHalfLength;
+
+  const startTop = {
+    x: startCenterX + normalX * CAP_R,
+    y: startCenterY + normalY * CAP_R,
+  };
+  const startBottom = {
+    x: startCenterX - normalX * CAP_R,
+    y: startCenterY - normalY * CAP_R,
+  };
+  const endTop = {
+    x: endCenterX + normalX * CAP_R,
+    y: endCenterY + normalY * CAP_R,
+  };
+  const endBottom = {
+    x: endCenterX - normalX * CAP_R,
+    y: endCenterY - normalY * CAP_R,
+  };
+
+  return [
+    `M ${startTop.x} ${startTop.y}`,
+    `L ${endTop.x} ${endTop.y}`,
+    `A ${CAP_R} ${CAP_R} 0 0 1 ${endBottom.x} ${endBottom.y}`,
+    `L ${startBottom.x} ${startBottom.y}`,
+    `A ${CAP_R} ${CAP_R} 0 0 1 ${startTop.x} ${startTop.y}`,
+    'Z',
+  ].join(' ');
+}
+
+/**
+ * Build a filled path for a thick arc segment with rounded ends.
+ * Very small slices fall back to a tangent-aligned capsule so they keep
+ * a consistent thickness without visually bleeding into neighboring gaps.
+ */
+function arcPath(startDeg: number, endDeg: number): string {
+  const span = endDeg - startDeg;
+
+  if (span <= TINY_SLICE_THRESHOLD_DEGREES) {
+    const arcLength = (span * Math.PI / 180) * RADIUS;
+    return tangentCapsulePath((startDeg + endDeg) / 2, Math.max(STROKE_WIDTH, arcLength));
+  }
+
+  const insetStart = startDeg + CAP_ANGLE_DEG;
+  const insetEnd = endDeg - CAP_ANGLE_DEG;
+
+  const oS = ptAt(insetStart, OUTER_R);
+  const oE = ptAt(insetEnd, OUTER_R);
+  const iS = ptAt(insetStart, INNER_R);
+  const iE = ptAt(insetEnd, INNER_R);
+
+  const insetSpan = insetEnd - insetStart;
+  const lg = insetSpan > 180 ? 1 : 0;
+
+  return [
+    `M ${oS.x} ${oS.y}`,
+    `A ${OUTER_R} ${OUTER_R} 0 ${lg} 1 ${oE.x} ${oE.y}`,
+    `A ${CAP_R} ${CAP_R} 0 0 1 ${iE.x} ${iE.y}`,
+    `A ${INNER_R} ${INNER_R} 0 ${lg} 0 ${iS.x} ${iS.y}`,
+    `A ${CAP_R} ${CAP_R} 0 0 1 ${oS.x} ${oS.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function angleForPoint(x: number, y: number) {
+  return (Math.atan2(x - HALF, HALF - y) * (180 / Math.PI) + 360) % 360;
+}
+
+function distanceToRange(angle: number, start: number, end: number) {
+  if (angle < start) return start - angle;
+  if (angle > end) return angle - end;
+  return 0;
+}
+
+interface ComputedSegment {
+  index: number;
+  id: string;
+  name: string;
+  value: number;
+  color: string;
+  share: number;
+  glowOpacityScale: number;
+  hoverPadding: number;
+  end: number;
+  mid: number;
+  path: string;
+  start: number;
+  span: number;
+}
 
 function GlowDonutChart({
   data,
@@ -34,59 +154,96 @@ function GlowDonutChart({
 }: GlowDonutChartProps) {
   const [internalHover, setInternalHover] = useState<number | null>(null);
   const filterIdBase = useId().replace(/:/g, '');
-  const ambientFilterId = `${filterIdBase}-donut-glow-ambient`;
-  const tightFilterId = `${filterIdBase}-donut-glow-tight`;
+  const ambientFilterId = `${filterIdBase}-glow-a`;
+  const tightFilterId = `${filterIdBase}-glow-t`;
 
   const isControlled = controlledHover !== undefined;
   const hoveredIndex = isControlled ? controlledHover : internalHover;
 
-  const circumference = 2 * Math.PI * RADIUS;
-
-  const segments = useMemo(() => {
+  const segments: ComputedSegment[] = useMemo(() => {
     const total = data.reduce((sum, d) => sum + d.value, 0);
     if (total === 0 || data.length === 0) return [];
 
-    const gapCount = data.length;
-    const totalGapDegrees = gapCount * GAP_DEGREES;
-    const availableDegrees = 360 - totalGapDegrees;
+    const rawSpans = data.map((item) => (item.value / total) * 360);
+    const minSpan = Math.min(...rawSpans);
+    const gapDegrees = Math.min(GAP_DEGREES, Math.max(MIN_GAP_DEGREES, minSpan * 0.35));
+    const totalGap = data.length * gapDegrees;
+    const available = 360 - totalGap;
 
-    let currentAngle = 0;
+    let angle = 0;
 
-    return data.map((item) => {
-      const segmentDegrees = (item.value / total) * availableDegrees;
-      const arcLength = (segmentDegrees / 360) * circumference;
-      const offset = (currentAngle / 360) * circumference;
-
-      currentAngle += segmentDegrees + GAP_DEGREES;
+    return data.map((item, index) => {
+      const span = (item.value / total) * available;
+      const start = angle;
+      const end = angle + span;
+      angle += span + gapDegrees;
+      const isTinySlice = span <= TINY_SLICE_THRESHOLD_DEGREES;
+      const hoverPadding = isTinySlice ? TINY_SLICE_HOVER_PADDING : BASE_HOVER_PADDING;
+      const glowOpacityScale = isTinySlice ? 0.72 : 1;
 
       return {
+        index,
         ...item,
-        arcLength,
-        dashArray: `${arcLength} ${circumference - arcLength}`,
-        // Shift by circumference/4 to start at 12 o'clock instead of 3 o'clock
-        dashOffset: circumference / 4 - offset,
+        end,
+        glowOpacityScale,
+        hoverPadding,
+        mid: (start + end) / 2,
+        path: arcPath(start, end),
+        span,
+        start,
       };
     });
-  }, [data, circumference]);
+  }, [data]);
 
-  const handleMouseEnter = useCallback(
-    (index: number) => {
-      if (isControlled) {
-        onHoverChange?.(index);
-      } else {
-        setInternalHover(index);
-      }
-    },
-    [isControlled, onHoverChange],
-  );
+  const updateHover = useCallback((nextIndex: number | null) => {
+    if (nextIndex === hoveredIndex) return;
 
-  const handleMouseLeave = useCallback(() => {
-    if (isControlled) {
-      onHoverChange?.(null);
-    } else {
-      setInternalHover(null);
+    if (isControlled) onHoverChange?.(nextIndex);
+    else setInternalHover(nextIndex);
+  }, [hoveredIndex, isControlled, onHoverChange]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width) * VIEWBOX;
+    const y = ((event.clientY - bounds.top) / bounds.height) * VIEWBOX;
+    const dx = x - HALF;
+    const dy = y - HALF;
+    const radius = Math.hypot(dx, dy);
+
+    if (radius < INNER_R - HOVER_RADIAL_PADDING || radius > OUTER_R + HOVER_RADIAL_PADDING) {
+      updateHover(null);
+      return;
     }
-  }, [isControlled, onHoverChange]);
+
+    const angle = angleForPoint(x, y);
+    let closest: { index: number; midpointDistance: number } | null = null;
+
+    for (const segment of segments) {
+      const paddedStart = segment.start - segment.hoverPadding;
+      const paddedEnd = segment.end + segment.hoverPadding;
+      const rangeDistance = distanceToRange(angle, paddedStart, paddedEnd);
+
+      if (rangeDistance > 0) continue;
+
+      const midpointDistance = Math.abs(segment.mid - angle);
+
+      if (
+        closest === null ||
+        midpointDistance < closest.midpointDistance
+      ) {
+        closest = {
+          index: segment.index,
+          midpointDistance,
+        };
+      }
+    }
+
+    updateHover(closest?.index ?? null);
+  }, [segments, updateHover]);
+
+  const handlePointerLeave = useCallback(() => {
+    updateHover(null);
+  }, [updateHover]);
 
   const hoveredData = hoveredIndex !== null ? data[hoveredIndex] : null;
 
@@ -97,26 +254,27 @@ function GlowDonutChart({
         width={size}
         height={size}
         style={{ overflow: 'visible' }}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
       >
         <defs>
-          {/* Broad ambient glow — soft halo behind segment */}
           <filter
             id={ambientFilterId}
-            x="-80%"
-            y="-80%"
-            width="260%"
-            height="260%"
+            filterUnits="userSpaceOnUse"
+            x={-60}
+            y={-60}
+            width={VIEWBOX + 120}
+            height={VIEWBOX + 120}
           >
             <feGaussianBlur stdDeviation="12" />
           </filter>
-
-          {/* Tight glow — bright edge around segment */}
           <filter
             id={tightFilterId}
-            x="-50%"
-            y="-50%"
-            width="200%"
-            height="200%"
+            filterUnits="userSpaceOnUse"
+            x={-36}
+            y={-36}
+            width={VIEWBOX + 72}
+            height={VIEWBOX + 72}
           >
             <feGaussianBlur stdDeviation="4" result="blur" />
             <feMerge>
@@ -128,115 +286,63 @@ function GlowDonutChart({
 
         {/* Outer guide ring */}
         <circle
-          cx={HALF}
-          cy={HALF}
-          r={RADIUS + STROKE_WIDTH / 2 + 6}
+          cx={HALF} cy={HALF}
+          r={OUTER_R + 8}
           fill="none"
-          stroke="var(--border-default)"
+          stroke="var(--text-muted)"
           strokeWidth={1}
-          opacity={0.2}
+          opacity={0.35}
         />
 
         {/* Inner guide ring */}
         <circle
-          cx={HALF}
-          cy={HALF}
-          r={RADIUS - STROKE_WIDTH / 2 - 6}
+          cx={HALF} cy={HALF}
+          r={INNER_R - 8}
           fill="none"
-          stroke="var(--border-default)"
+          stroke="var(--text-muted)"
           strokeWidth={1}
-          opacity={0.12}
+          opacity={0.2}
         />
 
-        {/* ── Ambient glow layers (furthest back) ── */}
+        {/* ── Glow layers ── */}
         {segments.map((seg, i) => (
-          <circle
-            key={`ambient-${i}`}
-            cx={HALF}
-            cy={HALF}
-            r={RADIUS}
-            fill="none"
-            stroke={seg.color}
-            strokeWidth={STROKE_WIDTH + 6}
-            strokeDasharray={seg.dashArray}
-            strokeDashoffset={seg.dashOffset}
-            strokeLinecap="round"
-            filter={`url(#${ambientFilterId})`}
-            opacity={hoveredIndex === i ? 0.45 : 0}
-            style={{ transition: 'opacity 0.35s ease' }}
-            pointerEvents="none"
-          />
+          <g key={`glow-${i}`} pointerEvents="none">
+            <path
+              d={seg.path}
+              fill={seg.color}
+              filter={`url(#${ambientFilterId})`}
+              opacity={hoveredIndex === i ? 0.5 * seg.glowOpacityScale : 0}
+              style={{ transition: 'opacity 0.35s ease' }}
+            />
+            <path
+              d={seg.path}
+              fill={seg.color}
+              filter={`url(#${tightFilterId})`}
+              opacity={hoveredIndex === i ? 0.7 * seg.glowOpacityScale : 0}
+              style={{ transition: 'opacity 0.35s ease' }}
+            />
+          </g>
         ))}
 
-        {/* ── Tight glow layers ── */}
-        {segments.map((seg, i) => (
-          <circle
-            key={`glow-${i}`}
-            cx={HALF}
-            cy={HALF}
-            r={RADIUS}
-            fill="none"
-            stroke={seg.color}
-            strokeWidth={STROKE_WIDTH + 2}
-            strokeDasharray={seg.dashArray}
-            strokeDashoffset={seg.dashOffset}
-            strokeLinecap="round"
-            filter={`url(#${tightFilterId})`}
-            opacity={hoveredIndex === i ? 0.65 : 0}
-            style={{ transition: 'opacity 0.35s ease' }}
-            pointerEvents="none"
-          />
-        ))}
-
-        {/* ── Main visible segments ── */}
+        {/* ── Filled segment shapes ── */}
         {segments.map((seg, i) => {
           const isHovered = hoveredIndex === i;
-          const isDimmed = hoveredIndex !== null && !isHovered;
-
           return (
-            <circle
+            <path
               key={`seg-${i}`}
-              cx={HALF}
-              cy={HALF}
-              r={RADIUS}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth={STROKE_WIDTH}
-              strokeDasharray={seg.dashArray}
-              strokeDashoffset={seg.dashOffset}
-              strokeLinecap="round"
-              opacity={isDimmed ? 0.2 : 1}
+              d={seg.path}
+              fill={seg.color}
+              opacity={isHovered ? 1 : hoveredIndex !== null ? 0.2 : 0.45}
               style={{
                 transition: 'opacity 0.35s ease',
                 cursor: 'pointer',
               }}
-              onMouseEnter={() => handleMouseEnter(i)}
-              onMouseLeave={handleMouseLeave}
             />
           );
         })}
-
-        {/* ── Invisible wider hit targets for easier hovering ── */}
-        {segments.map((seg, i) => (
-          <circle
-            key={`hit-${i}`}
-            cx={HALF}
-            cy={HALF}
-            r={RADIUS}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={STROKE_WIDTH + 20}
-            strokeDasharray={seg.dashArray}
-            strokeDashoffset={seg.dashOffset}
-            strokeLinecap="round"
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => handleMouseEnter(i)}
-            onMouseLeave={handleMouseLeave}
-          />
-        ))}
       </svg>
 
-      {/* ── Center text overlay ── */}
+      {/* ── Center text ── */}
       <div
         style={{
           position: 'absolute',
@@ -249,52 +355,44 @@ function GlowDonutChart({
       >
         {hoveredData ? (
           <>
-            <div
-              style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'Inter, -apple-system, sans-serif',
-                fontSize: '18px',
-                fontWeight: 700,
-                lineHeight: 1.2,
-              }}
-            >
+            <div style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'Inter, -apple-system, sans-serif',
+              fontSize: '18px',
+              fontWeight: 700,
+              lineHeight: 1.2,
+            }}>
               {hoveredData.name}
             </div>
-            <div
-              style={{
-                color: 'var(--text-secondary)',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '13px',
-                marginTop: '4px',
-              }}
-            >
+            <div style={{
+              color: 'var(--text-secondary)',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '13px',
+              marginTop: '4px',
+            }}>
               {formatCurrency(hoveredData.value, { display: 'summary' })} &middot;{' '}
               {Math.round(hoveredData.share * 100)}%
             </div>
           </>
         ) : (
           <>
-            <div
-              style={{
-                color: 'var(--text-muted)',
-                fontFamily: 'Inter, -apple-system, sans-serif',
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}
-            >
+            <div style={{
+              color: 'var(--text-muted)',
+              fontFamily: 'Inter, -apple-system, sans-serif',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}>
               {centerLabel}
             </div>
-            <div
-              style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '20px',
-                fontWeight: 700,
-                marginTop: '4px',
-              }}
-            >
+            <div style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '20px',
+              fontWeight: 700,
+              marginTop: '4px',
+            }}>
               {centerValue}
             </div>
           </>
