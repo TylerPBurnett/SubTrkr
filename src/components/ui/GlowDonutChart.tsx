@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useId, memo } from 'react';
+import { useState, useMemo, useCallback, useId, useEffect, memo } from 'react';
 import { formatCurrency } from '../../utils/currency';
 
 interface DonutSegment {
@@ -30,6 +30,8 @@ const OUTER_R = RADIUS + CAP_R;
 const INNER_R = RADIUS - CAP_R;
 const CAP_ANGLE_DEG = (CAP_R / RADIUS) * (180 / Math.PI);
 const MIN_VISIBLE_SPAN_DEGREES = CAP_ANGLE_DEG * 2 + 0.45;
+const REVEAL_DURATION_MS = 620;
+const REVEAL_CLIP_RADIUS = VIEWBOX;
 
 interface ComputedSegment {
   index: number;
@@ -129,6 +131,31 @@ function angleForPoint(x: number, y: number) {
   return normalizeAngle(Math.atan2(x - HALF, HALF - y) * (180 / Math.PI));
 }
 
+function easeOutCubic(value: number) {
+  return 1 - Math.pow(1 - value, 3);
+}
+
+function revealSectorPath(endAngleDeg: number) {
+  if (endAngleDeg <= 0.01) {
+    return `M ${HALF} ${HALF} L ${HALF} ${HALF} Z`;
+  }
+
+  if (endAngleDeg >= 359.99) {
+    return `M 0 0 H ${VIEWBOX} V ${VIEWBOX} H 0 Z`;
+  }
+
+  const start = ptAt(0, REVEAL_CLIP_RADIUS);
+  const end = ptAt(endAngleDeg, REVEAL_CLIP_RADIUS);
+  const largeArc = endAngleDeg > 180 ? 1 : 0;
+
+  return [
+    `M ${HALF} ${HALF}`,
+    `L ${start.x} ${start.y}`,
+    `A ${REVEAL_CLIP_RADIUS} ${REVEAL_CLIP_RADIUS} 0 ${largeArc} 1 ${end.x} ${end.y}`,
+    'Z',
+  ].join(' ');
+}
+
 function distanceToRange(angle: number, start: number, end: number) {
   const normalizedAngle = normalizeAngle(angle);
   const normalizedStart = normalizeAngle(start);
@@ -201,9 +228,37 @@ function GlowDonutChart({
   const filterIdBase = useId().replace(/:/g, '');
   const ambientFilterId = `${filterIdBase}-glow-a`;
   const tightFilterId = `${filterIdBase}-glow-t`;
+  const revealClipId = `${filterIdBase}-reveal`;
+  const [revealProgress, setRevealProgress] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
+  });
 
   const isControlled = controlledHover !== undefined;
   const hoveredIndex = isControlled ? controlledHover : internalHover;
+  const interactive = revealProgress >= 0.999;
+  const activeHover = interactive ? hoveredIndex : null;
+
+  useEffect(() => {
+    if (revealProgress >= 0.999) return;
+
+    let frameId = 0;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const next = Math.min(1, elapsed / REVEAL_DURATION_MS);
+      setRevealProgress(easeOutCubic(next));
+
+      if (next < 1) frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   const segments: ComputedSegment[] = useMemo(() => {
     const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -239,6 +294,8 @@ function GlowDonutChart({
       };
     });
   }, [data]);
+
+  const revealClipPath = useMemo(() => revealSectorPath(revealProgress * 360), [revealProgress]);
 
   const updateHover = useCallback((nextIndex: number | null) => {
     if (nextIndex === hoveredIndex) return;
@@ -288,7 +345,7 @@ function GlowDonutChart({
     updateHover(null);
   }, [updateHover]);
 
-  const hoveredData = hoveredIndex !== null ? data[hoveredIndex] : null;
+  const hoveredData = activeHover !== null ? data[activeHover] : null;
 
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
@@ -296,9 +353,12 @@ function GlowDonutChart({
         viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
         width={size}
         height={size}
-        style={{ overflow: 'visible' }}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
+        style={{
+          overflow: 'visible',
+          pointerEvents: interactive ? 'auto' : 'none',
+        }}
+        onPointerMove={interactive ? handlePointerMove : undefined}
+        onPointerLeave={interactive ? handlePointerLeave : undefined}
       >
         <defs>
           <filter
@@ -325,6 +385,9 @@ function GlowDonutChart({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <clipPath id={revealClipId}>
+            <path d={revealClipPath} />
+          </clipPath>
         </defs>
 
         <circle
@@ -347,40 +410,42 @@ function GlowDonutChart({
           opacity={0.2}
         />
 
-        {segments.map((segment, index) => (
-          <g key={`glow-${segment.id}-${index}`} pointerEvents="none">
-            <path
-              d={segment.path}
-              fill={segment.color}
-              filter={`url(#${ambientFilterId})`}
-              opacity={hoveredIndex === index ? 0.5 * segment.glowOpacityScale : 0}
-              style={{ transition: 'opacity 0.35s ease' }}
-            />
-            <path
-              d={segment.path}
-              fill={segment.color}
-              filter={`url(#${tightFilterId})`}
-              opacity={hoveredIndex === index ? 0.7 * segment.glowOpacityScale : 0}
-              style={{ transition: 'opacity 0.35s ease' }}
-            />
-          </g>
-        ))}
+        <g clipPath={`url(#${revealClipId})`}>
+          {segments.map((segment, index) => (
+            <g key={`glow-${segment.id}-${index}`} pointerEvents="none">
+              <path
+                d={segment.path}
+                fill={segment.color}
+                filter={`url(#${ambientFilterId})`}
+                opacity={activeHover === index ? 0.5 * segment.glowOpacityScale : 0}
+                style={{ transition: 'opacity 0.35s ease' }}
+              />
+              <path
+                d={segment.path}
+                fill={segment.color}
+                filter={`url(#${tightFilterId})`}
+                opacity={activeHover === index ? 0.7 * segment.glowOpacityScale : 0}
+                style={{ transition: 'opacity 0.35s ease' }}
+              />
+            </g>
+          ))}
 
-        {segments.map((segment, index) => {
-          const isHovered = hoveredIndex === index;
-          return (
-            <path
-              key={`segment-${segment.id}-${index}`}
-              d={segment.path}
-              fill={segment.color}
-              opacity={isHovered ? 1 : hoveredIndex !== null ? 0.2 : 0.45}
-              style={{
-                transition: 'opacity 0.35s ease',
-                cursor: 'pointer',
-              }}
-            />
-          );
-        })}
+          {segments.map((segment, index) => {
+            const isHovered = activeHover === index;
+            return (
+              <path
+                key={`segment-${segment.id}-${index}`}
+                d={segment.path}
+                fill={segment.color}
+                opacity={isHovered ? 1 : activeHover !== null ? 0.2 : 0.45}
+                style={{
+                  transition: 'opacity 0.35s ease',
+                  cursor: interactive ? 'pointer' : 'default',
+                }}
+              />
+            );
+          })}
+        </g>
       </svg>
 
       <div
