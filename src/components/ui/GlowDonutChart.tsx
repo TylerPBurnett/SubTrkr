@@ -24,17 +24,28 @@ const GAP_DEGREES = 2.5;
 const VIEWBOX = 200;
 const HALF = VIEWBOX / 2;
 const HOVER_RADIAL_PADDING = 10;
-const TINY_SLICE_THRESHOLD_DEGREES = 13;
-const TINY_SLICE_HOVER_PADDING = 1.8;
-const BASE_HOVER_PADDING = 0.65;
-
-const OUTER_R = RADIUS + STROKE_WIDTH / 2;
-const INNER_R = RADIUS - STROKE_WIDTH / 2;
 const MIN_GAP_DEGREES = 0.4;
 const CAP_R = STROKE_WIDTH / 2;
+const OUTER_R = RADIUS + CAP_R;
+const INNER_R = RADIUS - CAP_R;
 const CAP_ANGLE_DEG = (CAP_R / RADIUS) * (180 / Math.PI);
+const MIN_VISIBLE_SPAN_DEGREES = CAP_ANGLE_DEG * 2 + 0.45;
 
-/** Point on a circle at angleDeg (0° = 12 o'clock, clockwise) */
+interface ComputedSegment {
+  index: number;
+  id: string;
+  name: string;
+  value: number;
+  color: string;
+  share: number;
+  glowOpacityScale: number;
+  hoverPadding: number;
+  end: number;
+  mid: number;
+  path: string;
+  start: number;
+}
+
 function ptAt(angleDeg: number, r: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return {
@@ -43,14 +54,15 @@ function ptAt(angleDeg: number, r: number) {
   };
 }
 
-function tangentCapsulePath(midAngleDeg: number, length: number): string {
+function tangentCapsulePath(midAngleDeg: number, spanDeg: number): string {
   const center = ptAt(midAngleDeg, RADIUS);
   const theta = (midAngleDeg * Math.PI) / 180;
   const tangentX = Math.cos(theta);
   const tangentY = Math.sin(theta);
   const normalX = Math.sin(theta);
   const normalY = -Math.cos(theta);
-  const bodyHalfLength = Math.max(0, (length - STROKE_WIDTH) / 2);
+  const arcLength = (spanDeg * Math.PI / 180) * RADIUS;
+  const bodyHalfLength = Math.max(0, (Math.max(STROKE_WIDTH, arcLength) - STROKE_WIDTH) / 2);
 
   const startCenterX = center.x - tangentX * bodyHalfLength;
   const startCenterY = center.y - tangentY * bodyHalfLength;
@@ -84,64 +96,97 @@ function tangentCapsulePath(midAngleDeg: number, length: number): string {
   ].join(' ');
 }
 
-/**
- * Build a filled path for a thick arc segment with rounded ends.
- * Very small slices fall back to a tangent-aligned capsule so they keep
- * a consistent thickness without visually bleeding into neighboring gaps.
- */
 function arcPath(startDeg: number, endDeg: number): string {
-  const span = endDeg - startDeg;
-
-  if (span <= TINY_SLICE_THRESHOLD_DEGREES) {
-    const arcLength = (span * Math.PI / 180) * RADIUS;
-    return tangentCapsulePath((startDeg + endDeg) / 2, Math.max(STROKE_WIDTH, arcLength));
-  }
-
   const insetStart = startDeg + CAP_ANGLE_DEG;
   const insetEnd = endDeg - CAP_ANGLE_DEG;
 
-  const oS = ptAt(insetStart, OUTER_R);
-  const oE = ptAt(insetEnd, OUTER_R);
-  const iS = ptAt(insetStart, INNER_R);
-  const iE = ptAt(insetEnd, INNER_R);
+  if (insetEnd <= insetStart) {
+    return tangentCapsulePath((startDeg + endDeg) / 2, endDeg - startDeg);
+  }
 
+  const outerStart = ptAt(insetStart, OUTER_R);
+  const outerEnd = ptAt(insetEnd, OUTER_R);
+  const innerStart = ptAt(insetStart, INNER_R);
+  const innerEnd = ptAt(insetEnd, INNER_R);
   const insetSpan = insetEnd - insetStart;
-  const lg = insetSpan > 180 ? 1 : 0;
+  const largeArc = insetSpan > 180 ? 1 : 0;
 
   return [
-    `M ${oS.x} ${oS.y}`,
-    `A ${OUTER_R} ${OUTER_R} 0 ${lg} 1 ${oE.x} ${oE.y}`,
-    `A ${CAP_R} ${CAP_R} 0 0 1 ${iE.x} ${iE.y}`,
-    `A ${INNER_R} ${INNER_R} 0 ${lg} 0 ${iS.x} ${iS.y}`,
-    `A ${CAP_R} ${CAP_R} 0 0 1 ${oS.x} ${oS.y}`,
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${OUTER_R} ${OUTER_R} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `A ${CAP_R} ${CAP_R} 0 0 1 ${innerEnd.x} ${innerEnd.y}`,
+    `A ${INNER_R} ${INNER_R} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+    `A ${CAP_R} ${CAP_R} 0 0 1 ${outerStart.x} ${outerStart.y}`,
     'Z',
   ].join(' ');
 }
 
+function normalizeAngle(angle: number) {
+  return ((angle % 360) + 360) % 360;
+}
+
 function angleForPoint(x: number, y: number) {
-  return (Math.atan2(x - HALF, HALF - y) * (180 / Math.PI) + 360) % 360;
+  return normalizeAngle(Math.atan2(x - HALF, HALF - y) * (180 / Math.PI));
 }
 
 function distanceToRange(angle: number, start: number, end: number) {
-  if (angle < start) return start - angle;
-  if (angle > end) return angle - end;
-  return 0;
+  const normalizedAngle = normalizeAngle(angle);
+  const normalizedStart = normalizeAngle(start);
+  const normalizedEnd = normalizeAngle(end);
+
+  if (normalizedStart <= normalizedEnd) {
+    if (normalizedAngle < normalizedStart) return normalizedStart - normalizedAngle;
+    if (normalizedAngle > normalizedEnd) return normalizedAngle - normalizedEnd;
+    return 0;
+  }
+
+  if (normalizedAngle >= normalizedStart || normalizedAngle <= normalizedEnd) {
+    return 0;
+  }
+
+  return Math.min(
+    Math.abs(normalizedAngle - normalizedStart),
+    Math.abs(normalizedAngle - normalizedEnd),
+  );
 }
 
-interface ComputedSegment {
-  index: number;
-  id: string;
-  name: string;
-  value: number;
-  color: string;
-  share: number;
-  glowOpacityScale: number;
-  hoverPadding: number;
-  end: number;
-  mid: number;
-  path: string;
-  start: number;
-  span: number;
+function allocateDisplaySpans(rawSpans: number[], available: number) {
+  if (rawSpans.length === 0) return [];
+
+  const minDisplaySpan = Math.min(MIN_VISIBLE_SPAN_DEGREES, available / rawSpans.length);
+  const resolved = new Array<number>(rawSpans.length).fill(0);
+  const remaining = new Set(rawSpans.map((_, index) => index));
+  let remainingAvailable = available;
+
+  while (remaining.size > 0) {
+    const remainingIndexes = Array.from(remaining);
+    const remainingRawTotal = remainingIndexes.reduce((sum, index) => sum + rawSpans[index], 0);
+    let frozeAny = false;
+
+    for (const index of remainingIndexes) {
+      const proposed = remainingRawTotal === 0
+        ? remainingAvailable / remainingIndexes.length
+        : (rawSpans[index] / remainingRawTotal) * remainingAvailable;
+
+      if (proposed < minDisplaySpan) {
+        resolved[index] = minDisplaySpan;
+        remainingAvailable -= minDisplaySpan;
+        remaining.delete(index);
+        frozeAny = true;
+      }
+    }
+
+    if (!frozeAny) {
+      for (const index of remainingIndexes) {
+        resolved[index] = remainingRawTotal === 0
+          ? remainingAvailable / remainingIndexes.length
+          : (rawSpans[index] / remainingRawTotal) * remainingAvailable;
+      }
+      break;
+    }
+  }
+
+  return resolved;
 }
 
 function GlowDonutChart({
@@ -161,35 +206,35 @@ function GlowDonutChart({
   const hoveredIndex = isControlled ? controlledHover : internalHover;
 
   const segments: ComputedSegment[] = useMemo(() => {
-    const total = data.reduce((sum, d) => sum + d.value, 0);
+    const total = data.reduce((sum, item) => sum + item.value, 0);
     if (total === 0 || data.length === 0) return [];
 
     const rawSpans = data.map((item) => (item.value / total) * 360);
-    const minSpan = Math.min(...rawSpans);
-    const gapDegrees = Math.min(GAP_DEGREES, Math.max(MIN_GAP_DEGREES, minSpan * 0.35));
-    const totalGap = data.length * gapDegrees;
-    const available = 360 - totalGap;
+    const minRawSpan = Math.min(...rawSpans);
+    const gapDegrees = Math.min(GAP_DEGREES, Math.max(MIN_GAP_DEGREES, minRawSpan * 0.22));
+    const available = Math.max(0, 360 - data.length * gapDegrees);
+    const allocatedSpans = allocateDisplaySpans(
+      rawSpans.map((span) => (span / 360) * available),
+      available,
+    );
+    const hoverPadding = Math.min(1, Math.max(0.35, gapDegrees * 0.5));
 
     let angle = 0;
 
     return data.map((item, index) => {
-      const span = (item.value / total) * available;
+      const span = allocatedSpans[index];
       const start = angle;
       const end = angle + span;
       angle += span + gapDegrees;
-      const isTinySlice = span <= TINY_SLICE_THRESHOLD_DEGREES;
-      const hoverPadding = isTinySlice ? TINY_SLICE_HOVER_PADDING : BASE_HOVER_PADDING;
-      const glowOpacityScale = isTinySlice ? 0.72 : 1;
 
       return {
         index,
         ...item,
         end,
-        glowOpacityScale,
+        glowOpacityScale: span <= MIN_VISIBLE_SPAN_DEGREES + 0.4 ? 0.82 : 1,
         hoverPadding,
         mid: (start + end) / 2,
         path: arcPath(start, end),
-        span,
         start,
       };
     });
@@ -206,9 +251,7 @@ function GlowDonutChart({
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - bounds.left) / bounds.width) * VIEWBOX;
     const y = ((event.clientY - bounds.top) / bounds.height) * VIEWBOX;
-    const dx = x - HALF;
-    const dy = y - HALF;
-    const radius = Math.hypot(dx, dy);
+    const radius = Math.hypot(x - HALF, y - HALF);
 
     if (radius < INNER_R - HOVER_RADIAL_PADDING || radius > OUTER_R + HOVER_RADIAL_PADDING) {
       updateHover(null);
@@ -225,12 +268,12 @@ function GlowDonutChart({
 
       if (rangeDistance > 0) continue;
 
-      const midpointDistance = Math.abs(segment.mid - angle);
+      const midpointDistance = Math.min(
+        Math.abs(segment.mid - angle),
+        360 - Math.abs(segment.mid - angle),
+      );
 
-      if (
-        closest === null ||
-        midpointDistance < closest.midpointDistance
-      ) {
+      if (closest === null || midpointDistance < closest.midpointDistance) {
         closest = {
           index: segment.index,
           midpointDistance,
@@ -284,9 +327,9 @@ function GlowDonutChart({
           </filter>
         </defs>
 
-        {/* Outer guide ring */}
         <circle
-          cx={HALF} cy={HALF}
+          cx={HALF}
+          cy={HALF}
           r={OUTER_R + 8}
           fill="none"
           stroke="var(--text-muted)"
@@ -294,9 +337,9 @@ function GlowDonutChart({
           opacity={0.35}
         />
 
-        {/* Inner guide ring */}
         <circle
-          cx={HALF} cy={HALF}
+          cx={HALF}
+          cy={HALF}
           r={INNER_R - 8}
           fill="none"
           stroke="var(--text-muted)"
@@ -304,34 +347,32 @@ function GlowDonutChart({
           opacity={0.2}
         />
 
-        {/* ── Glow layers ── */}
-        {segments.map((seg, i) => (
-          <g key={`glow-${i}`} pointerEvents="none">
+        {segments.map((segment, index) => (
+          <g key={`glow-${segment.id}-${index}`} pointerEvents="none">
             <path
-              d={seg.path}
-              fill={seg.color}
+              d={segment.path}
+              fill={segment.color}
               filter={`url(#${ambientFilterId})`}
-              opacity={hoveredIndex === i ? 0.5 * seg.glowOpacityScale : 0}
+              opacity={hoveredIndex === index ? 0.5 * segment.glowOpacityScale : 0}
               style={{ transition: 'opacity 0.35s ease' }}
             />
             <path
-              d={seg.path}
-              fill={seg.color}
+              d={segment.path}
+              fill={segment.color}
               filter={`url(#${tightFilterId})`}
-              opacity={hoveredIndex === i ? 0.7 * seg.glowOpacityScale : 0}
+              opacity={hoveredIndex === index ? 0.7 * segment.glowOpacityScale : 0}
               style={{ transition: 'opacity 0.35s ease' }}
             />
           </g>
         ))}
 
-        {/* ── Filled segment shapes ── */}
-        {segments.map((seg, i) => {
-          const isHovered = hoveredIndex === i;
+        {segments.map((segment, index) => {
+          const isHovered = hoveredIndex === index;
           return (
             <path
-              key={`seg-${i}`}
-              d={seg.path}
-              fill={seg.color}
+              key={`segment-${segment.id}-${index}`}
+              d={segment.path}
+              fill={segment.color}
               opacity={isHovered ? 1 : hoveredIndex !== null ? 0.2 : 0.45}
               style={{
                 transition: 'opacity 0.35s ease',
@@ -342,7 +383,6 @@ function GlowDonutChart({
         })}
       </svg>
 
-      {/* ── Center text ── */}
       <div
         style={{
           position: 'absolute',
@@ -355,44 +395,52 @@ function GlowDonutChart({
       >
         {hoveredData ? (
           <>
-            <div style={{
-              color: 'var(--text-primary)',
-              fontFamily: 'Inter, -apple-system, sans-serif',
-              fontSize: '18px',
-              fontWeight: 700,
-              lineHeight: 1.2,
-            }}>
+            <div
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'Inter, -apple-system, sans-serif',
+                fontSize: '18px',
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
               {hoveredData.name}
             </div>
-            <div style={{
-              color: 'var(--text-secondary)',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '13px',
-              marginTop: '4px',
-            }}>
+            <div
+              style={{
+                color: 'var(--text-secondary)',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: '13px',
+                marginTop: '4px',
+              }}
+            >
               {formatCurrency(hoveredData.value, { display: 'summary' })} &middot;{' '}
               {Math.round(hoveredData.share * 100)}%
             </div>
           </>
         ) : (
           <>
-            <div style={{
-              color: 'var(--text-muted)',
-              fontFamily: 'Inter, -apple-system, sans-serif',
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}>
+            <div
+              style={{
+                color: 'var(--text-muted)',
+                fontFamily: 'Inter, -apple-system, sans-serif',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
               {centerLabel}
             </div>
-            <div style={{
-              color: 'var(--text-primary)',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '20px',
-              fontWeight: 700,
-              marginTop: '4px',
-            }}>
+            <div
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: '20px',
+                fontWeight: 700,
+                marginTop: '4px',
+              }}
+            >
               {centerValue}
             </div>
           </>

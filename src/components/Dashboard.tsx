@@ -37,6 +37,15 @@ interface DashboardProps {
 }
 
 type FilterTab = 'all' | 'bill' | 'subscription';
+type DashboardCategorySlice = {
+  color: string;
+  id: string;
+  name: string;
+  share: number;
+  value: number;
+};
+
+const DASHBOARD_SCROLLABLE_CATEGORY_COUNT = 6;
 
 interface DashboardMetricCardProps {
   accentColor: string;
@@ -245,7 +254,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     ) * 12;
   }, [filteredItems, statusHistoryByItem]);
 
-  const dashboardCategoryData = useMemo(() => {
+  const dashboardCategoryData = useMemo<DashboardCategorySlice[]>(() => {
     const categorySlices = spendingByCategory.map((item) => ({
       color: item.category.color,
       id: item.category.id,
@@ -259,21 +268,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
       share: total === 0 ? 0 : item.value / total,
     }));
 
-    if (withShare.length <= 5) return withShare;
-
-    const visible = withShare.slice(0, 4);
-    const otherTotal = withShare.slice(4).reduce((sum, item) => sum + item.value, 0);
-
-    return [
-      ...visible,
-      {
-        id: 'other',
-        name: 'Other',
-        value: otherTotal,
-        color: 'var(--accent-gray)',
-        share: total === 0 ? 0 : otherTotal / total,
-      },
-    ];
+    return withShare;
   }, [spendingByCategory]);
 
   const topCategory = useMemo(() => {
@@ -283,6 +278,14 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
       return entry.value > topEntry.value ? entry : topEntry;
     });
   }, [dashboardCategoryData]);
+
+  const legendSummary = useMemo(() => {
+    if (spendingByCategory.length <= DASHBOARD_SCROLLABLE_CATEGORY_COUNT) {
+      return `${spendingByCategory.length} active categories`;
+    }
+
+    return `${spendingByCategory.length} active categories · scroll`;
+  }, [spendingByCategory.length]);
 
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
@@ -456,8 +459,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
               preview={<GhostChartPreview variant="pie-chart" />}
             />
           ) : (
-            <div className="flex items-center gap-6">
-              <div className="shrink-0">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:gap-7">
+              <div className="mx-auto shrink-0 xl:mx-0">
                 <GlowDonutChart
                   data={dashboardCategoryData}
                   centerValue={formatCurrency(monthlySpending, { display: 'summary' })}
@@ -467,44 +470,84 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 />
               </div>
 
-              <div className="space-y-0.5">
-                {dashboardCategoryData.map((item, index) => {
-                  const isHovered = chartHover === index;
-                  const isDimmed = chartHover !== null && !isHovered;
+              <div
+                className="min-w-0 flex-1 rounded-[24px] p-3 sm:p-3.5 xl:max-w-[18rem]"
+                style={{
+                  background:
+                    'linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 92%, transparent), color-mix(in srgb, var(--bg-tertiary) 74%, transparent))',
+                  boxShadow:
+                    'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 76%, transparent), 0 24px 48px -36px color-mix(in srgb, black 46%, transparent)',
+                }}
+              >
+                <div className="mb-2.5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="label-wide">Category Breakdown</p>
+                    <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                      {legendSummary}
+                    </p>
+                  </div>
+                  <span
+                    className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-mono font-medium"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--bg-card) 78%, transparent)',
+                      color: 'var(--text-secondary)',
+                      boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 65%, transparent)',
+                    }}
+                  >
+                    {spendingByCategory.length} total
+                  </span>
+                </div>
 
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-1.5 rounded-md px-1.5 py-1 -mx-1.5 transition-all duration-300 whitespace-nowrap"
-                      style={{
-                        opacity: isDimmed ? 0.35 : 1,
-                        backgroundColor: isHovered ? 'var(--bg-hover)' : 'transparent',
-                        cursor: 'pointer',
-                      }}
-                      onMouseEnter={() => setChartHover(index)}
-                      onMouseLeave={() => setChartHover(null)}
-                    >
+                <div className="max-h-[16rem] space-y-1.5 overflow-y-auto pr-1">
+                  {dashboardCategoryData.map((item, index) => {
+                    const isHovered = chartHover === index;
+                    const isDimmed = chartHover !== null && !isHovered;
+
+                    return (
                       <div
-                        className="w-1.5 h-1.5 rounded-full shrink-0 transition-shadow duration-300"
+                        key={item.id}
+                        className="flex items-center gap-2.5 rounded-[16px] px-3 py-2.5 transition-all duration-300"
                         style={{
-                          backgroundColor: item.color,
+                          opacity: isDimmed ? 0.42 : 1,
+                          cursor: 'pointer',
+                          background: isHovered
+                            ? 'color-mix(in srgb, var(--bg-card) 68%, transparent)'
+                            : 'color-mix(in srgb, var(--bg-card) 36%, transparent)',
                           boxShadow: isHovered
-                            ? `0 0 6px 2px ${item.color}60`
-                            : 'none',
+                            ? `inset 0 0 0 1px color-mix(in srgb, ${item.color} 22%, transparent), 0 14px 24px -24px color-mix(in srgb, ${item.color} 62%, transparent)`
+                            : 'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 55%, transparent)',
                         }}
-                      />
-                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        {item.name}
-                      </span>
-                      <span className="text-xs font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        {formatCurrency(item.value, { display: 'summary' })}
-                      </span>
-                      <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                        {Math.round(item.share * 100)}%
-                      </span>
-                    </div>
-                  );
-                })}
+                        onMouseEnter={() => setChartHover(index)}
+                        onMouseLeave={() => setChartHover(null)}
+                      >
+                        <div
+                          className="h-2.5 w-2.5 shrink-0 rounded-full transition-shadow duration-300"
+                          style={{
+                            backgroundColor: item.color,
+                            boxShadow: isHovered
+                              ? `0 0 12px color-mix(in srgb, ${item.color} 85%, transparent)`
+                              : `0 0 6px color-mix(in srgb, ${item.color} 38%, transparent)`,
+                          }}
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {item.name}
+                          </span>
+                        </div>
+
+                        <div className="shrink-0 text-right leading-none">
+                          <p className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {formatCurrency(item.value, { display: 'summary' })}
+                          </p>
+                          <p className="mt-1 text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                            {Math.round(item.share * 100)}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
