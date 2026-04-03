@@ -16,6 +16,7 @@ dist-ssr
 .worktrees
 .dmux/
 .superpowers/
+.playwright-mcp/
 
 # Override global gitignore to commit shared .claude/ config
 !.claude/
