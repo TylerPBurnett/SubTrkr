@@ -461,7 +461,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
               </div>
 
               <div
-                className="min-w-0 flex-1 rounded-[24px] p-3 sm:p-3.5 xl:max-w-[18rem]"
+                className="min-w-0 flex-1 rounded-[24px] p-3 sm:p-3.5 xl:flex xl:h-[17rem] xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
                 style={{
                   background:
                     'linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 92%, transparent), color-mix(in srgb, var(--bg-tertiary) 74%, transparent))',
@@ -486,7 +486,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 </div>
 
                 <div
-                  className="max-h-[16rem] space-y-1.5 overflow-y-auto pr-3"
+                  className="max-h-[18.5rem] space-y-1.25 overflow-y-auto pr-3 xl:min-h-0 xl:flex-1 xl:max-h-none"
                   style={{ scrollbarGutter: 'stable' }}
                 >
                   {dashboardCategoryData.map((item, index) => {
@@ -496,7 +496,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2.5 rounded-[16px] px-3 py-2.5 transition-all duration-300"
+                        className="flex items-center gap-2.5 rounded-[15px] px-3 py-2 transition-all duration-300"
                         style={{
                           opacity: isDimmed ? 0.42 : 1,
                           cursor: 'pointer',
@@ -511,12 +511,12 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                         onMouseLeave={() => setChartHover(null)}
                       >
                         <div
-                          className="h-2.5 w-2.5 shrink-0 rounded-full transition-shadow duration-300"
+                          className="h-1.5 w-1.5 shrink-0 rounded-full transition-shadow duration-300"
                           style={{
                             backgroundColor: item.color,
                             boxShadow: isHovered
-                              ? `0 0 12px color-mix(in srgb, ${item.color} 85%, transparent)`
-                              : `0 0 6px color-mix(in srgb, ${item.color} 38%, transparent)`,
+                              ? `0 0 0 2px ${item.color}33`
+                              : `0 0 0 2px ${item.color}20`,
                           }}
                         />
 
