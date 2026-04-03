@@ -45,8 +45,6 @@ type DashboardCategorySlice = {
   value: number;
 };
 
-const DASHBOARD_SCROLLABLE_CATEGORY_COUNT = 6;
-
 interface DashboardMetricCardProps {
   accentColor: string;
   accentMuted: string;
@@ -279,14 +277,6 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     });
   }, [dashboardCategoryData]);
 
-  const legendSummary = useMemo(() => {
-    if (spendingByCategory.length <= DASHBOARD_SCROLLABLE_CATEGORY_COUNT) {
-      return `${spendingByCategory.length} active categories`;
-    }
-
-    return `${spendingByCategory.length} active categories · scroll`;
-  }, [spendingByCategory.length]);
-
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
     { id: 'all', label: 'All' },
@@ -479,12 +469,9 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 76%, transparent), 0 24px 48px -36px color-mix(in srgb, black 46%, transparent)',
                 }}
               >
-                <div className="mb-2.5 flex items-start justify-between gap-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="label-wide">Category Breakdown</p>
-                    <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {legendSummary}
-                    </p>
                   </div>
                   <span
                     className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-mono font-medium"
@@ -498,7 +485,10 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                   </span>
                 </div>
 
-                <div className="max-h-[16rem] space-y-1.5 overflow-y-auto pr-1">
+                <div
+                  className="max-h-[16rem] space-y-1.5 overflow-y-auto pr-3"
+                  style={{ scrollbarGutter: 'stable' }}
+                >
                   {dashboardCategoryData.map((item, index) => {
                     const isHovered = chartHover === index;
                     const isDimmed = chartHover !== null && !isHovered;
