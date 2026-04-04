@@ -14,6 +14,15 @@ dist-ssr
 .env
 
 .worktrees
+.dmux/
+.superpowers/
+.playwright-mcp/
+
+# Override global gitignore to commit shared .claude/ config
+!.claude/
+!.claude/skills/
+!.claude/skills/**
+.claude/settings.local.json
 
 # Editor directories and files
 .vscode/*

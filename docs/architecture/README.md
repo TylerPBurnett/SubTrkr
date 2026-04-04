@@ -11,6 +11,11 @@ Core system architecture and implementation details for SubTrkr.
   - UI components and security considerations
   - Quick reference for all auth-related files
 
+- **[AUTH_DEEP_LINKS.md](./AUTH_DEEP_LINKS.md)** - Desktop auth callback deep links
+  - `subtrkr://` callback flow
+  - Tauri deep-link plugin wiring
+  - Password reset, verification, and OAuth redirect handling
+
 ### Notifications
 - **[TELEGRAM_ARCHITECTURE.md](./TELEGRAM_ARCHITECTURE.md)** - Telegram bot integration
   - User-owned bot setup, webhook handling
@@ -36,6 +41,7 @@ Need to find something fast? Use this table:
 | How auth works | [AUTHENTICATION.md](./AUTHENTICATION.md) | Session lifecycle, getUserId pattern |
 | Auth file locations | [AUTHENTICATION.md](./AUTHENTICATION.md) | Quick Reference section |
 | OAuth in Tauri | [AUTHENTICATION.md](./AUTHENTICATION.md) | skipBrowserRedirect pattern |
+| Deep-link callbacks | [AUTH_DEEP_LINKS.md](./AUTH_DEEP_LINKS.md) | Desktop redirect flow and setup |
 | RLS policies | [AUTHENTICATION.md](./AUTHENTICATION.md) | Database Integration section |
 | Telegram bots | [TELEGRAM_ARCHITECTURE.md](./TELEGRAM_ARCHITECTURE.md) | User-owned bot flow |
 | Notification timing | [TIMEZONE_IMPLEMENTATION.md](./TIMEZONE_IMPLEMENTATION.md) | 9 AM local time logic |
@@ -113,4 +119,4 @@ When adding new architecture documentation:
 
 ---
 
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-03-25

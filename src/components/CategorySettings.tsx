@@ -148,8 +148,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                   }
                 }}
                 placeholder="Category name"
-                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
-                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
+                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none"
                 autoFocus
               />
               <button
@@ -222,8 +221,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                     setEditingCategory(null);
                   }
                 }}
-                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
-                style={{ '--tw-ring-color': 'var(--brand-primary)' } as React.CSSProperties}
+                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none"
                 autoFocus
               />
               <button

@@ -1,20 +1,34 @@
-import { useState, useEffect, useCallback, useRef, Suspense, lazy, useTransition } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import type { Session } from '@supabase/supabase-js';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  Suspense,
+  lazy,
+  useTransition,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { useLocalStorage } from "./hooks/useLocalStorage";
+import type { Session } from "@supabase/supabase-js";
 import {
   LayoutDashboard,
   CreditCard,
   Receipt,
   BarChart3,
   Settings as SettingsIcon,
-  Plus,
+  ChevronLeft,
+  ChevronRight,
   Moon,
   Sun,
   WifiOff,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from 'lucide-react';
-import type { ItemWithCategory, Category, ItemType, StatusChangeData } from './types';
+} from "lucide-react";
+import type {
+  ItemWithCategory,
+  Category,
+  ItemType,
+  StatusChangeData,
+} from "./types";
 import {
   getItems,
   getCategories,
@@ -23,58 +37,155 @@ import {
   deleteItem,
   toggleItemActive,
   advancePastDueItems,
-  archivePastCancellations,
   resumePausedItems,
   handleExpiredTrials,
   executeStatusChange,
-} from './services/database';
-import { supabase } from './services/supabase';
-import { seedDefaultCategoriesIfNeeded } from './services/seedCategories';
-import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './services/notifications';
-import { checkForUpdatesOnLaunch } from './services/updater';
-import { onOpenUrl, getCurrent as getCurrentDeepLinks } from '@tauri-apps/plugin-deep-link';
-import { toast, Toaster } from 'sonner';
-import ErrorBoundary from './components/ErrorBoundary';
-import Dashboard from './components/Dashboard';
-import ItemList from './components/ItemList';
-import ItemForm from './components/ItemForm';
-import AuthScreen from './components/AuthScreen';
-import StatusChangeDialog from './components/StatusChangeDialog';
-import SetNewPassword from './components/SetNewPassword';
-import { LazyComponentFallback } from './components/LazyComponentFallback';
-import EmailVerificationBanner from './components/EmailVerificationBanner';
-import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from './theme';
+} from "./services/database";
+import { supabase } from "./services/supabase";
+import { seedDefaultCategoriesIfNeeded } from "./services/seedCategories";
+import {
+  checkAndNotifyUpcomingRenewals,
+  checkAndNotifyExpiringTrials,
+} from "./services/notifications";
+import { checkForUpdatesOnLaunch } from "./services/updater";
+import {
+  onOpenUrl,
+  getCurrent as getCurrentDeepLinks,
+} from "@tauri-apps/plugin-deep-link";
+import { toast, Toaster } from "sonner";
+import ErrorBoundary from "./components/ErrorBoundary";
+import Dashboard from "./components/Dashboard";
+import ItemList from "./components/ItemList";
+import ItemForm from "./components/ItemForm";
+import AuthScreen from "./components/AuthScreen";
+import StatusChangeDialog from "./components/StatusChangeDialog";
+import StatusHistoryDialog from "./components/StatusHistoryDialog";
+import SetNewPassword from "./components/SetNewPassword";
+import { LazyComponentFallback } from "./components/LazyComponentFallback";
+import EmailVerificationBanner from "./components/EmailVerificationBanner";
+import TitleBar from "./components/TitleBar";
+import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from "./theme";
 
 // Lazy load heavier components for code splitting
-const Analytics = lazy(() => import('./components/Analytics'));
-const Settings = lazy(() => import('./components/Settings'));
+const Analytics = lazy(() => import("./components/Analytics"));
+const Settings = lazy(() => import("./components/Settings"));
 
-type View = 'dashboard' | 'bills' | 'subscriptions' | 'analytics' | 'settings';
+type View = "dashboard" | "bills" | "subscriptions" | "analytics" | "settings";
+
+const VIEW_CONTENT: Record<
+  View,
+  { label: string; title: string; description: string }
+> = {
+  dashboard: {
+    label: "Overview",
+    title: "Dashboard",
+    description: "Your spending overview at a glance",
+  },
+  bills: {
+    label: "Utilities",
+    title: "Bills",
+    description: "Manage your recurring bills and utilities",
+  },
+  subscriptions: {
+    label: "Services",
+    title: "Subscriptions",
+    description: "Manage all your recurring subscriptions",
+  },
+  analytics: {
+    label: "Insights",
+    title: "Analytics",
+    description: "Spending insights and trends",
+  },
+  settings: {
+    label: "Preferences",
+    title: "Settings",
+    description: "Configure your preferences",
+  },
+};
+
+const SIDEBAR_COLLAPSED_WIDTH = 64;
+const SIDEBAR_MAC_COLLAPSED_WIDTH = 76;
+const SIDEBAR_DEFAULT_WIDTH = 256;
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 420;
+const SIDEBAR_AUTO_COLLAPSE_BREAKPOINT = 900;
+const SIDEBAR_SEAM_TOGGLE_TOP = 56;
+const SIDEBAR_MAC_SEAM_TOGGLE_TOP = 84;
+
+function clampSidebarWidth(width: number) {
+  const safeWidth = Number.isFinite(width) ? width : SIDEBAR_DEFAULT_WIDTH;
+
+  return Math.min(
+    SIDEBAR_MAX_WIDTH,
+    Math.max(SIDEBAR_MIN_WIDTH, Math.round(safeWidth)),
+  );
+}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View>("dashboard");
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [backgroundWarning, setBackgroundWarning] = useState<string | null>(null);
+  const [backgroundWarning, setBackgroundWarning] = useState<string | null>(
+    null,
+  );
   const [showForm, setShowForm] = useState(false);
-  const [formItemType, setFormItemType] = useState<ItemType>('subscription');
+  const [formItemType, setFormItemType] = useState<ItemType>("subscription");
   const [editingItem, setEditingItem] = useState<ItemWithCategory | null>(null);
   const [statusChangeDialog, setStatusChangeDialog] = useState<{
     item: ItemWithCategory;
-    action: StatusChangeData['action'];
+    action: StatusChangeData["action"];
   } | null>(null);
-  const [storedTheme, setStoredTheme] = useLocalStorage<string>('subtrkr-theme', DEFAULT_THEME);
-  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>('subtrkr-sidebar-collapsed', false);
-  const [windowNarrow, setWindowNarrow] = useState(() => window.innerWidth < 900);
+  const [historyDialogItem, setHistoryDialogItem] =
+    useState<ItemWithCategory | null>(null);
+  const [storedTheme, setStoredTheme] = useLocalStorage<string>(
+    "subtrkr-theme",
+    DEFAULT_THEME,
+  );
+  const [useVibrancy, setUseVibrancy] = useLocalStorage<boolean>(
+    "subtrkr-vibrancy",
+    true,
+  );
+
+  // Sync vibrancy preference to <html> for CSS selectors that need to reach body
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-vibrancy",
+      useVibrancy ? "true" : "false",
+    );
+  }, [useVibrancy]);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>(
+    "subtrkr-sidebar-collapsed",
+    false,
+  );
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
+    "subtrkr-sidebar-width",
+    SIDEBAR_DEFAULT_WIDTH,
+  );
+  const [sidebarResizing, setSidebarResizing] = useState(false);
+  const [windowNarrow, setWindowNarrow] = useState(
+    () => window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT,
+  );
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const isCollapsed = sidebarCollapsed || windowNarrow;
+  const collapsedSidebarWidth = isMac
+    ? SIDEBAR_MAC_COLLAPSED_WIDTH
+    : SIDEBAR_COLLAPSED_WIDTH;
+  const sidebarToggleTop = isMac
+    ? SIDEBAR_MAC_SEAM_TOGGLE_TOP
+    : SIDEBAR_SEAM_TOGGLE_TOP;
+  const resolvedSidebarWidth = isCollapsed
+    ? collapsedSidebarWidth
+    : clampSidebarWidth(sidebarWidth);
   const theme = isTheme(storedTheme) ? storedTheme : DEFAULT_THEME;
   const themeTone = getThemeTone(theme);
+  const viewContent = VIEW_CONTENT[view];
   const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
   const hasSeededCategories = useRef(false);
@@ -84,31 +195,37 @@ function App() {
   showFormRef.current = showForm;
   const statusChangeDialogRef = useRef(statusChangeDialog);
   statusChangeDialogRef.current = statusChangeDialog;
+  const sidebarResizeStartXRef = useRef(0);
+  const sidebarResizeStartWidthRef = useRef(clampSidebarWidth(sidebarWidth));
 
   const loadData = useCallback(async () => {
     try {
-      const [itemsData, cats] = await Promise.all([getItems(), getCategories()]);
+      const [itemsData, cats] = await Promise.all([
+        getItems(),
+        getCategories(),
+      ]);
       setItems(itemsData);
       setCategories(cats);
 
       // Run maintenance and notifications in background (don't block UI)
       Promise.allSettled([
         advancePastDueItems(),
-        archivePastCancellations(),
         resumePausedItems(),
         handleExpiredTrials(),
         checkAndNotifyUpcomingRenewals(itemsData),
         checkAndNotifyExpiringTrials(itemsData),
       ]).then((results) => {
-        const failures = results.filter(r => r.status === 'rejected');
+        const failures = results.filter((r) => r.status === "rejected");
         if (failures.length > 0) {
-          console.error('Some background tasks failed:', failures);
-          setBackgroundWarning(`${failures.length} background task(s) failed. Data may be incomplete.`);
+          console.error("Some background tasks failed:", failures);
+          setBackgroundWarning(
+            `${failures.length} background task(s) failed. Data may be incomplete.`,
+          );
         }
       });
     } catch (error) {
-      console.error('Failed to load data:', error);
-      toast.error('Failed to load data. Please check your connection.');
+      console.error("Failed to load data:", error);
+      toast.error("Failed to load data. Please check your connection.");
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +255,7 @@ function App() {
       setSession(session);
 
       // Handle password recovery flow
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === "PASSWORD_RECOVERY") {
         setShowPasswordRecovery(true);
       }
     });
@@ -151,48 +268,56 @@ function App() {
     async function handleDeepLink(urls: string[]) {
       for (const urlStr of urls) {
         try {
-          if (!urlStr.startsWith('subtrkr://auth-callback')) {
-            console.warn('Rejected deep link with invalid path:', urlStr);
+          if (!urlStr.startsWith("subtrkr://auth-callback")) {
+            console.warn("Rejected deep link with invalid path:", urlStr);
             continue;
           }
 
           const url = new URL(urlStr);
 
-          const error = url.searchParams.get('error');
+          const error = url.searchParams.get("error");
           if (error) {
-            const errorDesc = url.searchParams.get('error_description');
-            toast.error(errorDesc || 'Authentication failed. Please try again.');
+            const errorDesc = url.searchParams.get("error_description");
+            toast.error(
+              errorDesc || "Authentication failed. Please try again.",
+            );
             return;
           }
 
           // PKCE flow (default in supabase-js v2.39+)
-          const code = url.searchParams.get('code');
+          const code = url.searchParams.get("code");
           if (code) {
             await supabase.auth.exchangeCodeForSession(code);
             return;
           }
           // Implicit flow fallback (hash fragment tokens)
           const hashParams = new URLSearchParams(url.hash.substring(1));
-          const access_token = hashParams.get('access_token');
-          const refresh_token = hashParams.get('refresh_token');
+          const access_token = hashParams.get("access_token");
+          const refresh_token = hashParams.get("refresh_token");
           if (access_token && refresh_token) {
             await supabase.auth.setSession({ access_token, refresh_token });
           }
         } catch (e) {
-          console.error('Deep link auth error:', e);
-          toast.error('Failed to complete sign-in. Please try again.');
+          console.error("Deep link auth error:", e);
+          toast.error("Failed to complete sign-in. Please try again.");
         }
       }
     }
 
     // Check if app was launched via deep link
-    getCurrentDeepLinks().then((urls) => {
-      if (urls && urls.length > 0) handleDeepLink(urls);
-    }).catch(() => {});
+    getCurrentDeepLinks()
+      .then((urls) => {
+        if (urls && urls.length > 0) handleDeepLink(urls);
+      })
+      .catch(() => {});
 
     // Listen for deep links while app is running
     let unlisten: (() => void) | undefined;
-    onOpenUrl((urls) => handleDeepLink(urls)).then((fn) => { unlisten = fn; }).catch(() => {});
+    onOpenUrl((urls) => handleDeepLink(urls))
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch(() => {});
 
     return () => unlisten?.();
   }, []);
@@ -209,7 +334,7 @@ function App() {
     if (!session) return;
 
     checkForUpdatesOnLaunch().catch((updateError) => {
-      console.warn('Automatic update check failed:', updateError);
+      console.warn("Automatic update check failed:", updateError);
     });
   }, [session]);
 
@@ -223,7 +348,7 @@ function App() {
           getCategories().then(setCategories);
         })
         .catch((error) => {
-          console.error('Failed to seed categories:', error);
+          console.error("Failed to seed categories:", error);
         });
     }
   }, [session]);
@@ -233,13 +358,21 @@ function App() {
     if (!session) return;
 
     const channel = supabase
-      .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => debouncedLoadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () =>
-        debouncedLoadData()
+      .channel("db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "items" },
+        () => debouncedLoadData(),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () =>
-        debouncedLoadData()
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories" },
+        () => debouncedLoadData(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payments" },
+        () => debouncedLoadData(),
       )
       .subscribe();
 
@@ -255,20 +388,66 @@ function App() {
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
-  // Auto-collapse sidebar on narrow windows (<900px)
+  // Auto-collapse sidebar on narrow windows
   useEffect(() => {
-    const handleResize = () => setWindowNarrow(window.innerWidth < 900);
-    window.addEventListener('resize', handleResize, { passive: true });
-    return () => window.removeEventListener('resize', handleResize);
+    const handleResize = () =>
+      setWindowNarrow(window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT);
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Normalize corrupted sidebar widths from localStorage
+  useEffect(() => {
+    const clampedWidth = clampSidebarWidth(sidebarWidth);
+    if (sidebarWidth !== clampedWidth) {
+      setSidebarWidth(clampedWidth);
+    }
+  }, [sidebarWidth, setSidebarWidth]);
+
+  useEffect(() => {
+    if (!sidebarResizing) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = clampSidebarWidth(
+        sidebarResizeStartWidthRef.current +
+          (event.clientX - sidebarResizeStartXRef.current),
+      );
+
+      setSidebarWidth((current) =>
+        current === nextWidth ? current : nextWidth,
+      );
+    };
+
+    const stopResizing = () => setSidebarResizing(false);
+
+    document.body.classList.add("sidebar-resizing");
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResizing);
+    window.addEventListener("pointercancel", stopResizing);
+    window.addEventListener("blur", stopResizing);
+
+    return () => {
+      document.body.classList.remove("sidebar-resizing");
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResizing);
+      window.removeEventListener("pointercancel", stopResizing);
+      window.removeEventListener("blur", stopResizing);
+    };
+  }, [sidebarResizing, setSidebarWidth]);
+
+  useEffect(() => {
+    if (windowNarrow && sidebarResizing) {
+      setSidebarResizing(false);
+    }
+  }, [windowNarrow, sidebarResizing]);
 
   // Normalize corrupted/unknown theme values from localStorage
   useEffect(() => {
@@ -280,8 +459,8 @@ function App() {
   // Theme switching via data-theme attribute
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    root.classList.toggle('dark', themeTone === 'dark');
+    root.setAttribute("data-theme", theme);
+    root.classList.toggle("dark", themeTone === "dark");
   }, [theme, themeTone]);
 
   // Route background warnings through Sonner toast
@@ -298,17 +477,16 @@ function App() {
 
     const runDailyJobs = async () => {
       try {
-        const [archived, resumed, advanced] = await Promise.all([
-          archivePastCancellations(),
+        const [resumed, advanced] = await Promise.all([
           resumePausedItems(),
           advancePastDueItems(),
         ]);
-        if (archived > 0 || resumed > 0 || advanced > 0) {
-          console.log(`Daily jobs: ${archived} archived, ${resumed} resumed, ${advanced} advanced`);
+        if (resumed > 0 || advanced > 0) {
+          console.log(`Daily jobs: ${resumed} resumed, ${advanced} advanced`);
           loadData(); // Reload data if any changes were made
         }
       } catch (error) {
-        console.error('Daily jobs failed:', error);
+        console.error("Daily jobs failed:", error);
       }
     };
 
@@ -325,58 +503,91 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       const target = e.target as HTMLElement;
-      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const inInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
 
       // Escape: close form or dialog
-      if (e.key === 'Escape') {
-        if (showFormRef.current) { handleCloseForm(); e.preventDefault(); return; }
-        if (statusChangeDialogRef.current) { handleStatusChangeCancel(); e.preventDefault(); return; }
+      if (e.key === "Escape") {
+        if (showFormRef.current) {
+          handleCloseForm();
+          e.preventDefault();
+          return;
+        }
+        if (statusChangeDialogRef.current) {
+          handleStatusChangeCancel();
+          e.preventDefault();
+          return;
+        }
       }
 
       // Cmd/Ctrl+N: new subscription
-      if (mod && e.key === 'n') {
+      if (mod && e.key === "n") {
         e.preventDefault();
-        handleAddNew('subscription');
+        handleAddNew("subscription");
         return;
       }
 
       // Cmd/Ctrl+B: new bill (only if not in input to avoid bold conflict)
-      if (mod && e.key === 'b' && !inInput) {
+      if (mod && e.key === "b" && !inInput) {
         e.preventDefault();
-        handleAddNew('bill');
+        handleAddNew("bill");
         return;
       }
 
       // Cmd/Ctrl+1-5: navigate views
-      if (mod && e.key >= '1' && e.key <= '5') {
+      if (mod && e.key >= "1" && e.key <= "5") {
         e.preventDefault();
-        const views: View[] = ['dashboard', 'subscriptions', 'bills', 'analytics', 'settings'];
+        const views: View[] = [
+          "dashboard",
+          "subscriptions",
+          "bills",
+          "analytics",
+          "settings",
+        ];
         const idx = parseInt(e.key) - 1;
         if (idx < views.length) startTransition(() => setView(views[idx]));
         return;
       }
 
       // Cmd/Ctrl+\: toggle sidebar (only when window isn't forcing collapse)
-      if (mod && e.key === '\\') {
+      if (mod && e.key === "\\") {
         e.preventDefault();
         if (!windowNarrow) setSidebarCollapsed((prev) => !prev);
         return;
       }
 
       // / : focus search (when not in an input)
-      if (e.key === '/' && !inInput) {
+      if (e.key === "/" && !inInput) {
         e.preventDefault();
-        const searchInput = document.querySelector<HTMLInputElement>('input[type="text"][placeholder*="Search"]');
+        const searchInput = document.querySelector<HTMLInputElement>(
+          'input[type="text"][placeholder*="Search"]',
+        );
         searchInput?.focus();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [session]); // refs read latest showForm/statusChangeDialog without re-subscribing
 
   const toggleTheme = () => {
-    setStoredTheme((prev) => getNextTheme(isTheme(prev) ? prev : DEFAULT_THEME));
+    setStoredTheme((prev) =>
+      getNextTheme(isTheme(prev) ? prev : DEFAULT_THEME),
+    );
+  };
+
+  const handleSidebarResizePointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (windowNarrow || isCollapsed) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    sidebarResizeStartXRef.current = event.clientX;
+    sidebarResizeStartWidthRef.current = clampSidebarWidth(sidebarWidth);
+    setSidebarResizing(true);
   };
 
   const handleCreateItem = async (data: Parameters<typeof createItem>[0]) => {
@@ -384,25 +595,28 @@ function App() {
     try {
       await createItem(data);
       setShowForm(false);
-      toast.success('Item created');
+      toast.success("Item created");
     } catch (err) {
-      console.error('Failed to create item:', err);
-      toast.error('Failed to create item. Please try again.');
+      console.error("Failed to create item:", err);
+      toast.error("Failed to create item. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUpdateItem = async (id: string, data: Parameters<typeof updateItem>[1]) => {
+  const handleUpdateItem = async (
+    id: string,
+    data: Parameters<typeof updateItem>[1],
+  ) => {
     setIsSaving(true);
     try {
       await updateItem(id, data);
       setEditingItem(null);
       setShowForm(false);
-      toast.success('Item updated');
+      toast.success("Item updated");
     } catch (err) {
-      console.error('Failed to update item:', err);
-      toast.error('Failed to update item. Please try again.');
+      console.error("Failed to update item:", err);
+      toast.error("Failed to update item. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -411,10 +625,10 @@ function App() {
   const handleDeleteItem = async (id: string) => {
     try {
       await deleteItem(id);
-      toast.success('Item deleted');
+      toast.success("Item deleted");
     } catch (err) {
-      console.error('Failed to delete item:', err);
-      toast.error('Failed to delete item. Please try again.');
+      console.error("Failed to delete item:", err);
+      toast.error("Failed to delete item. Please try again.");
     }
   };
 
@@ -422,12 +636,15 @@ function App() {
     try {
       await toggleItemActive(id);
     } catch (err) {
-      console.error('Failed to update item:', err);
-      toast.error('Failed to update item. Please try again.');
+      console.error("Failed to update item:", err);
+      toast.error("Failed to update item. Please try again.");
     }
   };
 
-  const handleStatusChange = async (itemId: string, action: StatusChangeData['action']) => {
+  const handleStatusChange = async (
+    itemId: string,
+    action: StatusChangeData["action"],
+  ) => {
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
@@ -441,18 +658,28 @@ function App() {
       await executeStatusChange(statusChangeDialog.item.id, data);
       setStatusChangeDialog(null);
       const actionLabels: Record<string, string> = {
-        pause: 'paused', resume: 'resumed', cancel: 'cancelled',
-        reactivate: 'reactivated', convert: 'converted to paid',
+        pause: "paused",
+        resume: "resumed",
+        cancel: "cancelled",
+        reactivate: "reactivated",
+        convert: "converted to paid",
+        archive: "archived",
+        edit_cancellation: "cancellation date updated",
+        start_trial: "moved to trial",
       };
-      toast.success(`Item ${actionLabels[data.action] || 'updated'}`);
+      toast.success(`Item ${actionLabels[data.action] || "updated"}`);
     } catch (err) {
-      console.error('Failed to change status:', err);
-      toast.error('Failed to change status. Please try again.');
+      console.error("Failed to change status:", err);
+      toast.error("Failed to change status. Please try again.");
     }
   };
 
   const handleStatusChangeCancel = () => {
     setStatusChangeDialog(null);
+  };
+
+  const handleViewHistory = (item: ItemWithCategory) => {
+    setHistoryDialogItem(item);
   };
 
   const handleEdit = (item: ItemWithCategory) => {
@@ -473,10 +700,10 @@ function App() {
   };
 
   const navItems = [
-    { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'subscriptions' as const, label: 'Subscriptions', icon: CreditCard },
-    { id: 'bills' as const, label: 'Bills', icon: Receipt },
-    { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
+    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    { id: "subscriptions" as const, label: "Subscriptions", icon: CreditCard },
+    { id: "bills" as const, label: "Bills", icon: Receipt },
+    { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
   ];
 
   // Auth loading state
@@ -484,16 +711,26 @@ function App() {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: 'var(--bg-base)' }}
+        style={{ backgroundColor: "var(--bg-base)" }}
       >
         <div className="flex flex-col items-center gap-4">
           <span
             className="text-2xl select-none"
-            style={{ fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}
+            style={{
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              color: "var(--text-primary)",
+            }}
           >
-            Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
+            Sub<span style={{ color: "var(--brand-primary)" }}>Trkr</span>
           </span>
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }} />
+          <div
+            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+            style={{
+              borderColor: "var(--brand-primary)",
+              borderTopColor: "transparent",
+            }}
+          />
         </div>
       </div>
     );
@@ -509,21 +746,28 @@ function App() {
     return (
       <div
         className="min-h-screen flex items-center justify-center p-4"
-        style={{ backgroundColor: 'var(--bg-base)' }}
+        style={{ backgroundColor: "var(--bg-base)" }}
       >
         <div
           className="max-w-md w-full card p-8 text-center"
           style={{
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-default)',
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border-default)",
           }}
         >
-          <WifiOff className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+          <WifiOff
+            className="w-16 h-16 mx-auto mb-4"
+            style={{ color: "var(--text-muted)" }}
+          />
+          <h2
+            className="text-2xl font-bold mb-2"
+            style={{ color: "var(--text-primary)" }}
+          >
             No Internet Connection
           </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            SubTrkr requires an internet connection to work. Please check your network and try again.
+          <p style={{ color: "var(--text-secondary)" }}>
+            SubTrkr requires an internet connection to work. Please check your
+            network and try again.
           </p>
         </div>
       </div>
@@ -535,243 +779,241 @@ function App() {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: 'var(--bg-base)' }}
+        style={{ backgroundColor: "var(--bg-base)" }}
       >
         <div className="flex flex-col items-center gap-4">
           <span
             className="text-2xl select-none"
-            style={{ fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}
+            style={{
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              color: "var(--text-primary)",
+            }}
           >
-            Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
+            Sub<span style={{ color: "var(--brand-primary)" }}>Trkr</span>
           </span>
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }} />
+          <div
+            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+            style={{
+              borderColor: "var(--brand-primary)",
+              borderTopColor: "transparent",
+            }}
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="app-layout h-screen flex" style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div className="app-layout h-screen flex">
       <div className="app-shell flex w-full h-screen">
         {/* Sidebar */}
         <aside
-          className="sidebar shrink-0 h-full flex flex-col transition-all duration-200"
-          style={{ width: isCollapsed ? '64px' : '256px' }}
+          className="sidebar relative shrink-0 h-full flex flex-col transition-all duration-200"
+          style={{
+            width: `${resolvedSidebarWidth}px`,
+            transition: sidebarResizing ? "none" : undefined,
+          }}
         >
-          {/* Draggable title bar area with branding */}
+          {/* Draggable title bar area */}
           <div
             data-tauri-drag-region
-            className="h-12 shrink-0 flex items-center"
-            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-          >
-            {!isCollapsed && (
-              <>
-                {/* Traffic light reservation zone — macOS puts the buttons here (~76px) */}
-                <div data-tauri-drag-region className="w-[76px] shrink-0 h-full" />
-                {/* Brand centered in the remaining space */}
-                <span
-                  className="text-lg select-none flex-1 text-center"
-                  style={{
-                    fontWeight: 800,
-                    letterSpacing: '-0.03em',
-                    color: 'var(--text-primary)',
-                    WebkitAppRegion: 'drag',
-                  } as React.CSSProperties}
-                >
-                  Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
-                </span>
-                {/* Hide toggle when window forces collapse */}
-                {!windowNarrow && (
-                  <button
-                    onClick={() => setSidebarCollapsed((prev) => !prev)}
-                    className="p-1.5 rounded-lg transition-colors interactive-hover-bg shrink-0"
-                    style={{
-                      color: 'var(--text-muted)',
-                      WebkitAppRegion: 'no-drag',
-                      marginRight: '8px',
-                    } as React.CSSProperties}
-                    title="Collapse sidebar"
-                  >
-                    <PanelLeftClose className="w-4 h-4" />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+            className="h-12 shrink-0"
+            style={{ WebkitAppRegion: "drag" } as CSSProperties}
+          />
 
-          <nav className={`flex-1 overflow-auto ${isCollapsed ? 'px-1.5' : 'px-3'}`}>
-            {/* Expand button lives here when collapsed — clears the traffic light zone */}
-            {isCollapsed && !windowNarrow && (
+          <nav
+            className={`flex-1 overflow-auto flex flex-col ${isCollapsed ? "px-2 mt-2" : "px-3 mt-2"}`}
+          >
+            <div className="flex flex-col gap-1">
+              {navItems.map((item, index) => (
+                <button
+                  key={item.id}
+                  onClick={() => startTransition(() => setView(item.id))}
+                  title={isCollapsed ? item.label : undefined}
+                  className={`stagger-item w-full flex items-center rounded-lg transition-all duration-200 ${
+                    view === item.id ? "nav-item-active" : "nav-item"
+                  } ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"}`}
+                  style={{
+                    animationDelay: `${index * 0.05}s`,
+                  }}
+                >
+                  <item.icon
+                    className="w-[18px] h-[18px] shrink-0"
+                    style={{ opacity: view === item.id ? 1 : 0.7 }}
+                  />
+                  {!isCollapsed && item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Bottom actions (pushed down by mt-auto) */}
+            <div className="mt-auto pb-4 pt-4 flex flex-col gap-1">
               <button
-                onClick={() => setSidebarCollapsed((prev) => !prev)}
-                className="w-full flex items-center justify-center rounded-xl mb-1 py-3 transition-all duration-200 nav-item"
-                style={{ borderLeft: '4px solid transparent' }}
-                title="Expand sidebar"
+                onClick={toggleTheme}
+                title={`Theme: ${theme}`}
+                aria-label={`Switch theme (current: ${theme})`}
+                className={`w-full flex items-center rounded-lg transition-all duration-200 nav-item ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"}`}
               >
-                <PanelLeftOpen className="w-5 h-5 shrink-0" />
+                <div
+                  style={{
+                    transition: "transform 0.3s var(--ease-spring)",
+                    transform:
+                      themeTone === "dark"
+                        ? "rotate(0deg) scale(1)"
+                        : "rotate(180deg) scale(1.1)",
+                  }}
+                >
+                  {themeTone === "dark" ? (
+                    <Sun className="w-[18px] h-[18px] opacity-70" />
+                  ) : (
+                    <Moon className="w-[18px] h-[18px] opacity-70" />
+                  )}
+                </div>
+                {!isCollapsed && (
+                  <span className="flex-1 text-left">Theme</span>
+                )}
               </button>
-            )}
-            {navItems.map((item, index) => (
+
               <button
-                key={item.id}
-                onClick={() => startTransition(() => setView(item.id))}
-                title={isCollapsed ? item.label : undefined}
-                className={`stagger-item w-full flex items-center rounded-xl mb-1 transition-all duration-200 ${
-                  view === item.id ? 'nav-item-active font-medium' : 'nav-item'
-                } ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'}`}
-                style={{
-                  animationDelay: `${index * 0.05}s`,
-                  borderLeft: view === item.id ? '4px solid var(--brand-primary)' : '4px solid transparent',
-                }}
+                onClick={() => startTransition(() => setView("settings"))}
+                title={isCollapsed ? "Settings" : undefined}
+                className={`w-full flex items-center rounded-lg transition-all duration-200 ${
+                  view === "settings" ? "nav-item-active" : "nav-item"
+                } ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"}`}
               >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!isCollapsed && item.label}
+                <SettingsIcon
+                  className="w-[18px] h-[18px] shrink-0"
+                  style={{ opacity: view === "settings" ? 1 : 0.7 }}
+                />
+                {!isCollapsed && (
+                  <span className="flex-1 text-left">Settings</span>
+                )}
               </button>
-            ))}
+            </div>
           </nav>
 
-          <div
-            className={`flex items-center ${isCollapsed ? 'flex-col gap-2 p-2' : 'gap-2 p-4'}`}
-            style={{ borderTop: '1px solid var(--shell-divider)' }}
-          >
-            {/* Theme Toggle Icon Button */}
+          {!windowNarrow && (
             <button
-              onClick={toggleTheme}
-              title={`Theme: ${theme}`}
-              aria-label={`Switch theme (current: ${theme})`}
-              className={`flex items-center justify-center p-3 rounded-xl btn-secondary interactive-hover-bg ${isCollapsed ? 'w-full' : 'flex-1'}`}
+              type="button"
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="sidebar-seam-toggle"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              style={
+                {
+                  top: `${sidebarToggleTop}px`,
+                  WebkitAppRegion: "no-drag",
+                } as CSSProperties
+              }
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <div style={{
-                transition: 'transform 0.3s var(--ease-spring)',
-                transform: themeTone === 'dark' ? 'rotate(0deg) scale(1)' : 'rotate(180deg) scale(1.1)'
-              }}>
-                {themeTone === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </div>
+              {isCollapsed ? (
+                <ChevronRight className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronLeft className="w-3.5 h-3.5" />
+              )}
             </button>
+          )}
 
-            {/* Settings Icon Button */}
+          {!isCollapsed && !windowNarrow && (
             <button
-              onClick={() => startTransition(() => setView('settings'))}
-              title={isCollapsed ? 'Settings' : undefined}
-              className={`flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
-                view === 'settings' ? 'nav-item-active' : 'btn-secondary interactive-hover-bg'
-              } ${isCollapsed ? 'w-full' : 'flex-1'}`}
-              style={{
-                color: view === 'settings' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                borderLeft: view === 'settings' ? '4px solid var(--brand-primary)' : '4px solid transparent',
-              }}
-            >
-              <SettingsIcon className="w-5 h-5" />
-            </button>
-          </div>
+              type="button"
+              aria-label="Resize sidebar"
+              className={`sidebar-resize-handle ${sidebarResizing ? "is-active" : ""}`}
+              onPointerDown={handleSidebarResizePointerDown}
+              style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
+              title="Resize sidebar"
+            />
+          )}
         </aside>
 
         {/* Main Content */}
         <main className="main-content flex-1 min-w-0 h-full flex flex-col">
+          <TitleBar />
+
           {/* Email verification banner */}
-          {session?.user && !session.user.email_confirmed_at && !emailBannerDismissed && (
-            <EmailVerificationBanner
-              email={session.user.email || ''}
-              onDismiss={() => setEmailBannerDismissed(true)}
-            />
-          )}
+          {session?.user &&
+            !session.user.email_confirmed_at &&
+            !emailBannerDismissed && (
+              <EmailVerificationBanner
+                email={session.user.email || ""}
+                onDismiss={() => setEmailBannerDismissed(true)}
+              />
+            )}
 
-          <div className="flex-1 overflow-auto" style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-          <div className="px-8 pb-8">
-            {/* Header — also serves as drag region */}
-            <div
-              data-tauri-drag-region
-              className="flex items-center justify-between pt-5 pb-6"
-              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-            >
-            <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-              <h2 className="text-3xl" style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}>
-                {view === 'dashboard' && 'Dashboard'}
-                {view === 'bills' && 'Bills'}
-                {view === 'subscriptions' && 'Subscriptions'}
-                {view === 'analytics' && 'Analytics'}
-                {view === 'settings' && 'Settings'}
-              </h2>
-              <p className="mt-2 text-base" style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '-0.01em' }}>
-                {view === 'dashboard' && 'Your spending overview at a glance'}
-                {view === 'bills' && 'Manage your recurring bills and utilities'}
-                {view === 'subscriptions' && 'Manage all your recurring subscriptions'}
-                {view === 'analytics' && 'Spending insights and trends'}
-                {view === 'settings' && 'Configure your preferences'}
-              </p>
+          <div
+            className="page-scroll flex-1 overflow-auto relative"
+            style={{ opacity: isPending ? 0.6 : 1, transition: "opacity 0.2s" }}
+          >
+            <header className="page-header">
+              <div className="page-header-copy">
+                <p className="page-header-label">{viewContent.label}</p>
+                <h2 className="page-header-title">{viewContent.title}</h2>
+                <p className="page-header-description">
+                  {viewContent.description}
+                </p>
+              </div>
+            </header>
+
+            <div className="page-body">
+              {/* Content */}
+              {view === "dashboard" && (
+                <Dashboard
+                  items={items}
+                  categories={categories}
+                  onEdit={handleEdit}
+                  onViewAll={() =>
+                    startTransition(() => setView("subscriptions"))
+                  }
+                  onAddNew={() => handleAddNew("subscription")}
+                />
+              )}
+              {view === "bills" && (
+                <ItemList
+                  items={items}
+                  categories={categories}
+                  itemType="bill"
+                  onEdit={handleEdit}
+                  onDelete={handleDeleteItem}
+                  onToggleActive={handleToggleActive}
+                  onStatusChange={handleStatusChange}
+                  onViewHistory={handleViewHistory}
+                  onAddNew={() => handleAddNew("bill")}
+                />
+              )}
+              {view === "subscriptions" && (
+                <ItemList
+                  items={items}
+                  categories={categories}
+                  itemType="subscription"
+                  onEdit={handleEdit}
+                  onDelete={handleDeleteItem}
+                  onToggleActive={handleToggleActive}
+                  onStatusChange={handleStatusChange}
+                  onViewHistory={handleViewHistory}
+                  onAddNew={() => handleAddNew("subscription")}
+                />
+              )}
+              {view === "analytics" && (
+                <ErrorBoundary>
+                  <Suspense fallback={<LazyComponentFallback />}>
+                    <Analytics items={items} categories={categories} />
+                  </Suspense>
+                </ErrorBoundary>
+              )}
+              {view === "settings" && (
+                <ErrorBoundary>
+                  <Suspense fallback={<LazyComponentFallback />}>
+                    <Settings
+                      categories={categories}
+                      onCategoriesChange={loadData}
+                      useVibrancy={useVibrancy}
+                      setUseVibrancy={setUseVibrancy}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
+              )}
             </div>
-
-            {view === 'bills' && (
-              <button
-                onClick={() => handleAddNew('bill')}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
-                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              >
-                <Plus className="w-5 h-5" />
-                Add Bill
-              </button>
-            )}
-            {view === 'subscriptions' && (
-              <button
-                onClick={() => handleAddNew('subscription')}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200"
-                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              >
-                <Plus className="w-5 h-5" />
-                Add Subscription
-              </button>
-            )}
-          </div>
-
-          {/* Content */}
-          {view === 'dashboard' && (
-            <Dashboard
-              items={items}
-              categories={categories}
-              onEdit={handleEdit}
-              onViewAll={() => startTransition(() => setView('subscriptions'))}
-              onAddNew={() => handleAddNew('subscription')}
-            />
-          )}
-          {view === 'bills' && (
-            <ItemList
-              items={items}
-              categories={categories}
-              itemType="bill"
-              onEdit={handleEdit}
-              onDelete={handleDeleteItem}
-              onToggleActive={handleToggleActive}
-              onStatusChange={handleStatusChange}
-              onAddNew={() => handleAddNew('bill')}
-            />
-          )}
-          {view === 'subscriptions' && (
-            <ItemList
-              items={items}
-              categories={categories}
-              itemType="subscription"
-              onEdit={handleEdit}
-              onDelete={handleDeleteItem}
-              onToggleActive={handleToggleActive}
-              onStatusChange={handleStatusChange}
-              onAddNew={() => handleAddNew('subscription')}
-            />
-          )}
-          {view === 'analytics' && (
-            <ErrorBoundary>
-              <Suspense fallback={<LazyComponentFallback />}>
-                <Analytics items={items} categories={categories} />
-              </Suspense>
-            </ErrorBoundary>
-          )}
-          {view === 'settings' && (
-            <ErrorBoundary>
-              <Suspense fallback={<LazyComponentFallback />}>
-                <Settings categories={categories} onCategoriesChange={loadData} />
-              </Suspense>
-            </ErrorBoundary>
-          )}
-          </div>
           </div>
         </main>
       </div>
@@ -782,8 +1024,8 @@ function App() {
         theme={themeTone}
         toastOptions={{
           style: {
-            borderRadius: '12px',
-            fontSize: '14px',
+            borderRadius: "12px",
+            fontSize: "14px",
           },
         }}
       />
@@ -796,7 +1038,9 @@ function App() {
           itemType={formItemType}
           isSaving={isSaving}
           onSave={
-            editingItem ? (data) => handleUpdateItem(editingItem.id, data) : handleCreateItem
+            editingItem
+              ? (data) => handleUpdateItem(editingItem.id, data)
+              : handleCreateItem
           }
           onClose={handleCloseForm}
         />
@@ -810,6 +1054,14 @@ function App() {
           action={statusChangeDialog.action}
           onConfirm={handleStatusChangeConfirm}
           onCancel={handleStatusChangeCancel}
+        />
+      )}
+
+      {historyDialogItem && (
+        <StatusHistoryDialog
+          isOpen={true}
+          item={historyDialogItem}
+          onClose={() => setHistoryDialogItem(null)}
         />
       )}
 

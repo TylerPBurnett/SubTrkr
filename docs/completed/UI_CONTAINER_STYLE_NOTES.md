@@ -125,5 +125,4 @@ These tokens were added for the Dribbble container treatment and can be removed 
 
 If you want this reverted later, use:
 
-`Use docs/UI_CONTAINER_STYLE_NOTES.md and restore the pre-Dribbble container look exactly.`
-
+`Use docs/completed/UI_CONTAINER_STYLE_NOTES.md and restore the pre-Dribbble container look exactly.`

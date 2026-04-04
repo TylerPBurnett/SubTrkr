@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -8,20 +8,24 @@ import {
   Receipt,
   AlertCircle,
   ChevronRight,
-  RotateCcw,
   Plus,
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import type { Category, ItemWithCategory, ItemType } from '../types';
+import GlowDonutChart from './ui/GlowDonutChart';
+import type { Category, ItemWithCategory, StatusHistory } from '../types';
 import {
+  getAllStatusHistory,
   calculateMonthlySpending,
   calculateYearlySpending,
   getSpendingByCategory,
   getUpcomingItems
 } from '../services/database';
+import { formatCurrency } from '../utils/currency';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
+import { calculateProjectedMonthlySpendingForMonth } from '../utils/projectedSpending';
 import ServiceLogo from './ui/ServiceLogo';
 import EmptyState from './ui/EmptyState';
+import GhostListPreview from './ui/GhostListPreview';
+import GhostChartPreview from './ui/GhostChartPreview';
 import SegmentedControl from './ui/SegmentedControl';
 
 interface DashboardProps {
@@ -33,44 +37,88 @@ interface DashboardProps {
 }
 
 type FilterTab = 'all' | 'bill' | 'subscription';
+type DashboardCategorySlice = {
+  color: string;
+  id: string;
+  name: string;
+  share: number;
+  value: number;
+};
 
-function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
+interface DashboardMetricCardProps {
+  accentColor: string;
+  accentMuted: string;
+  detail?: React.ReactNode;
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  valueColor?: string;
 }
 
-/**
- * Estimate last month's monthly spending by excluding items that started after
- * the beginning of the current month (i.e., items that didn't exist last month).
- */
-function calculatePreviousMonthSpending(items: ItemWithCategory[], type?: ItemType): number {
-  const now = new Date();
-  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const filtered = items.filter(
-    (item) =>
-      (item.status === 'active' || item.status === 'trial') &&
-      (!type || item.item_type === type) &&
-      new Date(item.start_date) < startOfThisMonth
+function DashboardMetricCard({
+  accentColor,
+  accentMuted,
+  detail,
+  icon,
+  label,
+  value,
+  valueColor,
+}: DashboardMetricCardProps) {
+  return (
+    <div className="stagger-item card">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-4">
+          <p className="label-wide">{label}</p>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{
+              backgroundColor: accentMuted,
+              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accentColor} 18%, transparent)`,
+              color: accentColor,
+            }}
+          >
+            {icon}
+          </div>
+        </div>
+        <p
+          className="font-mono"
+          style={{
+            color: valueColor ?? 'var(--text-primary)',
+            fontSize: 'clamp(1.45rem, 3vw, 2rem)',
+            fontWeight: 650,
+            letterSpacing: '-0.02em',
+            lineHeight: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {value}
+        </p>
+        <div className="min-h-[2.75rem] text-sm">{detail}</div>
+      </div>
+    </div>
   );
-
-  return filtered.reduce((total, item) => {
-    let monthlyAmount = item.amount;
-    switch (item.billing_cycle) {
-      case 'weekly': monthlyAmount = (item.amount * 52) / 12; break;
-      case 'quarterly': monthlyAmount = item.amount / 3; break;
-      case 'yearly': monthlyAmount = item.amount / 12; break;
-    }
-    return total + monthlyAmount;
-  }, 0);
 }
 
-function TrendBadge({ current, previous }: { current: number; previous: number }) {
-  if (previous === 0 && current === 0) return null;
-  if (previous === 0) return null; // no baseline to compare
+function TrendBadge({
+  current,
+  previous,
+  showNoBaselineDash = false,
+}: {
+  current: number;
+  previous: number;
+  showNoBaselineDash?: boolean;
+}) {
+  if (previous === 0) {
+    if (!showNoBaselineDash) return null;
+
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium" style={{ color: 'var(--text-muted)' }}>
+        <Minus className="w-3 h-3" /> -
+      </span>
+    );
+  }
 
   const diff = current - previous;
   const pct = Math.round((diff / previous) * 100);
@@ -97,10 +145,46 @@ function TrendBadge({ current, previous }: { current: number; previous: number }
 
 function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: DashboardProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
-  const [upcomingItems, setUpcomingItems] = useState<ItemWithCategory[]>([]);
+  const [statusHistoryEntries, setStatusHistoryEntries] = useState<StatusHistory[]>([]);
+  const [chartHover, setChartHover] = useState<number | null>(null);
 
   // Get the type filter for database queries
   const typeFilter = filterTab === 'all' ? undefined : filterTab;
+  const trackedItemIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
+  const statusHistoryKey = useMemo(
+    () =>
+      items
+        .map((item) => `${item.id}:${item.status}`)
+        .sort()
+        .join('|'),
+    [items],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (items.length === 0) {
+      setStatusHistoryEntries([]);
+      return;
+    }
+
+    getAllStatusHistory()
+      .then((historyData) => {
+        if (!cancelled) {
+          setStatusHistoryEntries(historyData.filter((entry) => trackedItemIds.has(entry.item_id)));
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('Failed to load dashboard trend history:', error);
+          setStatusHistoryEntries([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items.length, statusHistoryKey, trackedItemIds]);
 
   // Compute stats with useMemo (these are pure synchronous functions)
   const monthlySpending = useMemo(
@@ -113,22 +197,15 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     [items, typeFilter]
   );
 
-  const prevMonthlySpending = useMemo(
-    () => calculatePreviousMonthSpending(items, typeFilter),
-    [items, typeFilter]
-  );
-
-  const prevYearlySpending = prevMonthlySpending * 12;
-
   const spendingByCategory = useMemo(
     () => getSpendingByCategory(items, categories, typeFilter),
     [items, categories, typeFilter]
   );
 
-  // Load upcoming items (async query)
-  useEffect(() => {
-    getUpcomingItems(items, 7, typeFilter).then(setUpcomingItems);
-  }, [items, typeFilter]);
+  const upcomingItems = useMemo(
+    () => getUpcomingItems(items, 7, typeFilter),
+    [items, typeFilter]
+  );
 
   // Filter items by type for counts
   const filteredItems = typeFilter ? items.filter(i => i.item_type === typeFilter) : items;
@@ -136,11 +213,59 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
   const pausedCount = filteredItems.filter(s => s.status === 'paused').length;
   const cancelledCount = filteredItems.filter(s => s.status === 'cancelled').length;
 
-  const chartData = spendingByCategory.map(item => ({
-    name: item.category.name,
-    value: item.total,
-    color: item.category.color
-  }));
+  const statusHistoryByItem = useMemo(() => {
+    return statusHistoryEntries.reduce<Record<string, StatusHistory[]>>((acc, entry) => {
+      (acc[entry.item_id] ||= []).push(entry);
+      return acc;
+    }, {});
+  }, [statusHistoryEntries]);
+
+  const prevMonthlySpending = useMemo(() => {
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    return calculateProjectedMonthlySpendingForMonth(
+      filteredItems,
+      statusHistoryByItem,
+      previousMonth
+    );
+  }, [filteredItems, statusHistoryByItem]);
+
+  const prevYearlySpending = useMemo(() => {
+    const now = new Date();
+    const sameMonthLastYear = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+
+    return calculateProjectedMonthlySpendingForMonth(
+      filteredItems,
+      statusHistoryByItem,
+      sameMonthLastYear
+    ) * 12;
+  }, [filteredItems, statusHistoryByItem]);
+
+  const dashboardCategoryData = useMemo<DashboardCategorySlice[]>(() => {
+    const categorySlices = spendingByCategory.map((item) => ({
+      color: item.category.color,
+      id: item.category.id,
+      name: item.category.name,
+      value: item.total,
+    }));
+
+    const total = categorySlices.reduce((sum, item) => sum + item.value, 0);
+    const withShare = categorySlices.map((item) => ({
+      ...item,
+      share: total === 0 ? 0 : item.value / total,
+    }));
+
+    return withShare;
+  }, [spendingByCategory]);
+
+  const topCategory = useMemo(() => {
+    if (dashboardCategoryData.length === 0) return null;
+
+    return dashboardCategoryData.reduce((topEntry, entry) => {
+      return entry.value > topEntry.value ? entry : topEntry;
+    });
+  }, [dashboardCategoryData]);
 
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
@@ -149,148 +274,98 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     { id: 'subscription', label: 'Subscriptions', icon: <CreditCard className="w-3.5 h-3.5" /> },
   ];
 
+  const activeItemsDetail = pausedCount > 0 || cancelledCount > 0
+    ? `${pausedCount > 0 ? `${pausedCount} paused` : ''}${pausedCount > 0 && cancelledCount > 0 ? ' / ' : ''}${cancelledCount > 0 ? `${cancelledCount} cancelled` : ''}`
+    : 'All current items are active';
+
+  const dueThisWeekDetail = upcomingItems[0]
+    ? `Next: ${upcomingItems[0].name}`
+    : 'Nothing due in the next 7 days';
+
   return (
     <div className="space-y-6">
       <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={setFilterTab} />
 
-      {/* Empty state when no items exist */}
-      {items.length === 0 && (
+      {/* First-run: show only the welcome state, hide everything else */}
+      {items.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={Plus}
             title="Welcome to SubTrkr"
             description="Start tracking your subscriptions and bills to see spending insights, upcoming payments, and more."
             action={onAddNew ? { label: 'Add Your First Item', onClick: onAddNew } : undefined}
+            preview={<GhostListPreview variant="item-card" count={3} />}
           />
         </div>
-      )}
+      ) : (
+        <>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Monthly Spending Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">MONTHLY SPENDING</p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-muted)' }}>
-                <TrendingUp className="w-5 h-5" style={{ color: 'var(--brand-primary)' }} />
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {formatCurrency(monthlySpending)}
-            </h1>
-            <TrendBadge current={monthlySpending} previous={prevMonthlySpending} />
-          </div>
-        </div>
+        <DashboardMetricCard
+          accentColor="var(--brand-primary)"
+          accentMuted="var(--brand-muted)"
+          detail={<TrendBadge current={monthlySpending} previous={prevMonthlySpending} />}
+          icon={<TrendingUp className="h-5 w-5" />}
+          label="Projected Monthly"
+          value={formatCurrency(monthlySpending, { display: 'summary' })}
+        />
 
-        {/* Yearly Spending Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">YEARLY SPENDING</p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-purple-muted)' }}>
-                <Calendar className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {formatCurrency(yearlySpending)}
-            </h1>
-            <TrendBadge current={yearlySpending} previous={prevYearlySpending} />
-          </div>
-        </div>
+        <DashboardMetricCard
+          accentColor="var(--accent-purple)"
+          accentMuted="var(--accent-purple-muted)"
+          detail={<TrendBadge current={yearlySpending} previous={prevYearlySpending} showNoBaselineDash />}
+          icon={<Calendar className="h-5 w-5" />}
+          label="Yearly Run Rate"
+          value={formatCurrency(yearlySpending, { display: 'summary' })}
+        />
 
-        {/* Active Items Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-blue)' }}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">
-                {filterTab === 'bill' ? 'ACTIVE BILLS' : filterTab === 'subscription' ? 'ACTIVE SUBSCRIPTIONS' : 'ACTIVE ITEMS'}
-              </p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-blue-muted)' }}>
-                {filterTab === 'bill' ? <Receipt className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} /> : <CreditCard className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />}
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {activeCount}
-            </h1>
+        <DashboardMetricCard
+          accentColor="var(--accent-blue)"
+          accentMuted="var(--accent-blue-muted)"
+          detail={
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-              {pausedCount > 0 && `${pausedCount} paused`}
-              {pausedCount > 0 && cancelledCount > 0 && ' / '}
-              {cancelledCount > 0 && `${cancelledCount} cancelled`}
+              {activeItemsDetail}
             </p>
-          </div>
-        </div>
+          }
+          icon={filterTab === 'bill' ? <Receipt className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
+          label={filterTab === 'bill' ? 'Active Bills' : filterTab === 'subscription' ? 'Active Subscriptions' : 'Active Items'}
+          value={activeCount}
+        />
 
-        {/* Due This Week Card */}
-        <div className="stagger-item card" style={{ borderLeft: '4px solid var(--accent-amber)' }}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="label">DUE THIS WEEK</p>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-amber-muted)' }}>
-                <AlertCircle className="w-5 h-5" style={{ color: 'var(--accent-amber)' }} />
-              </div>
-            </div>
-            <h1 className="font-mono" style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 650,
-              letterSpacing: '-0.02em',
-              lineHeight: 1,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {upcomingItems.length}
-            </h1>
-          </div>
-        </div>
+        <DashboardMetricCard
+          accentColor="var(--accent-amber)"
+          accentMuted="var(--accent-amber-muted)"
+          detail={
+            <p className="truncate text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+              {dueThisWeekDetail}
+            </p>
+          }
+          icon={<AlertCircle className="h-5 w-5" />}
+          label="Due This Week"
+          value={upcomingItems.length}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Items */}
         <div className="card">
-          <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          <h3 className="mb-4 text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
             {filterTab === 'bill' ? 'Upcoming Bills' : filterTab === 'subscription' ? 'Upcoming Renewals' : 'Upcoming Payments'}
           </h3>
           
           {upcomingItems.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>No payments due in the next 7 days</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="No upcoming payments"
+              description="Payments due in the next 7 days will appear here."
+              compact
+              preview={<GhostListPreview variant="payment-row" count={2} />}
+            />
           ) : (
             <div className="space-y-3">
               {upcomingItems.slice(0, 5).map((item, index) => {
-                const isPaused = item.status === 'paused' && item.paused_until;
-                const targetDate = isPaused ? item.paused_until! : item.next_billing_date;
-                const daysUntil = getDaysUntil(targetDate);
+                const daysUntil = getDaysUntil(item.next_billing_date);
 
                 return (
                   <button
@@ -301,11 +376,6 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                       animationDelay: `${index * 0.05}s`
                     }}
                   >
-                    {isPaused && (
-                      <div className="absolute top-2 left-2">
-                        <RotateCcw className="w-4 h-4" style={{ color: 'var(--accent-amber)' }} />
-                      </div>
-                    )}
                     <ServiceLogo
                       logoUrl={item.logo_url}
                       name={item.name}
@@ -317,11 +387,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                       <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-                        {isPaused ? (
-                          <>Resumes on {formatShortDate(targetDate)}</>
-                        ) : (
-                          <>{formatCurrency(item.amount, item.currency)} · {item.billing_cycle}</>
-                        )}
+                        {formatCurrency(item.amount, { currency: item.currency, display: 'precise' })} · {item.billing_cycle}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -332,7 +398,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
                       </p>
                       <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                        {isPaused ? 'Auto-resume' : formatShortDate(item.next_billing_date)}
+                        {formatShortDate(item.next_billing_date)}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
@@ -355,84 +421,120 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
 
         {/* Spending by Category */}
         <div className="card">
-          <h3 className="text-xl mb-4" style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          <h3 className="mb-4 text-lg font-semibold" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
             Spending by Category
           </h3>
+          {topCategory && (
+            <p className="mb-4 text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
+              Largest share: {topCategory.name} · {Math.round(topCategory.share * 100)}%
+            </p>
+          )}
           
-          {chartData.length === 0 ? (
-            <div className="text-center py-8">
-              <CreditCard className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-              <p style={{ color: 'var(--text-secondary)' }}>No spending data yet</p>
-            </div>
+          {dashboardCategoryData.length === 0 ? (
+            <EmptyState
+              icon={CreditCard}
+              title="No spending data yet"
+              description="Category breakdown will appear once you add items."
+              compact
+              preview={<GhostChartPreview variant="pie-chart" />}
+            />
           ) : (
-            <div className="flex items-center gap-6">
-              <div className="w-40 h-40 relative shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={3}
-                      cornerRadius={4}
-                      dataKey="value"
-                      isAnimationActive={true}
-                      animationDuration={300}
-                      animationEasing="ease-out"
-                      className="chart-pie-sector"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => [formatCurrency(value as number), '']}
-                      contentStyle={{
-                        backgroundColor: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '10px',
-                        boxShadow: 'var(--shadow-elevated)',
-                        padding: '6px 10px',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: '12px',
-                      }}
-                      labelStyle={{ color: 'var(--text-primary)', fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600, fontSize: '11px', marginBottom: '2px' }}
-                      itemStyle={{ color: 'var(--text-primary)', padding: 0 }}
-                      separator=""
-                    />
-                    {/* Center label */}
-                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" fill="var(--text-muted)" fontSize={10} fontFamily="Inter, -apple-system, sans-serif" fontWeight={600}>
-                      MONTHLY
-                    </text>
-                    <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" fill="var(--text-primary)" fontSize={14} fontFamily="JetBrains Mono, monospace" fontWeight={700}>
-                      {formatCurrency(monthlySpending)}
-                    </text>
-                  </PieChart>
-                </ResponsiveContainer>
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:gap-7">
+              <div className="mx-auto shrink-0 xl:mx-0">
+                <GlowDonutChart
+                  data={dashboardCategoryData}
+                  centerValue={formatCurrency(monthlySpending, { display: 'summary' })}
+                  size={263}
+                  hoveredIndex={chartHover}
+                  onHoverChange={setChartHover}
+                />
               </div>
-              
-              <div className="flex-1 space-y-2">
-                {spendingByCategory.slice(0, 5).map(item => (
-                  <div key={item.category.id} className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: item.category.color }}
-                    />
-                    <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {item.category.name}
-                    </span>
-                    <span className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {formatCurrency(item.total)}
-                    </span>
+
+              <div
+                className="min-w-0 flex-1 rounded-[24px] p-3 sm:p-3.5 xl:flex xl:h-[17rem] xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
+                style={{
+                  background:
+                    'linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 92%, transparent), color-mix(in srgb, var(--bg-tertiary) 74%, transparent))',
+                  boxShadow:
+                    'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 76%, transparent), 0 24px 48px -36px color-mix(in srgb, black 46%, transparent)',
+                }}
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="label-wide">Category Breakdown</p>
                   </div>
-                ))}
+                  <span
+                    className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-mono font-medium"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--bg-card) 78%, transparent)',
+                      color: 'var(--text-secondary)',
+                      boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 65%, transparent)',
+                    }}
+                  >
+                    {spendingByCategory.length} total
+                  </span>
+                </div>
+
+                <div
+                  className="max-h-[18.5rem] space-y-1.25 overflow-y-auto pr-3 xl:min-h-0 xl:flex-1 xl:max-h-none"
+                  style={{ scrollbarGutter: 'stable' }}
+                >
+                  {dashboardCategoryData.map((item, index) => {
+                    const isHovered = chartHover === index;
+                    const isDimmed = chartHover !== null && !isHovered;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2.5 rounded-[15px] px-3 py-2 transition-all duration-300"
+                        style={{
+                          opacity: isDimmed ? 0.42 : 1,
+                          cursor: 'pointer',
+                          background: isHovered
+                            ? 'color-mix(in srgb, var(--bg-card) 68%, transparent)'
+                            : 'color-mix(in srgb, var(--bg-card) 36%, transparent)',
+                          boxShadow: isHovered
+                            ? `inset 0 0 0 1px color-mix(in srgb, ${item.color} 22%, transparent), 0 14px 24px -24px color-mix(in srgb, ${item.color} 62%, transparent)`
+                            : 'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 55%, transparent)',
+                        }}
+                        onMouseEnter={() => setChartHover(index)}
+                        onMouseLeave={() => setChartHover(null)}
+                      >
+                        <div
+                          className="h-1.5 w-1.5 shrink-0 rounded-full transition-shadow duration-300"
+                          style={{
+                            backgroundColor: item.color,
+                            boxShadow: isHovered
+                              ? `0 0 0 2px ${item.color}33`
+                              : `0 0 0 2px ${item.color}20`,
+                          }}
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {item.name}
+                          </span>
+                        </div>
+
+                        <div className="shrink-0 text-right leading-none">
+                          <p className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {formatCurrency(item.value, { display: 'summary' })}
+                          </p>
+                          <p className="mt-1 text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                            {Math.round(item.share * 100)}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
