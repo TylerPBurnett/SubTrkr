@@ -12,14 +12,14 @@ type StatusTransition = {
   status: ItemStatus;
 };
 
-function parseDateValue(value: string | null | undefined): Date | null {
+export function parseDateValue(value: string | null | undefined): Date | null {
   if (!value) return null;
 
   const parsed = value.includes('T') ? new Date(value) : parseLocalDate(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function normalizeToStartOfDay(date: Date): Date {
+export function normalizeToStartOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 

@@ -7,13 +7,16 @@ interface FormatCurrencyOptions {
 
 function formatCompactUsd(amount: number): string {
   const absoluteAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
 
   if (absoluteAmount >= 1000) {
-    const compactValue = absoluteAmount >= 10000 ? (amount / 1000).toFixed(0) : (amount / 1000).toFixed(1);
-    return `$${compactValue}k`;
+    const compactValue = absoluteAmount >= 10000
+      ? (absoluteAmount / 1000).toFixed(0)
+      : (absoluteAmount / 1000).toFixed(1);
+    return `${sign}$${compactValue}k`;
   }
 
-  return `$${Math.round(amount)}`;
+  return `${sign}$${Math.round(absoluteAmount)}`;
 }
 
 export function formatCurrency(

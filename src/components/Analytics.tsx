@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import type {
   Category,
-  ItemStatus,
   ItemType,
   ItemWithCategory,
   StatusHistory,
@@ -38,11 +37,13 @@ import {
   getSpendingByCategory,
 } from '../services/database';
 import { formatCurrency } from '../utils/currency';
-import { addBillingCycle, formatDisplayDate, parseLocalDate } from '../utils/dates';
+import { addBillingCycle, formatDisplayDate } from '../utils/dates';
 import {
-  getResolvedStatusHistoryAction,
-  getResolvedStatusHistoryEffectiveDate,
-} from '../utils/statusHistory';
+  calculateNormalizedMonthlyAmount,
+  calculateProjectedMonthlySpendingForMonth,
+  normalizeToStartOfDay,
+  parseDateValue,
+} from '../utils/projectedSpending';
 import ServiceLogo from './ui/ServiceLogo';
 import { GlowFilter, GradientFill, lightenColor } from './ui/ChartEffects';
 import SegmentedControl from './ui/SegmentedControl';
@@ -58,13 +59,6 @@ interface AnalyticsProps {
   items: ItemWithCategory[];
   categories: Category[];
 }
-
-type StatusTransition = {
-  status: ItemStatus;
-  effectiveDate: Date;
-  action: string | null;
-  recordedAt: Date | null;
-};
 
 type TrendSummary = {
   amountDelta: number;
@@ -122,44 +116,14 @@ function formatShare(share: number): string {
   return `${Math.round(share * 100)}%`;
 }
 
-function getMonthlyAmount(item: ItemWithCategory): number {
-  switch (item.billing_cycle) {
-    case 'weekly':
-      return (item.amount * 52) / 12;
-    case 'monthly':
-      return item.amount;
-    case 'quarterly':
-      return item.amount / 3;
-    case 'yearly':
-      return item.amount / 12;
-    default:
-      return item.amount;
-  }
-}
-
 function getCancelledInsightDate(item: ItemWithCategory): string | null {
   return item.cancellation_date || item.cancelled_at || item.archived_at || null;
-}
-
-function parseDateValue(value: string | null | undefined): Date | null {
-  if (!value) return null;
-
-  const parsed = value.includes('T') ? new Date(value) : parseLocalDate(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function normalizeToStartOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function shiftDays(date: Date, days: number): Date {
   const shifted = new Date(date);
   shifted.setDate(shifted.getDate() + days);
   return shifted;
-}
-
-function isOnOrBeforeDay(date: Date, comparedTo: Date): boolean {
-  return normalizeToStartOfDay(date).getTime() <= normalizeToStartOfDay(comparedTo).getTime();
 }
 
 function countBillingsWithinWindow(
@@ -187,165 +151,6 @@ function countBillingsWithinWindow(
   }
 
   return occurrenceCount;
-}
-
-function getMonthRange(date: Date): { start: Date; endExclusive: Date } {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const endExclusive = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-  return { start, endExclusive };
-}
-
-function getStatusTransitions(statusHistory: StatusHistory[]): StatusTransition[] {
-  const historyEntries = statusHistory
-    .map((entry) => {
-      const effectiveDate =
-        parseDateValue(getResolvedStatusHistoryEffectiveDate(entry)) ?? parseDateValue(entry.changed_at);
-      if (!effectiveDate) return null;
-
-      return {
-        action: getResolvedStatusHistoryAction(entry),
-        effectiveDate: normalizeToStartOfDay(effectiveDate),
-        recordedAt: parseDateValue(entry.changed_at),
-        status: entry.status,
-      };
-    })
-    .filter((entry): entry is StatusTransition => entry !== null);
-
-  const byRecordedOrder = [...historyEntries].sort((lhs, rhs) => {
-    const lhsRecordedAt = lhs.recordedAt ?? lhs.effectiveDate;
-    const rhsRecordedAt = rhs.recordedAt ?? rhs.effectiveDate;
-    return lhsRecordedAt.getTime() - rhsRecordedAt.getTime();
-  });
-
-  const normalizedTransitions: StatusTransition[] = [];
-
-  for (const entry of byRecordedOrder) {
-    if (entry.action === 'edit_cancellation') {
-      for (let index = normalizedTransitions.length - 1; index >= 0; index -= 1) {
-        const previous = normalizedTransitions[index];
-        if (
-          previous.status === 'cancelled'
-          && (previous.action === 'cancel' || previous.action === 'trial_expired' || previous.action === null)
-        ) {
-          normalizedTransitions[index] = {
-            ...previous,
-            effectiveDate: entry.effectiveDate,
-          };
-          break;
-        }
-      }
-      continue;
-    }
-
-    normalizedTransitions.push(entry);
-  }
-
-  return normalizedTransitions.sort((lhs, rhs) => {
-    if (lhs.effectiveDate.getTime() !== rhs.effectiveDate.getTime()) {
-      return lhs.effectiveDate.getTime() - rhs.effectiveDate.getTime();
-    }
-
-    const lhsRecordedAt = lhs.recordedAt ?? lhs.effectiveDate;
-    const rhsRecordedAt = rhs.recordedAt ?? rhs.effectiveDate;
-    return lhsRecordedAt.getTime() - rhsRecordedAt.getTime();
-  });
-}
-
-function inferredInitialStatus(item: ItemWithCategory, transitions: StatusTransition[]): ItemStatus {
-  if (transitions[0]?.action === 'convert_trial') {
-    return 'trial';
-  }
-
-  if (item.status === 'trial' || item.trial_started_at) {
-    return 'trial';
-  }
-
-  return 'active';
-}
-
-function wasItemActiveUsingCurrentFields(
-  item: ItemWithCategory,
-  monthStart: Date,
-  monthEndExclusive: Date
-): boolean {
-  const monthEnd = new Date(monthEndExclusive.getTime() - 1000);
-  const startDate = parseDateValue(item.start_date) ?? parseDateValue(item.created_at);
-
-  if (!startDate || startDate > monthEnd || item.status === 'trial') {
-    return false;
-  }
-
-  const cancellationDate = parseDateValue(item.cancellation_date);
-  if (cancellationDate && isOnOrBeforeDay(cancellationDate, monthStart)) {
-    return false;
-  }
-
-  const cancelledAt = parseDateValue(item.cancelled_at);
-  if (cancelledAt && isOnOrBeforeDay(cancelledAt, monthStart)) {
-    return false;
-  }
-
-  const archivedAt = parseDateValue(item.archived_at);
-  if (archivedAt && isOnOrBeforeDay(archivedAt, monthStart)) {
-    return false;
-  }
-
-  const pausedAt = parseDateValue(item.paused_at);
-  if (pausedAt && isOnOrBeforeDay(pausedAt, monthStart)) {
-    const pausedUntil = parseDateValue(item.paused_until);
-    if (pausedUntil) {
-      return !isOnOrBeforeDay(monthEnd, pausedUntil);
-    }
-
-    return item.status !== 'paused';
-  }
-
-  return true;
-}
-
-function wasItemActive(
-  item: ItemWithCategory,
-  monthStart: Date,
-  monthEndExclusive: Date,
-  statusHistory: StatusHistory[]
-): boolean {
-  if (statusHistory.length === 0) {
-    return wasItemActiveUsingCurrentFields(item, monthStart, monthEndExclusive);
-  }
-
-  const startDate = parseDateValue(item.start_date) ?? parseDateValue(item.created_at);
-  if (!startDate) return false;
-
-  const normalizedStartDate = normalizeToStartOfDay(startDate);
-  if (normalizedStartDate >= monthEndExclusive) {
-    return false;
-  }
-
-  const transitions = getStatusTransitions(statusHistory);
-  let currentStatus = inferredInitialStatus(item, transitions);
-  let segmentStart = normalizedStartDate;
-
-  for (const transition of transitions) {
-    const transitionDate = transition.effectiveDate;
-
-    if (transitionDate <= segmentStart) {
-      currentStatus = transition.status;
-      continue;
-    }
-
-    if (currentStatus === 'active' && segmentStart < monthEndExclusive && transitionDate > monthStart) {
-      return true;
-    }
-
-    if (transitionDate >= monthEndExclusive) {
-      break;
-    }
-
-    currentStatus = transition.status;
-    segmentStart = transitionDate;
-  }
-
-  return currentStatus === 'active' && segmentStart < monthEndExclusive;
 }
 
 function buildTrendSummary(current: number, previous: number): TrendSummary {
@@ -719,14 +524,12 @@ function Analytics({
     const now = new Date();
 
     for (let index = monthCount - 1; index >= 0; index -= 1) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - index, 1);
-      const { endExclusive, start } = getMonthRange(monthDate);
-
-      const projected = filteredItems.reduce((total, item) => {
-        return wasItemActive(item, start, endExclusive, statusHistoryByItem[item.id] ?? [])
-          ? total + getMonthlyAmount(item)
-          : total;
-      }, 0);
+      const start = new Date(now.getFullYear(), now.getMonth() - index, 1);
+      const projected = calculateProjectedMonthlySpendingForMonth(
+        filteredItems,
+        statusHistoryByItem,
+        start
+      );
 
       months.push({
         month: start.toLocaleDateString('en-US', { month: 'short' }),
@@ -781,7 +584,7 @@ function Analytics({
   const topItems = useMemo(() => {
     return focusedItems
       .filter((item) => item.status === 'active')
-      .map((item) => ({ ...item, monthlyAmount: getMonthlyAmount(item) }))
+      .map((item) => ({ ...item, monthlyAmount: calculateNormalizedMonthlyAmount(item) }))
       .sort((lhs, rhs) => rhs.monthlyAmount - lhs.monthlyAmount)
       .slice(0, 5);
   }, [focusedItems]);
@@ -789,7 +592,7 @@ function Analytics({
   const cancelledItems = useMemo<CancelledInsightItem[]>(() => {
     return focusedItems
       .filter((item) => item.status === 'cancelled' || item.status === 'archived')
-      .map((item) => ({ ...item, monthlyAmount: getMonthlyAmount(item) }))
+      .map((item) => ({ ...item, monthlyAmount: calculateNormalizedMonthlyAmount(item) }))
       .sort((lhs, rhs) => {
         const insightDateA = getCancelledInsightDate(lhs);
         const insightDateB = getCancelledInsightDate(rhs);

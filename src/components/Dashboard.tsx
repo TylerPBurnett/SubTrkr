@@ -110,16 +110,6 @@ function TrendBadge({
   previous: number;
   showNoBaselineDash?: boolean;
 }) {
-  if (previous === 0 && current === 0) {
-    if (!showNoBaselineDash) return null;
-
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium" style={{ color: 'var(--text-muted)' }}>
-        <Minus className="w-3 h-3" /> -
-      </span>
-    );
-  }
-
   if (previous === 0) {
     if (!showNoBaselineDash) return null;
 
