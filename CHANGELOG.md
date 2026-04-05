@@ -4,6 +4,83 @@ All notable changes to SubTrkr are documented here.
 
 ---
 
+## [v1.2.0] — 2026-04-04
+
+This release is a substantial desktop polish and insights update. The centerpiece is a redesigned Analytics and Dashboard experience with projected spending trends, due-soon visibility, richer category analysis, cancellation insights, and a new interactive donut visualization. It also ships bespoke zero-data states, native-shell vibrancy improvements, and lifecycle hardening that make the app feel more reliable and more intentional day to day.
+
+---
+
+### Features
+
+#### Analytics Overhaul
+
+Analytics is now a much more useful planning surface rather than a simple stats page.
+
+- Added a redesigned summary-card row with monthly spend, next-7-days obligations, recovered savings, and annual view
+- Added a projected monthly spending trend chart with 6-month and 12-month ranges
+- Added category concentration analysis with tappable category filters
+- Added most-expensive commitments and cancellation insights panels
+- Updated analytics derivation logic so projected spend and due-soon summaries better reflect status history and recurring cadence
+
+#### Dashboard Category Visualization
+
+The Dashboard now includes a more polished spending breakdown with stronger glanceability.
+
+- Added the new `GlowDonutChart` category visualization with linked legend hover states
+- Improved dashboard metric card styling and hierarchy
+- Refined category legend layout, geometry, and hover behavior
+- Improved upcoming-payment and category sections to better match the new analytics experience
+
+#### Bespoke Empty States
+
+Zero-data screens now feel intentional instead of unfinished.
+
+- Added reusable ghost preview primitives for charts and lists
+- Added tailored empty states across Dashboard, Analytics, and ItemList
+- Introduced compact empty-state variants for smaller cards and panels
+
+#### Desktop Shell & Visual Polish
+
+- Preserved native vibrancy support after Tauri webview reloads
+- Expanded the broader UI modernization pass with overlay scrollbars, improved toggles, and a more refined sidebar shell
+- Disabled global overscroll bounce for a steadier desktop feel
+
+---
+
+### Improvements
+
+#### Lifecycle & Projection Reliability
+
+- Hardened status lifecycle handling so item-state transitions and analytics stay more consistent
+- Centralized projected-spending helper logic into a shared utility to reduce drift between Dashboard and Analytics
+- Fixed compact currency formatting so negative compact values render with the sign in the correct position
+
+#### Release & Repo Hygiene
+
+- Ignored local `.playwright-mcp/` artifacts so browser-tool output no longer pollutes git state
+- Continued the docs and planning cleanup around roadmap, calendar work, and completed design sessions
+
+---
+
+## Migration Guide
+
+No breaking changes. Existing users can update in place.
+
+### For Users
+
+No action required. After updating:
+- The Dashboard and Analytics pages will reflect the new layout and insights
+- Empty states will show guided previews instead of blank containers
+- Native vibrancy should persist more reliably after reloads on supported platforms
+
+### For Developers
+
+- Shared projected-spending logic now lives in `src/utils/projectedSpending.ts`; prefer that utility over re-implementing historical active-state checks in view files
+- The new empty-state ghost previews live in `src/components/ui/GhostChartPreview.tsx` and `src/components/ui/GhostListPreview.tsx`
+- The Dashboard category chart now relies on `GlowDonutChart.tsx`, which includes custom geometry, hover detection, and reveal animation behavior
+
+---
+
 ## [v1.1.0] — 2026-02-17
 
 This is a feature release. The headline addition is full deep-link support, which enables every auth flow—email verification, magic links, password reset, OAuth callbacks—to land cleanly inside the desktop app rather than bouncing to a browser. That required a new password-reset screen, a complete overhaul of how auth redirects work, and hardening of the app's URL validation and error handling. Alongside that: chart polish in Analytics, 28 new auto-detected services, a unified visual design across forms, and a large round of documentation and repository cleanup.
@@ -204,4 +281,4 @@ No action required. The app updater handles everything. After updating:
 
 ---
 
-*Changes since [v1.0.10]*
+*Changes since [v1.1.0]*
