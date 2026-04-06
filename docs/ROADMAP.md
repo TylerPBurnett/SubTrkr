@@ -1,6 +1,6 @@
 # SubTrkr Desktop — Roadmap & Next Steps
 
-> Last updated: 2026-03-30
+> Last updated: 2026-04-06
 > Navigation: `docs/TASKS.md` is the operational queue for actionable work. `docs/plans/` contains active work only. Finished implementation/design docs live in `docs/completed-plans/`; completed summaries and legacy notes live in `docs/completed/`.
 
 ---
@@ -26,6 +26,17 @@ See `docs/notifications/NOTIFICATIONS_COMPLETE.md`, `docs/notifications/NOTIFICA
 - Desktop release, updater verification, and release-captain checklists are documented and ready for ongoing use.
 
 See `docs/PRODUCTION_RELEASE_WORKFLOW.md`, `docs/UPDATER_TESTING_GUIDE.md`, and `docs/RELEASE_CAPTAIN_CHECKLIST.md`.
+
+### In-App Updater UX Redesign ✓
+
+*Completed 2026-04-06.*
+
+- Update panel uses compact/expanded modes — minimal footprint when up to date, full panel only when actionable.
+- Persistent green dot + text badge on the Settings nav icon when an update is available or ready to restart.
+- Auto-update preference toggle (defaults to enabled) stored in localStorage.
+- Release notes rendered with markdown formatting (headings, bullets, bold, inline code) — no external dependency.
+- Launch toast offers one-click install instead of just navigating to settings.
+- Dev-mode update simulation via localStorage flag for testing without building old binaries.
 
 ### Status-History / Autopay Alignment ✓
 

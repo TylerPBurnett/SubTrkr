@@ -12,9 +12,15 @@ interface SettingsProps {
   onCategoriesChange: () => void;
   useVibrancy: boolean;
   setUseVibrancy: (val: boolean | ((prev: boolean) => boolean)) => void;
+  activeTab: SettingsTab;
+  onActiveTabChange: (tab: SettingsTab) => void;
 }
 
-type SettingsTab = "categories" | "notifications" | "appearance" | "account";
+export type SettingsTab =
+  | "categories"
+  | "notifications"
+  | "appearance"
+  | "account";
 
 const TabIcons = {
   categories: Tag,
@@ -39,8 +45,9 @@ export default function Settings({
   onCategoriesChange,
   useVibrancy,
   setUseVibrancy,
+  activeTab,
+  onActiveTabChange,
 }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("categories");
   const [hoveredTab, setHoveredTab] = useState<SettingsTab | null>(null);
 
   return (
@@ -65,7 +72,7 @@ export default function Settings({
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => onActiveTabChange(tab.key)}
                 onMouseEnter={() => setHoveredTab(tab.key)}
                 onMouseLeave={() => setHoveredTab(null)}
                 className="relative flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-300"

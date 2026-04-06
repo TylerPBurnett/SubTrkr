@@ -6,6 +6,7 @@ import {
   Suspense,
   lazy,
   useTransition,
+  useSyncExternalStore,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -47,7 +48,12 @@ import {
   checkAndNotifyUpcomingRenewals,
   checkAndNotifyExpiringTrials,
 } from "./services/notifications";
-import { checkForUpdatesOnLaunch } from "./services/updater";
+import {
+  checkForUpdatesOnLaunch,
+  installAvailableUpdate,
+  subscribeToUpdaterState,
+  getUpdaterStateSnapshot,
+} from "./services/updater";
 import {
   onOpenUrl,
   getCurrent as getCurrentDeepLinks,
@@ -65,6 +71,9 @@ import { LazyComponentFallback } from "./components/LazyComponentFallback";
 import EmailVerificationBanner from "./components/EmailVerificationBanner";
 import TitleBar from "./components/TitleBar";
 import { DEFAULT_THEME, getNextTheme, getThemeTone, isTheme } from "./theme";
+import type { SettingsTab } from "./components/Settings";
+
+const APP_VERSION = __APP_VERSION__;
 
 // Lazy load heavier components for code splitting
 const Analytics = lazy(() => import("./components/Analytics"));
@@ -126,6 +135,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [view, setView] = useState<View>("dashboard");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("categories");
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -159,6 +169,16 @@ function App() {
       useVibrancy ? "true" : "false",
     );
   }, [useVibrancy]);
+
+  const updaterState = useSyncExternalStore(
+    subscribeToUpdaterState,
+    getUpdaterStateSnapshot,
+  );
+  const hasUpdateAction =
+    updaterState.status === "available" ||
+    updaterState.status === "ready-to-restart" ||
+    updaterState.status === "downloading" ||
+    updaterState.status === "installing";
 
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>(
     "subtrkr-sidebar-collapsed",
@@ -333,10 +353,30 @@ function App() {
   useEffect(() => {
     if (!session) return;
 
-    checkForUpdatesOnLaunch().catch((updateError) => {
-      console.warn("Automatic update check failed:", updateError);
-    });
-  }, [session]);
+    checkForUpdatesOnLaunch()
+      .then((updateResult) => {
+        if (
+          updateResult.status === "available" &&
+          updateResult.availableVersion
+        ) {
+          toast.info(`SubTrkr ${updateResult.availableVersion} is available`, {
+            description: `v${APP_VERSION} → v${updateResult.availableVersion}`,
+            duration: 15000,
+            action: {
+              label: "Install now",
+              onClick: () => {
+                setSettingsTab("account");
+                startTransition(() => setView("settings"));
+                installAvailableUpdate();
+              },
+            },
+          });
+        }
+      })
+      .catch((updateError) => {
+        console.warn("Automatic update check failed:", updateError);
+      });
+  }, [session, startTransition]);
 
   // Seed default categories on first login
   useEffect(() => {
@@ -882,12 +922,48 @@ function App() {
                   view === "settings" ? "nav-item-active" : "nav-item"
                 } ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"}`}
               >
-                <SettingsIcon
-                  className="w-[18px] h-[18px] shrink-0"
-                  style={{ opacity: view === "settings" ? 1 : 0.7 }}
-                />
+                <span className="relative shrink-0">
+                  <SettingsIcon
+                    className="w-[18px] h-[18px]"
+                    style={{ opacity: view === "settings" ? 1 : 0.7 }}
+                  />
+                  {hasUpdateAction && (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 flex items-center justify-center"
+                    >
+                      <span
+                        className="w-[7px] h-[7px] rounded-full"
+                        style={{
+                          backgroundColor: updaterState.status === "ready-to-restart"
+                            ? "var(--accent-emerald)"
+                            : "var(--brand-primary)",
+                          boxShadow: `0 0 0 1.5px var(--bg-surface), 0 0 4px ${
+                            updaterState.status === "ready-to-restart"
+                              ? "var(--accent-emerald)"
+                              : "var(--brand-primary)"
+                          }`,
+                        }}
+                      />
+                    </span>
+                  )}
+                </span>
                 {!isCollapsed && (
                   <span className="flex-1 text-left">Settings</span>
+                )}
+                {!isCollapsed && hasUpdateAction && (
+                  <span
+                    className="text-[10px] font-semibold leading-none px-1.5 py-[3px] rounded-full"
+                    style={{
+                      backgroundColor: updaterState.status === "ready-to-restart"
+                        ? "var(--accent-emerald-muted)"
+                        : "var(--brand-primary-light)",
+                      color: updaterState.status === "ready-to-restart"
+                        ? "var(--accent-emerald)"
+                        : "var(--brand-text)",
+                    }}
+                  >
+                    {updaterState.status === "ready-to-restart" ? "Restart" : "Update"}
+                  </span>
                 )}
               </button>
             </div>
@@ -1009,6 +1085,8 @@ function App() {
                       onCategoriesChange={loadData}
                       useVibrancy={useVibrancy}
                       setUseVibrancy={setUseVibrancy}
+                      activeTab={settingsTab}
+                      onActiveTabChange={setSettingsTab}
                     />
                   </Suspense>
                 </ErrorBoundary>

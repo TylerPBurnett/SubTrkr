@@ -4,6 +4,114 @@ All notable changes to SubTrkr are documented here.
 
 ---
 
+## [v1.2.2] — 2026-04-06
+
+This release redesigns the in-app update experience to be less generic and more contextually aware. The update panel now adapts its footprint based on whether there's something for the user to do — compact when up to date, expanded only when an update is actionable. It also adds persistent update indicators, an auto-update preference, richer release notes formatting, and a one-click install path from the launch toast.
+
+---
+
+### Improvements
+
+#### Update Panel Redesign
+
+- **Compact mode** for idle/up-to-date/error states — single-row layout with version + check button inline; no gradient panel or version comparison boxes when there's nothing to act on
+- **Expanded mode** only appears when an update is available, downloading, installing, or ready to restart — the visual weight now matches the urgency
+- Clear version transition display (`v1.2.1 → v1.2.2`) instead of separate "current" / "available" boxes
+- Full-width primary CTA button with the target version in the label (e.g. "Download & install v1.2.2")
+- Removed redundant "Available release: No newer release" display in the up-to-date state
+
+#### Persistent Update Indicator
+
+- Green dot badge on the Settings nav icon when an update is available, downloading, or ready to restart
+- Text badge ("Update" or "Restart") shown in the expanded sidebar alongside the dot
+- Badge color shifts to emerald when the update is installed and waiting for restart
+
+#### One-Click Install from Toast
+
+- Launch-time toast now shows version transition (`v1.2.1 → v1.2.2`) instead of generic description
+- Toast action button changed from "Open updater" (navigate only) to "Install now" (navigates to settings AND starts the download immediately)
+- Toast duration extended to 15 seconds for more time to act
+
+#### Auto-Update Preference
+
+- New "Automatic updates" toggle in Settings → Account below the update panel
+- When disabled, the app skips the automatic update check on launch (users can still check manually)
+- Persisted via localStorage (`subtrkr-auto-update-enabled`), defaults to enabled
+
+#### Markdown Release Notes
+
+- Release notes now render with basic markdown formatting: `## headings`, `- bullet items`, `**bold**`, `` `inline code` ``
+- Proper bullet rendering with styled list markers instead of raw `-` characters
+- Shows up to 8 lines with "And more..." truncation for longer changelogs
+- Lightweight inline parser — no external markdown dependency added
+
+#### Dev-Mode Update Simulation
+
+- Added localStorage flag (`subtrkr-dev-simulate-update`) to simulate an available update in dev builds
+- Simulates the checking → available state transition with rich markdown release notes
+- Only active in `import.meta.env.DEV` — completely tree-shaken from production builds
+- Enables testing the full update UI flow (toast, expanded panel, badge) without building old binaries
+
+---
+
+## Migration Guide
+
+No breaking changes. Existing users can update in place.
+
+### For Users
+
+No action required. After updating:
+- The update section in Settings → Account is now more compact and less cluttered when you're already up to date
+- When an update is available, the install button is more prominent and shows the exact version
+- A small green dot on the Settings icon reminds you if an update is waiting
+- You can disable automatic update checks in Settings → Account if you prefer manual control
+
+### For Developers
+
+- `UpdateStatusPanel` now delegates to `CompactUpdateRow` or `ExpandedUpdatePanel` based on updater state
+- `getPanelStyles`, `formatBytes`, and `parseReleaseNotes` remain as utility functions in `AccountSettings.tsx`
+- Release notes rendering uses `ReleaseNotesContent` / `ReleaseNoteLine` / `renderInline` — no external markdown library
+- Auto-update preference is read by `isAutoUpdateEnabled()` in `updater.ts` via the `subtrkr-auto-update-enabled` localStorage key
+- Dev simulation: `localStorage.setItem('subtrkr-dev-simulate-update', 'true')` + refresh to test
+
+---
+
+## [v1.2.1] — 2026-04-04
+
+This is a focused patch release for the desktop updater experience. The goal is simple: when SubTrkr finds a new version, users should immediately understand what is available, what happens next, and how to finish the upgrade without guessing or relying on hidden browser-style prompts.
+
+---
+
+### Improvements
+
+#### In-App Updater UX
+
+- Replaced the updater's hidden `window.confirm()` flow with an explicit in-app update panel in Settings → Account
+- Added clear updater states for checking, available, downloading, installing, and ready-to-restart
+- Added visible `Download & install` and `Restart to update` actions directly in the Account settings UI
+- Added release-notes previews plus current-version and available-version details so the update flow feels more transparent and trustworthy
+- Added download/install progress feedback so users can see the updater working instead of waiting on a blocking dialog
+- Added a launch-time toast with a direct path into Settings → Account when a new version is detected
+
+---
+
+## Migration Guide
+
+No breaking changes. Existing users can update in place.
+
+### For Users
+
+No action required. After updating:
+- App updates are easier to discover and install from Settings → Account
+- Automatic update checks now surface a clearer in-app prompt instead of relying on hidden confirmation dialogs
+
+### For Developers
+
+- The updater service now exposes shared UI state plus explicit `check`, `install`, and `restart` actions instead of combining all behavior into a single confirmation-driven call
+- Settings tab state is externally controllable so app-level prompts can route users straight to the Account updater surface
+
+---
+
 ## [v1.2.0] — 2026-04-04
 
 This release is a substantial desktop polish and insights update. The centerpiece is a redesigned Analytics and Dashboard experience with projected spending trends, due-soon visibility, richer category analysis, cancellation insights, and a new interactive donut visualization. It also ships bespoke zero-data states, native-shell vibrancy improvements, and lifecycle hardening that make the app feel more reliable and more intentional day to day.
