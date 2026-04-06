@@ -5,7 +5,7 @@ description: Run the full SubTrkr release flow — preflight, version bump, chan
 ## Release Context
 
 **Current version (from package.json):**
-!`node -e "const p = JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log(p.version)"`
+!`jq -r .version package.json`
 
 **Git status:**
 !`git status --short`
