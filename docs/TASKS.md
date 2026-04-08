@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-04-06
+> Last updated: 2026-04-08
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -40,6 +40,7 @@
 | TASK-012 | P3 | Desktop / Updater | Remind-me-later / snooze for updates | [CHANGELOG.md](../CHANGELOG.md) | Dismiss/snooze option on the update toast and expanded panel so users can defer without permanently ignoring |
 | TASK-013 | P3 | Desktop / Updater | Show download size before install | [CHANGELOG.md](../CHANGELOG.md) | Display content length on the CTA button (e.g. "Download & install v1.2.2 (14 MB)") so users on slow connections can decide |
 | TASK-014 | P3 | Desktop / Updater | Update panel visual polish pass | [CHANGELOG.md](../CHANGELOG.md) | Revisit expanded panel styling — user noted it may need further design refinement beyond the functional redesign |
+| TASK-016 | P2 | Desktop / Analytics | Billing-date-accurate monthly trend model | [docs/plans/PRODUCTION_HARDENING_PLAN.md](plans/PRODUCTION_HARDENING_PLAN.md) | Follow-up after the hardening sweep to replace the current “active at any point in month” approximation with billing-occurrence-aware monthly trend logic |
 
 ## Active
 

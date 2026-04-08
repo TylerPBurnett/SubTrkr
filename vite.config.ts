@@ -11,6 +11,40 @@ const packageJson = JSON.parse(
 ) as { version?: string };
 const appVersion = packageJson.version ?? "0.0.0";
 
+const baseCspDirectives = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "img-src 'self' data: blob: https://img.logo.dev",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+];
+
+function buildCsp(connectSrc: string[]) {
+  return [...baseCspDirectives, `connect-src ${connectSrc.join(" ")}`].join(
+    "; ",
+  );
+}
+
+const prodCsp = buildCsp([
+  "'self'",
+  "ipc:",
+  "http://ipc.localhost",
+  "https://*.supabase.co",
+  "wss://*.supabase.co",
+  "https://api.telegram.org",
+]);
+
+const devCsp = buildCsp([
+  "'self'",
+  "ipc:",
+  "http://ipc.localhost",
+  "https://*.supabase.co",
+  "wss://*.supabase.co",
+  "https://api.telegram.org",
+  host ? `ws://${host}:1421` : "ws://localhost:1421",
+]) + "; script-src 'self' 'unsafe-inline'";
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
@@ -56,6 +90,9 @@ export default defineConfig(async () => ({
     port: 1420,
     strictPort: true,
     host: host || false,
+    headers: {
+      "Content-Security-Policy": devCsp,
+    },
     hmr: host
       ? {
           protocol: "ws",
@@ -66,6 +103,11 @@ export default defineConfig(async () => ({
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
+    },
+  },
+  preview: {
+    headers: {
+      "Content-Security-Policy": prodCsp,
     },
   },
 }));

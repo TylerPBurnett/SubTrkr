@@ -9,6 +9,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "icons:generate": "bash ./scripts/generate-icons.sh",
     "icons:generate:dark": "bash ./scripts/generate-icons.sh dark"
   },

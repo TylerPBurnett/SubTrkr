@@ -110,8 +110,6 @@ export interface NotificationChannel {
   user_id: string;
   channel: NotificationChannelType;
   enabled: boolean;
-  vault_secret_id: string | null;
-  secret_value: string | null;
   metadata: Record<string, unknown>;
   event_types: NotificationEventType[];
   created_at: string;

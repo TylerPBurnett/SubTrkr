@@ -164,8 +164,11 @@ export default function NotificationSettings() {
 
   const isChannelConnected = (type: NotificationChannelType): boolean => {
     const ch = getChannelConfig(type);
-    if (!ch || !ch.secret_value) return false;
-    if (type === 'telegram') return !!ch.metadata?.chat_id;
+    if (!ch) return false;
+    if (type === 'telegram') {
+      const chatId = ch.metadata?.chat_id;
+      return typeof chatId === 'string' && chatId.length > 0;
+    }
     return true;
   };
 

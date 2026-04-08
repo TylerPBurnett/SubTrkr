@@ -7,6 +7,13 @@ import type {
   NotificationEventType,
 } from '@/types';
 
+const DEFAULT_NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
+  'renewal_reminder',
+  'trial_expiration',
+];
+const PUBLIC_NOTIFICATION_CHANNEL_COLUMNS =
+  'id, user_id, channel, enabled, metadata, event_types, created_at, updated_at';
+
 // Helper to get current user ID (same pattern as database.ts)
 async function getUserId(): Promise<string> {
   const {
@@ -22,8 +29,9 @@ export async function getNotificationChannels(): Promise<NotificationChannel[]> 
   const userId = await getUserId();
   const { data, error } = await supabase
     .from('notification_channels')
-    .select('*')
+    .select(PUBLIC_NOTIFICATION_CHANNEL_COLUMNS)
     .eq('user_id', userId)
+    .not('secret_value', 'is', null)
     .order('channel');
 
   if (error) throw error;
@@ -38,34 +46,57 @@ export async function upsertNotificationChannel(
     event_types?: NotificationEventType[];
     secret_value?: string | null;
   }
-): Promise<NotificationChannel> {
+): Promise<void> {
   const userId = await getUserId();
 
-  // Preserve existing values when performing partial updates
-  const { data: existing } = await supabase
-    .from('notification_channels')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('channel', channel)
-    .maybeSingle();
+  if (
+    config.secret_value === undefined &&
+    config.metadata === undefined &&
+    config.event_types === undefined
+  ) {
+    const { error } = await supabase
+      .from('notification_channels')
+      .update({ enabled: config.enabled ?? true })
+      .eq('user_id', userId)
+      .eq('channel', channel);
+
+    if (error) throw error;
+    return;
+  }
+
+  if (config.secret_value === undefined) {
+    const updatePayload = {
+      ...(config.enabled !== undefined ? { enabled: config.enabled } : {}),
+      ...(config.metadata !== undefined ? { metadata: config.metadata } : {}),
+      ...(config.event_types !== undefined
+        ? { event_types: config.event_types }
+        : {}),
+    };
+
+    const { error } = await supabase
+      .from('notification_channels')
+      .update(updatePayload)
+      .eq('user_id', userId)
+      .eq('channel', channel);
+
+    if (error) throw error;
+    return;
+  }
 
   const payload = {
     user_id: userId,
     channel,
-    enabled: config.enabled ?? existing?.enabled ?? true,
-    metadata: config.metadata ?? existing?.metadata ?? {},
-    event_types: config.event_types ?? existing?.event_types ?? ['renewal_reminder', 'trial_expiration'],
-    secret_value: config.secret_value ?? existing?.secret_value ?? null,
+    enabled: config.enabled ?? true,
+    metadata: config.metadata ?? {},
+    event_types: config.event_types ?? DEFAULT_NOTIFICATION_EVENT_TYPES,
+    secret_value: config.secret_value,
   };
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('notification_channels')
-    .upsert(payload, { onConflict: 'user_id,channel' })
-    .select()
-    .single();
+    .upsert(payload, { onConflict: 'user_id,channel' });
 
   if (error) throw error;
-  return data;
 }
 
 export async function deleteNotificationChannel(channelType: NotificationChannelType): Promise<void> {

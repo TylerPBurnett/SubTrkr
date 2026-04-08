@@ -11,9 +11,19 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 ## Status Update
 
+- Phase 0 repo-owned fixes are complete on the current desktop branch.
+- Phase 1 trimmed scope is complete on the current desktop branch.
+- Phase 2 is complete across the current desktop branch and shared backend contract.
 - Shared lifecycle writes now flow through the backend-owned `execute_item_status_change` RPC instead of a two-step client write path.
 - Archive is enforced as `cancelled -> archived` across the shared backend contract and both clients.
 - `edit_cancellation` now rewrites the authoritative cancellation event instead of appending a second cancelled transition.
+- Desktop audit did not find a remaining lifecycle corruption path, and the shared backend migration source of truth in the mobile repo confirms that `execute_item_status_change` locks the item row, validates transitions against the current status, and keeps the item update plus history write transactional.
+- Trend analytics currently count an item toward a month if it was active at any point during that month. That is acceptable for now, but it remains an approximation rather than invoice-date-exact accounting.
+- Desktop `ItemForm` now recalculates billing changes from the form's `start_date` anchor instead of `today`, including service-driven billing-cycle changes.
+- Version metadata is currently aligned across `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` at `1.2.2`.
+- `docs/RELEASE_CAPTAIN_CHECKLIST.md` now includes a focused Phase 0 hardening regression pass for billing anchors, lifecycle flows, analytics, notifications, and updater checks.
+- Tauri CSP is now enabled in `src-tauri/tauri.conf.json` and mirrored in Vite dev/preview headers for closer dev/prod parity.
+- Routine notification channel reads no longer return `secret_value` to the renderer; the notification settings UI now derives connection state from the safe read model.
 
 ## Problem
 
@@ -51,17 +61,19 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 ### Phase 1 - Security Boundary Hardening
 
 - Re-enable a Tauri CSP that matches the current desktop capabilities.
-- Reduce renderer trust by stopping `notification_channels.secret_value` from being returned to the client.
-- Move notification secret creation, update, and lookup flows behind an Edge Function or backend-owned write path that returns only connection state or redacted metadata.
-- Move Telegram verification and chat detection off the renderer if practical; at minimum, stop embedding the raw bot token in client-visible request URLs.
+- Reduce renderer trust by stopping routine notification channel reads from returning `notification_channels.secret_value` to the client.
+- Introduce a safe notification-channel read shape or derived connection state for the renderer so setup state can be shown without exposing raw webhook URLs or bot tokens in normal UI reads.
+- Defer moving notification setup flows behind an Edge Function or proxy layer unless the app's threat model changes or a shared hosted-notification architecture is introduced.
+- Defer moving Telegram verification and chat detection off the renderer; for the current desktop architecture, direct user-owned token setup is acceptable once CSP and routine secret reads are tightened.
 
 ### Phase 2 - Data Integrity and Lifecycle Correctness
 
-- Replace the two-step `items` update plus `item_status_history` insert with a transactional RPC or Postgres function.
-- Route expired-trial cancellation through the same shared lifecycle write path.
-- Restrict archive transitions to `cancelled -> archived` across desktop and iOS so archive stays a decluttering step, not a substitute for cancellation.
-- Keep idempotent guards on status transitions so multi-device launch or repeated maintenance does not create partial failures.
-- Re-review analytics assumptions that reconstruct history from status rows once the write path is centralized.
+- Completed: replace the two-step `items` update plus `item_status_history` insert with the backend-owned `execute_item_status_change` RPC.
+- Completed: route expired-trial cancellation through the same shared lifecycle write path.
+- Completed: restrict archive transitions to `cancelled -> archived` across desktop and iOS so archive stays a decluttering step, not a substitute for cancellation.
+- Completed on the desktop side: audit repeated maintenance runs and client-side timing edges; no remaining desktop write-path corruption issue was found.
+- Completed: confirm the shared backend contract in the mobile repo's tracked migration history. The latest `execute_item_status_change` function serializes on `FOR UPDATE`, rejects invalid duplicate/racing transitions cleanly, and performs the item update plus history write in one transactional function body.
+- Accepted analytics assumption: projected monthly trend treats an item as contributing to a month if it was active during any portion of that month.
 
 ### Phase 3 - Performance Hardening
 
@@ -82,7 +94,9 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 - `bunx tsc --noEmit`
 - Manual: create/edit item across all billing cycles and confirm `next_billing_date` stays on the expected anchor
 - Manual: pause/resume/cancel/reactivate/archive/trial flows and confirm history rows and analytics remain consistent
+- Manual: trigger duplicate maintenance scenarios where possible (app relaunch, repeated daily jobs, multi-device timing) and confirm the shared lifecycle RPC no-ops or cleanly rejects without inconsistent item/history state
 - Manual: connect/disconnect/test notification channels without exposing secrets back into UI payloads
+- Manual: validate CSP-sensitive flows including auth, realtime sync, Telegram setup, logo loading, and existing external `logo_url` images
 - Manual: verify realtime updates no longer trigger unrelated reloads
 - Manual: confirm version metadata matches in packaged desktop build and updater flow
 - Add at least one automated regression path for status transitions and date recalculation before production

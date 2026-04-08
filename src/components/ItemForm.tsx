@@ -72,6 +72,10 @@ export default function ItemForm({
 }: ItemFormProps) {
   const isEditing = !!item;
   const today = formatISODate(getToday());
+  const getAnchoredNextBillingDate = (
+    anchorDate: string | null | undefined,
+    billingCycle: BillingCycle,
+  ) => getNextFutureBillingDate(anchorDate || today, billingCycle);
 
   const labels = {
     singular: itemType === 'bill' ? 'Bill' : 'Subscription',
@@ -83,7 +87,7 @@ export default function ItemForm({
   }, [categories, itemType]);
 
   const [formData, setFormData] = useState<ItemFormData>(() => {
-    const defaultNextBilling = getNextFutureBillingDate(today, 'monthly');
+    const defaultNextBilling = getAnchoredNextBillingDate(today, 'monthly');
     return {
       name: '',
       amount: '',
@@ -237,13 +241,13 @@ export default function ItemForm({
       const updated = { ...prev, [name]: processedValue };
 
       if (name === 'start_date') {
-        updated.next_billing_date = getNextFutureBillingDate(
+        updated.next_billing_date = getAnchoredNextBillingDate(
           updated.start_date,
           updated.billing_cycle
         );
       } else if (name === 'billing_cycle') {
-        updated.next_billing_date = getNextFutureBillingDate(
-          today,
+        updated.next_billing_date = getAnchoredNextBillingDate(
+          updated.start_date,
           updated.billing_cycle as BillingCycle
         );
       } else if (name === 'url' && !prev.logo_url) {
@@ -275,6 +279,10 @@ export default function ItemForm({
       amount: service.defaultPrice.toString(),
       currency: service.defaultCurrency,
       billing_cycle: service.defaultBillingCycle,
+      next_billing_date: getAnchoredNextBillingDate(
+        prev.start_date,
+        service.defaultBillingCycle
+      ),
       category_id: categoryMatch?.id || prev.category_id,
       logo_url: getServiceLogoUrl(service),
       url: `https://${service.domain}`,
@@ -300,7 +308,7 @@ export default function ItemForm({
         category_id: '',
         logo_url: '',
         url: '',
-        next_billing_date: getNextFutureBillingDate(today, 'monthly'),
+        next_billing_date: getAnchoredNextBillingDate(prev.start_date, 'monthly'),
       }));
     } else {
       // Simple clear — just wipe the name
@@ -761,7 +769,10 @@ export default function ItemForm({
                         setFormData(prev => ({
                           ...prev,
                           billing_cycle: value,
-                          next_billing_date: getNextFutureBillingDate(today, value),
+                          next_billing_date: getAnchoredNextBillingDate(
+                            prev.start_date,
+                            value
+                          ),
                         }));
                       }}
                       aria-pressed={formData.billing_cycle === value}
@@ -841,7 +852,10 @@ export default function ItemForm({
                       setFormData(prev => ({
                         ...prev,
                         start_date: date,
-                        next_billing_date: getNextFutureBillingDate(date, prev.billing_cycle),
+                        next_billing_date: getAnchoredNextBillingDate(
+                          date,
+                          prev.billing_cycle
+                        ),
                       }));
                       if (errors.start_date) {
                         setErrors(prev => ({ ...prev, start_date: undefined }));
