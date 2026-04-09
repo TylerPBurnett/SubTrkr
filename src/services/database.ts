@@ -576,13 +576,17 @@ export async function getStatusHistory(itemId: string): Promise<StatusHistory[]>
   return data || [];
 }
 
-export async function getAllStatusHistory(): Promise<StatusHistory[]> {
+export async function getStatusHistoryForItems(itemIds: string[]): Promise<StatusHistory[]> {
+  const uniqueItemIds = Array.from(new Set(itemIds.filter(Boolean)));
+  if (uniqueItemIds.length === 0) return [];
+
   const userId = await getUserId();
 
   const { data, error } = await supabase
     .from('item_status_history')
     .select('*')
     .eq('user_id', userId)
+    .in('item_id', uniqueItemIds)
     .order('changed_at', { ascending: false });
 
   if (error) throw error;

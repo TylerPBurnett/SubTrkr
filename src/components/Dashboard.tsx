@@ -13,7 +13,7 @@ import {
 import GlowDonutChart from './ui/GlowDonutChart';
 import type { Category, ItemWithCategory, StatusHistory } from '../types';
 import {
-  getAllStatusHistory,
+  getStatusHistoryForItems,
   calculateMonthlySpending,
   calculateYearlySpending,
   getSpendingByCategory,
@@ -150,11 +150,15 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
 
   // Get the type filter for database queries
   const typeFilter = filterTab === 'all' ? undefined : filterTab;
-  const trackedItemIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
+  const trackedItemIds = useMemo(() => Array.from(new Set(items.map((item) => item.id))), [items]);
+  const trackedItemIdsKey = useMemo(
+    () => [...trackedItemIds].sort().join('|'),
+    [trackedItemIds],
+  );
   const statusHistoryKey = useMemo(
     () =>
       items
-        .map((item) => `${item.id}:${item.status}`)
+        .map((item) => `${item.id}:${item.status}:${item.cancellation_date ?? ''}`)
         .sort()
         .join('|'),
     [items],
@@ -168,10 +172,10 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
       return;
     }
 
-    getAllStatusHistory()
+    getStatusHistoryForItems(trackedItemIds)
       .then((historyData) => {
         if (!cancelled) {
-          setStatusHistoryEntries(historyData.filter((entry) => trackedItemIds.has(entry.item_id)));
+          setStatusHistoryEntries(historyData);
         }
       })
       .catch((error) => {
@@ -184,7 +188,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     return () => {
       cancelled = true;
     };
-  }, [items.length, statusHistoryKey, trackedItemIds]);
+  }, [items.length, statusHistoryKey, trackedItemIdsKey]);
 
   // Compute stats with useMemo (these are pure synchronous functions)
   const monthlySpending = useMemo(

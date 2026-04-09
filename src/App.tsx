@@ -80,6 +80,7 @@ const Analytics = lazy(() => import("./components/Analytics"));
 const Settings = lazy(() => import("./components/Settings"));
 
 type View = "dashboard" | "bills" | "subscriptions" | "analytics" | "settings";
+type ReloadTarget = "items" | "categories";
 
 const VIEW_CONTENT: Record<
   View,
@@ -210,6 +211,10 @@ function App() {
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingReloadTargetsRef = useRef<Record<ReloadTarget, boolean>>({
+    items: false,
+    categories: false,
+  });
   // Refs for keyboard shortcut handler — avoids re-registering listener on state changes (rule 5.6/8.2)
   const showFormRef = useRef(showForm);
   showFormRef.current = showForm;
@@ -218,48 +223,134 @@ function App() {
   const sidebarResizeStartXRef = useRef(0);
   const sidebarResizeStartWidthRef = useRef(clampSidebarWidth(sidebarWidth));
 
-  const loadData = useCallback(async () => {
-    try {
-      const [itemsData, cats] = await Promise.all([
-        getItems(),
-        getCategories(),
-      ]);
-      setItems(itemsData);
-      setCategories(cats);
+  const reportBackgroundFailures = useCallback(
+    (results: PromiseSettledResult<unknown>[], label: string) => {
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      if (failures.length === 0) return;
 
-      // Run maintenance and notifications in background (don't block UI)
-      Promise.allSettled([
-        advancePastDueItems(),
-        resumePausedItems(),
-        handleExpiredTrials(),
-        checkAndNotifyUpcomingRenewals(itemsData),
-        checkAndNotifyExpiringTrials(itemsData),
-      ]).then((results) => {
-        const failures = results.filter((r) => r.status === "rejected");
-        if (failures.length > 0) {
-          console.error("Some background tasks failed:", failures);
-          setBackgroundWarning(
-            `${failures.length} background task(s) failed. Data may be incomplete.`,
-          );
-        }
-      });
-    } catch (error) {
-      console.error("Failed to load data:", error);
-      toast.error("Failed to load data. Please check your connection.");
-    } finally {
-      setIsLoading(false);
-    }
+      console.error(`Some ${label} tasks failed:`, failures);
+      setBackgroundWarning(
+        `${failures.length} ${label} task(s) failed. Data may be incomplete.`,
+      );
+    },
+    [],
+  );
+
+  const loadItemsData = useCallback(async (): Promise<ItemWithCategory[]> => {
+    const itemsData = await getItems();
+    setItems(itemsData);
+    return itemsData;
   }, []);
 
-  // Debounced reload function to batch rapid changes
-  const debouncedLoadData = useCallback(() => {
+  const loadCategoriesData = useCallback(async (): Promise<Category[]> => {
+    const categoriesData = await getCategories();
+    setCategories(categoriesData);
+    return categoriesData;
+  }, []);
+
+  const loadData = useCallback(async (): Promise<ItemWithCategory[]> => {
+    const [itemsData] = await Promise.all([loadItemsData(), loadCategoriesData()]);
+    return itemsData;
+  }, [loadCategoriesData, loadItemsData]);
+
+  const runMaintenanceTasks = useCallback(async (): Promise<number> => {
+    const results = await Promise.allSettled([
+      advancePastDueItems(),
+      resumePausedItems(),
+      handleExpiredTrials(),
+    ]);
+
+    reportBackgroundFailures(results, "maintenance");
+
+    return results.reduce((count, result) => {
+      if (result.status === "fulfilled") {
+        return count + result.value;
+      }
+
+      return count;
+    }, 0);
+  }, [reportBackgroundFailures]);
+
+  const runNotificationChecks = useCallback(
+    async (itemsData: ItemWithCategory[]): Promise<void> => {
+      const results = await Promise.allSettled([
+        checkAndNotifyUpcomingRenewals(itemsData),
+        checkAndNotifyExpiringTrials(itemsData),
+      ]);
+
+      reportBackgroundFailures(results, "notification");
+    },
+    [reportBackgroundFailures],
+  );
+
+  const scheduleReload = useCallback(
+    (target: ReloadTarget) => {
+      pendingReloadTargetsRef.current[target] = true;
+
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+      }
+
+      reloadTimerRef.current = setTimeout(() => {
+        const pendingTargets = pendingReloadTargetsRef.current;
+        pendingReloadTargetsRef.current = { items: false, categories: false };
+        reloadTimerRef.current = null;
+
+        void (async () => {
+          try {
+            await Promise.all([
+              pendingTargets.items ? loadItemsData() : Promise.resolve(null),
+              pendingTargets.categories ? loadCategoriesData() : Promise.resolve(null),
+            ]);
+          } catch (error) {
+            console.error("Failed to refresh live updates:", error);
+            toast.error("Failed to refresh live updates. Please try again.");
+          }
+        })();
+      }, 100);
+    },
+    [loadCategoriesData, loadItemsData],
+  );
+
+  const runStartupBackgroundTasks = useCallback(
+    (itemsSnapshot: ItemWithCategory[]) => {
+      window.setTimeout(() => {
+        void (async () => {
+          try {
+            const maintenanceChanges = await runMaintenanceTasks();
+            const latestItems =
+              maintenanceChanges > 0 ? await loadItemsData() : itemsSnapshot;
+
+            await runNotificationChecks(latestItems);
+          } catch (error) {
+            console.error("Startup background tasks failed:", error);
+            setBackgroundWarning(
+              "Background startup tasks failed. Data may be incomplete.",
+            );
+          }
+        })();
+      }, 0);
+    },
+    [loadItemsData, runMaintenanceTasks, runNotificationChecks],
+  );
+
+  const handleCategoriesChange = useCallback(async () => {
+    try {
+      await loadData();
+    } catch (error) {
+      console.error("Failed to refresh categories:", error);
+      toast.error("Failed to refresh categories. Please try again.");
+    }
+  }, [loadData]);
+
+  const clearReloadTimer = useCallback(() => {
     if (reloadTimerRef.current) {
       clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = null;
     }
-    reloadTimerRef.current = setTimeout(() => {
-      loadData();
-    }, 100);
-  }, [loadData]);
+  }, []);
 
   // Check auth session on mount
   useEffect(() => {
@@ -344,10 +435,33 @@ function App() {
 
   // Load data when authenticated
   useEffect(() => {
-    if (session) {
-      loadData();
-    }
-  }, [session, loadData]);
+    if (!session) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    void (async () => {
+      try {
+        const itemsData = await loadData();
+        if (!cancelled) {
+          runStartupBackgroundTasks(itemsData);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load data:", error);
+          toast.error("Failed to load data. Please check your connection.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, loadData, runStartupBackgroundTasks]);
 
   // Check for app updates after login on desktop builds.
   useEffect(() => {
@@ -402,27 +516,21 @@ function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "items" },
-        () => debouncedLoadData(),
+        () => scheduleReload("items"),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "categories" },
-        () => debouncedLoadData(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "payments" },
-        () => debouncedLoadData(),
+        () => scheduleReload("categories"),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
-      if (reloadTimerRef.current) {
-        clearTimeout(reloadTimerRef.current);
-      }
+      pendingReloadTargetsRef.current = { items: false, categories: false };
+      clearReloadTimer();
     };
-  }, [session, debouncedLoadData]);
+  }, [session, clearReloadTimer, scheduleReload]);
 
   // Network connectivity check
   useEffect(() => {
@@ -517,13 +625,10 @@ function App() {
 
     const runDailyJobs = async () => {
       try {
-        const [resumed, advanced] = await Promise.all([
-          resumePausedItems(),
-          advancePastDueItems(),
-        ]);
-        if (resumed > 0 || advanced > 0) {
-          console.log(`Daily jobs: ${resumed} resumed, ${advanced} advanced`);
-          loadData(); // Reload data if any changes were made
+        const maintenanceChanges = await runMaintenanceTasks();
+        if (maintenanceChanges > 0) {
+          console.log(`Daily jobs applied ${maintenanceChanges} maintenance change(s)`);
+          await loadItemsData();
         }
       } catch (error) {
         console.error("Daily jobs failed:", error);
@@ -534,7 +639,7 @@ function App() {
     const interval = setInterval(runDailyJobs, 86400000);
 
     return () => clearInterval(interval);
-  }, [session, loadData]);
+  }, [session, loadItemsData, runMaintenanceTasks]);
 
   // Global keyboard shortcuts — listener registered once per session (refs read latest state)
   useEffect(() => {
@@ -1082,7 +1187,7 @@ function App() {
                   <Suspense fallback={<LazyComponentFallback />}>
                     <Settings
                       categories={categories}
-                      onCategoriesChange={loadData}
+                      onCategoriesChange={handleCategoriesChange}
                       useVibrancy={useVibrancy}
                       setUseVibrancy={setUseVibrancy}
                       activeTab={settingsTab}

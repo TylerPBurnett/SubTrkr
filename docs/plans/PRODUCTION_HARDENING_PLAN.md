@@ -14,11 +14,15 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 - Phase 0 repo-owned fixes are complete on the current desktop branch.
 - Phase 1 trimmed scope is complete on the current desktop branch.
 - Phase 2 is complete across the current desktop branch and shared backend contract.
+- Phase 3 is complete on the current desktop branch.
 - Shared lifecycle writes now flow through the backend-owned `execute_item_status_change` RPC instead of a two-step client write path.
 - Archive is enforced as `cancelled -> archived` across the shared backend contract and both clients.
 - `edit_cancellation` now rewrites the authoritative cancellation event instead of appending a second cancelled transition.
 - Desktop audit did not find a remaining lifecycle corruption path, and the shared backend migration source of truth in the mobile repo confirms that `execute_item_status_change` locks the item row, validates transitions against the current status, and keeps the item update plus history write transactional.
 - Trend analytics currently count an item toward a month if it was active at any point during that month. That is acceptable for now, but it remains an approximation rather than invoice-date-exact accounting.
+- App realtime invalidation now reloads `items` and `categories` selectively instead of routing all table changes through one global reload path, and the app no longer performs app-shell reloads for `payments` changes.
+- Initial data load now renders first and schedules maintenance afterward, instead of coupling maintenance work to every generic data reload.
+- Dashboard and Analytics now scope status-history support queries to the tracked item set instead of downloading the full user history on every item refresh.
 - Desktop `ItemForm` now recalculates billing changes from the form's `start_date` anchor instead of `today`, including service-driven billing-cycle changes.
 - Version metadata is currently aligned across `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` at `1.2.2`.
 - `docs/RELEASE_CAPTAIN_CHECKLIST.md` now includes a focused Phase 0 hardening regression pass for billing anchors, lifecycle flows, analytics, notifications, and updater checks.
@@ -77,10 +81,10 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 ### Phase 3 - Performance Hardening
 
-- Split `App.tsx` loading into table-specific invalidation instead of one global `loadData()`.
-- Do not reload items or categories when only `payments` changes; analytics should own payment refresh.
-- Move maintenance jobs off the hot load path so initial render is data fetch first, maintenance second.
-- Scope analytics queries to the current data needs instead of fetching all payments and all status history on every `items` change.
+- Completed: split `App.tsx` realtime loading into table-specific invalidation instead of routing all changes through one global `loadData()`.
+- Completed: stop reloading app-shell items and categories when only `payments` changes.
+- Completed: move maintenance jobs off the hot load path so initial render is data fetch first, maintenance second.
+- Completed: scope dashboard and analytics status-history queries to the tracked item set instead of downloading the full user history on every item refresh.
 
 ### Phase 4 - Maintainability Follow-Through
 
