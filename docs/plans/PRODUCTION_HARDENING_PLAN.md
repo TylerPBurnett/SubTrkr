@@ -28,6 +28,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 - `docs/RELEASE_CAPTAIN_CHECKLIST.md` now includes a focused Phase 0 hardening regression pass for billing anchors, lifecycle flows, analytics, notifications, and updater checks.
 - Tauri CSP is now enabled in `src-tauri/tauri.conf.json` and mirrored in Vite dev/preview headers for closer dev/prod parity.
 - Routine notification channel reads no longer return `secret_value` to the renderer; the notification settings UI now derives connection state from the safe read model.
+- Phase 4 maintainability splits are complete: `database.ts`, `App.tsx`, `ItemForm`, `ItemList`, and `NotificationSettings` are each decomposed into focused modules with isolated responsibilities. Automated coverage now guards lifecycle transitions, deterministic billing-date calculation, and analytics derivation across dedicated test files, all passing.
 
 ## Problem
 
@@ -88,10 +89,19 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 ### Phase 4 - Maintainability Follow-Through
 
-- Extract `App` orchestration into focused hooks/modules: auth/bootstrap, realtime sync, maintenance jobs, layout state, and shortcuts.
-- Split `database.ts` into smaller domains: lifecycle/status, items/categories, and payments/analytics helpers.
-- Split `NotificationSettings`, `ItemForm`, and `ItemList` into smaller components/hooks with isolated responsibilities.
-- Add lightweight automated coverage for status transitions, billing-date calculation, and analytics derivation.
+- Completed: extract `App` orchestration into focused hooks/modules (`useAppSession`, `useAppDataSync`, `useSidebarLayout`, `useGlobalShortcuts`, `useAppTheme`, `useAppUpdateNotifications`) plus `AppContent` and `AppSidebar` components. `App.tsx` reduced from ~1200 to ~415 lines.
+- Completed: split `database.ts` into a thin barrel re-exporting from domain modules (`catalog.ts`, `lifecycle.ts`, `payments.ts`, `analytics.ts`, `shared.ts`). Pure math extracted to `billingMath.ts` and `lifecycleHelpers.ts` for testability without Supabase.
+- Completed: split `NotificationSettings` into 8 focused modules (`ChannelLogo`, `NotificationChannelCard`, `NotificationLogPanel`, `NotificationPreferencesPanel`, `TelegramSetupFlow`, `WebhookSetupForm`, `useNotificationSettings`, `constants`).
+- Completed: split `ItemForm` into 6 focused modules (`ItemFormPreviewCard`, `ItemFormPrimaryFields`, `ItemFormSecondaryFields`, `useItemFormState`, `types`, `constants`).
+- Completed: split `ItemList` into 6 focused modules (`ItemListActionsMenu`, `ItemListGridView`, `ItemListStatusPill`, `ItemListTableView`, `useItemListState`, `constants`).
+- Completed: add lightweight automated coverage — `analytics.test.ts` (4 tests: spending calc, category grouping, savings, upcoming items) and `lifecycle.test.ts` (5 tests: status transitions, RPC param building, billing-date anchoring, zero-dollar trial rejection, billing-date advancement).
+- All 28 public database exports preserved through the barrel. No consumer import changes required. No circular dependencies. `bunx tsc --noEmit`, `bun test`, and `bun run build` all pass clean.
+
+### Phase 4.5 - Test Coverage Follow-Through
+
+- Completed: extract `getAnchoredNextBillingDate` from the inline closure in `useItemFormState` into a pure testable function in `item-form/billingHelpers.ts`. `getNextFutureBillingDate` now accepts an optional `referenceDate` for deterministic testing without changing production behavior, and `billingHelpers.test.ts` adds 9 exact-output tests covering the Phase 0 regression (anchor preservation across cycle changes, null/undefined fallback, future-date guarantee, weekly weekday anchoring, and cycle-specific monthly/quarterly/yearly stepping).
+- Deferred: integration coverage for orchestration hooks (`useAppDataSync`, `useNotificationSettings`). These hooks are deeply coupled to React state and Supabase API calls. Meaningful tests require React Testing Library + a DOM environment, which is not currently in the project. The debounce/batching and startup sequencing logic is only verifiable through manual testing or by adding `@testing-library/react` as a dev dependency.
+- Manual desktop smoke pass for auth deep links, realtime refresh, and notification setup — the main areas a code-only review cannot fully certify.
 
 ## Verification
 
@@ -103,7 +113,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 - Manual: validate CSP-sensitive flows including auth, realtime sync, Telegram setup, logo loading, and existing external `logo_url` images
 - Manual: verify realtime updates no longer trigger unrelated reloads
 - Manual: confirm version metadata matches in packaged desktop build and updater flow
-- Add at least one automated regression path for status transitions and date recalculation before production
+- Automated regression coverage now exists for lifecycle transitions, billing-date recalculation, and analytics derivation; remaining confidence gaps are orchestration-hook integration coverage and the manual desktop smoke pass
 
 ## Spawned Follow-Ups
 
@@ -117,3 +127,4 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 3. Then centralize status/history writes in a transactional backend path.
 4. After that, reduce global reloads and analytics over-fetching.
 5. Use the resulting boundaries to split the largest files before the next feature batch.
+6. Close the remaining Phase 4.5 gaps (orchestration hook integration tests and the manual desktop smoke pass) before shipping the next production build.
