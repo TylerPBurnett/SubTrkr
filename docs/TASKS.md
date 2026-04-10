@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-04-08
+> Last updated: 2026-04-10
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -24,7 +24,6 @@
 
 | ID | Pri | Area | Task | Source | Note |
 |---|---|---|---|---|---|
-| TASK-008 | P1 | Desktop / Hardening | Production hardening sweep | [docs/plans/PRODUCTION_HARDENING_PLAN.md](plans/PRODUCTION_HARDENING_PLAN.md) | Repo-owned pre-production pass for safety, correctness, performance, and maintainability |
 | TASK-002 | P1 | Desktop / Data Model | Trial pricing split | [docs/plans/TRIAL_PRICING_FOLLOW_UP.md](plans/TRIAL_PRICING_FOLLOW_UP.md) | Split free-trial pricing from post-trial pricing in schema usage, UI, and notifications |
 
 ## Inbox
@@ -44,7 +43,9 @@
 
 ## Active
 
-No active tasks right now.
+| ID | Pri | Area | Task | Source | Note |
+|---|---|---|---|---|---|
+| TASK-008 | P1 | Desktop / Hardening | Production hardening sweep | [docs/plans/PRODUCTION_HARDENING_PLAN.md](plans/PRODUCTION_HARDENING_PLAN.md) | Active follow-up on branch regressions: reminder evaluation, category realtime invalidation, and CSP/logo compatibility |
 
 ## Blocked
 

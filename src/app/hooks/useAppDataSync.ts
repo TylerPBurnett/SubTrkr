@@ -21,6 +21,7 @@ export function useAppDataSync(session: Session | null) {
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const itemsRef = useRef<ItemWithCategory[]>([]);
   const hasSeededCategories = useRef(false);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingReloadTargetsRef = useRef<Record<ReloadTarget, boolean>>({
@@ -48,6 +49,7 @@ export function useAppDataSync(session: Session | null) {
 
   const loadItemsData = useCallback(async (): Promise<ItemWithCategory[]> => {
     const itemsData = await getItems();
+    itemsRef.current = itemsData;
     setItems(itemsData);
     return itemsData;
   }, []);
@@ -100,6 +102,15 @@ export function useAppDataSync(session: Session | null) {
     }
   }, []);
 
+  const reloadItemsAndRunNotificationChecks = useCallback(
+    async (): Promise<ItemWithCategory[]> => {
+      const latestItems = await loadItemsData();
+      await runNotificationChecks(latestItems);
+      return latestItems;
+    },
+    [loadItemsData, runNotificationChecks],
+  );
+
   const scheduleReload = useCallback(
     (target: ReloadTarget) => {
       pendingReloadTargetsRef.current[target] = true;
@@ -116,7 +127,9 @@ export function useAppDataSync(session: Session | null) {
         void (async () => {
           try {
             await Promise.all([
-              pendingTargets.items ? loadItemsData() : Promise.resolve(null),
+              pendingTargets.items
+                ? reloadItemsAndRunNotificationChecks()
+                : Promise.resolve(null),
               pendingTargets.categories
                 ? loadCategoriesData()
                 : Promise.resolve(null),
@@ -231,12 +244,18 @@ export function useAppDataSync(session: Session | null) {
     const runDailyJobs = async () => {
       try {
         const maintenanceChanges = await runMaintenanceTasks();
+        const latestItems =
+          maintenanceChanges > 0
+            ? await loadItemsData()
+            : itemsRef.current;
+
         if (maintenanceChanges > 0) {
           console.log(
             `Daily jobs applied ${maintenanceChanges} maintenance change(s)`,
           );
-          await loadItemsData();
         }
+
+        await runNotificationChecks(latestItems);
       } catch (error) {
         console.error('Daily jobs failed:', error);
       }
@@ -244,7 +263,7 @@ export function useAppDataSync(session: Session | null) {
 
     const interval = setInterval(runDailyJobs, 86400000);
     return () => clearInterval(interval);
-  }, [loadItemsData, runMaintenanceTasks, session]);
+  }, [loadItemsData, runMaintenanceTasks, runNotificationChecks, session]);
 
   return {
     items,
