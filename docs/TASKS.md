@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-04-10
+> Last updated: 2026-04-12
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -33,6 +33,9 @@
 | TASK-003 | P2 | Notifications | Quiet hours | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Quality-of-life follow-up after timezone-aware delivery shipped |
 | TASK-004 | P2 | Notifications | Smart annual subscription alerts | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Prevent surprise renewals on high-cost annual plans |
 | TASK-005 | P2 | Notifications | Daily digest mode | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Consolidated delivery option for heavier notification users |
+| TASK-017 | P1 | Desktop / Notifications | Unify desktop reminder delivery with server outbox | [docs/plans/DESKTOP_NOTIFICATION_OUTBOX_PLAN.md](plans/DESKTOP_NOTIFICATION_OUTBOX_PLAN.md) | Follow-up architecture change after hardening: server schedules reminders, desktop client drains pending native deliveries |
+| TASK-018 | P2 | Desktop / Data Flow | Normalize category display data away from joined item snapshots | [docs/plans/CATEGORY_DATA_NORMALIZATION_PLAN.md](plans/CATEGORY_DATA_NORMALIZATION_PLAN.md) | Follow-up architecture change after hardening: item UI should resolve category presentation from live category state instead of stale joined `item.category` blobs |
+| TASK-019 | P1 | Desktop / Security | Import and localize custom subscription logos | [docs/plans/CUSTOM_LOGO_IMPORT_PLAN.md](plans/CUSTOM_LOGO_IMPORT_PLAN.md) | Follow-up after hardening: keep CSP tight by importing custom logos into app-controlled storage instead of rendering arbitrary remote `logo_url` values directly |
 | TASK-009 | P2 | Desktop / Calendar | Calendar workspace view | [docs/plans/CALENDAR_VIEW_PLAN.md](plans/CALENDAR_VIEW_PLAN.md) | Dedicated sidebar calendar view with weekly, monthly, zoomed-out, and yearly scheduling lenses; planned as a frontend-first feature unless backend limits show up |
 | TASK-010 | P3 | Desktop / UX | Modular dashboard & analytics | [docs/ROADMAP.md](ROADMAP.md) | Drag-to-reorder layout + per-user widget visibility toggles for dashboard and analytics; local-first persistence before Supabase sync |
 | TASK-011 | P3 | Desktop / Updater | Update retry with backoff | [CHANGELOG.md](../CHANGELOG.md) | If automatic update check fails (network error), quietly retry after 30 min instead of requiring manual retry |
