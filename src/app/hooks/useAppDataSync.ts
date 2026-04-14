@@ -225,7 +225,10 @@ export function useAppDataSync(session: Session | null) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'categories', filter: `user_id=eq.${session.user.id}` },
-        () => scheduleReload('categories'),
+        () => {
+          scheduleReload('categories');
+          scheduleReload('items');
+        },
       )
       .subscribe();
 
