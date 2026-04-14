@@ -1,52 +1,58 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { readFileSync } from "node:fs";
 
-// @ts-expect-error process is a nodejs global
-const host = process.env.TAURI_DEV_HOST;
-const packageJson = JSON.parse(
-  readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
-) as { version?: string };
-const appVersion = packageJson.version ?? "0.0.0";
-
-const baseCspDirectives = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "img-src 'self' data: blob: https://img.logo.dev",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-];
-
-function buildCsp(connectSrc: string[]) {
-  return [...baseCspDirectives, `connect-src ${connectSrc.join(" ")}`].join(
-    "; ",
-  );
-}
-
-const prodCsp = buildCsp([
-  "'self'",
-  "ipc:",
-  "http://ipc.localhost",
-  "https://*.supabase.co",
-  "wss://*.supabase.co",
-  "https://api.telegram.org",
-]);
-
-const devCsp = buildCsp([
-  "'self'",
-  "ipc:",
-  "http://ipc.localhost",
-  "https://*.supabase.co",
-  "wss://*.supabase.co",
-  "https://api.telegram.org",
-  host ? `ws://${host}:1421` : "ws://localhost:1421",
-]) + "; script-src 'self' 'unsafe-inline'";
-
 // https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(({ mode }) => {
+  // @ts-expect-error process is a nodejs global
+  const host = process.env.TAURI_DEV_HOST;
+  const packageJson = JSON.parse(
+    readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
+  ) as { version?: string };
+  const appVersion = packageJson.version ?? "0.0.0";
+
+  const env = loadEnv(mode, process.cwd(), "");
+  const supabaseOrigin = env.VITE_SUPABASE_URL
+    ? new URL(env.VITE_SUPABASE_URL).origin
+    : "https://bpgsfyallqqvvtjorybl.supabase.co";
+
+  const baseCspDirectives = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    `img-src 'self' data: blob: https://img.logo.dev ${supabaseOrigin}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+  ];
+
+  function buildCsp(connectSrc: string[]) {
+    return [...baseCspDirectives, `connect-src ${connectSrc.join(" ")}`].join(
+      "; ",
+    );
+  }
+
+  const prodCsp = buildCsp([
+    "'self'",
+    "ipc:",
+    "http://ipc.localhost",
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://api.telegram.org",
+  ]);
+
+  const devCsp = buildCsp([
+    "'self'",
+    "ipc:",
+    "http://ipc.localhost",
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://api.telegram.org",
+    host ? `ws://${host}:1421` : "ws://localhost:1421",
+  ]) + "; script-src 'self' 'unsafe-inline'";
+
+  return {
   plugins: [react(), tailwindcss()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
@@ -110,4 +116,5 @@ export default defineConfig(async () => ({
       "Content-Security-Policy": prodCsp,
     },
   },
-}));
+  };
+});

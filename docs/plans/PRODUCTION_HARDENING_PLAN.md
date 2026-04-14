@@ -34,7 +34,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 - Reminder evaluation regressed in `useAppDataSync`: realtime item reloads now refresh cached rows without rerunning `checkAndNotifyUpcomingRenewals()` / `checkAndNotifyExpiringTrials()`, so items created or edited after startup can miss reminders until relaunch.
 - Category realtime invalidation is incomplete: category table events refresh the standalone categories array, but item-facing UI still renders and sorts from the joined `item.category` snapshot returned by `getItems()`, leaving cross-device renames/colors stale until an item reload.
-- CSP/logo compatibility is unresolved: production `img-src` now allows only `self`, `data:`, `blob:`, and `https://img.logo.dev`, while persisted `logo_url` values are still rendered directly. Existing custom/external logos will fail in packaged builds unless the policy or logo strategy is adjusted.
+- CSP/logo compatibility is unresolved: production `img-src` now allows only `self`, `data:`, `blob:`, and `https://img.logo.dev`, while persisted `logo_url` values are still rendered directly. Existing custom/external logos will fail in packaged builds unless the policy or logo strategy is adjusted. Long-term fix is tracked as `TASK-019` in [docs/plans/CUSTOM_LOGO_IMPORT_PLAN.md](CUSTOM_LOGO_IMPORT_PLAN.md).
 
 ## Problem
 
@@ -128,6 +128,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 - Update `docs/TASKS.md` with repo-owned hardening tasks and backend-owned blocked work.
 - If notification secret handling requires shared backend coordination, create a dedicated backend ticket/plan through `docs/SUPABASE_BACKEND_WORKFLOW.md`.
+- `TASK-019` tracks the long-term CSP-safe custom logo solution via imported app-controlled logo assets instead of direct arbitrary remote `logo_url` rendering.
 
 ## Recommendation
 
