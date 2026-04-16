@@ -18,6 +18,7 @@ import { supabase } from '@/services/supabase';
 import type { ReloadTarget } from '../types';
 
 export function useAppDataSync(session: Session | null) {
+  const userId = session?.user?.id;
   const [items, setItems] = useState<ItemWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,7 +168,10 @@ export function useAppDataSync(session: Session | null) {
   );
 
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
+      setItems([]);
+      setCategories([]);
+      setIsLoading(true);
       return;
     }
 
@@ -195,10 +199,10 @@ export function useAppDataSync(session: Session | null) {
     return () => {
       cancelled = true;
     };
-  }, [loadData, runStartupBackgroundTasks, session]);
+  }, [loadData, runStartupBackgroundTasks, userId]);
 
   useEffect(() => {
-    if (session && !hasSeededCategories.current) {
+    if (userId && !hasSeededCategories.current) {
       hasSeededCategories.current = true;
       seedDefaultCategoriesIfNeeded()
         .then(() => {
@@ -208,10 +212,10 @@ export function useAppDataSync(session: Session | null) {
           console.error('Failed to seed categories:', error);
         });
     }
-  }, [session]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       return;
     }
 
@@ -219,12 +223,12 @@ export function useAppDataSync(session: Session | null) {
       .channel('db-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'items', filter: `user_id=eq.${session.user.id}` },
+        { event: '*', schema: 'public', table: 'items', filter: `user_id=eq.${userId}` },
         () => scheduleReload('items'),
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'categories', filter: `user_id=eq.${session.user.id}` },
+        { event: '*', schema: 'public', table: 'categories', filter: `user_id=eq.${userId}` },
         () => {
           scheduleReload('categories');
           scheduleReload('items');
@@ -237,10 +241,10 @@ export function useAppDataSync(session: Session | null) {
       pendingReloadTargetsRef.current = { items: false, categories: false };
       clearReloadTimer();
     };
-  }, [clearReloadTimer, scheduleReload, session]);
+  }, [clearReloadTimer, scheduleReload, userId]);
 
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       return;
     }
 
@@ -266,12 +270,13 @@ export function useAppDataSync(session: Session | null) {
 
     const interval = setInterval(runDailyJobs, 86400000);
     return () => clearInterval(interval);
-  }, [loadItemsData, runMaintenanceTasks, runNotificationChecks, session]);
+  }, [loadItemsData, runMaintenanceTasks, runNotificationChecks, userId]);
 
   return {
     items,
     categories,
     isLoading,
+    reloadItems: loadItemsData,
     handleCategoriesChange: async () => {
       try {
         await loadData();

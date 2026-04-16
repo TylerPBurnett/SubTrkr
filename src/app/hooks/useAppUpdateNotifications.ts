@@ -14,8 +14,10 @@ export function useAppUpdateNotifications({
   appVersion,
   onInstallNow,
 }: UseAppUpdateNotificationsOptions) {
+  const userId = session?.user?.id;
+
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       return;
     }
 
@@ -38,5 +40,5 @@ export function useAppUpdateNotifications({
       .catch((updateError) => {
         console.warn('Automatic update check failed:', updateError);
       });
-  }, [appVersion, onInstallNow, session]);
+  }, [appVersion, onInstallNow, userId]);
 }

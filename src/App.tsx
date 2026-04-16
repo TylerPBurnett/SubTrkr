@@ -101,7 +101,7 @@ function App() {
     useAppTheme();
   const { session, authLoading, showPasswordRecovery, setShowPasswordRecovery } =
     useAppSession();
-  const { items, categories, isLoading, handleCategoriesChange } =
+  const { items, categories, isLoading, reloadItems, handleCategoriesChange } =
     useAppDataSync(session);
   const {
     isCollapsed,
@@ -225,12 +225,13 @@ function App() {
   const handleDeleteItem = useCallback(async (id: string) => {
     try {
       await deleteItem(id);
+      await reloadItems();
       toast.success('Item deleted');
     } catch (error) {
       console.error('Failed to delete item:', error);
       toast.error('Failed to delete item. Please try again.');
     }
-  }, []);
+  }, [reloadItems]);
 
   const handleToggleActive = useCallback(async (id: string) => {
     try {
