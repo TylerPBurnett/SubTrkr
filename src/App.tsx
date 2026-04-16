@@ -35,10 +35,7 @@ const APP_VERSION = __APP_VERSION__;
 
 function LoadingScreen() {
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ backgroundColor: 'var(--bg-base)' }}
-    >
+    <div className="min-h-screen flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <span
           className="text-2xl select-none"
