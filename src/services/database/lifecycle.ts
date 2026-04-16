@@ -88,6 +88,10 @@ export async function executeStatusChange(
     throw new Error('Item not found');
   }
 
+  // Ownership is enforced server-side by execute_item_status_change:
+  // the RPC runs as SECURITY INVOKER, derives the acting user from auth.uid(),
+  // and filters each read/write by that user_id. Passing user_id from the
+  // client would be redundant and weaker than relying on the signed JWT.
   await executeStatusChangeRpc(buildExecuteStatusChangeRpcParams(item, data));
 }
 
@@ -147,18 +151,29 @@ export async function advancePastDueItems(): Promise<number> {
     return 0;
   }
 
-  const results = await Promise.all(
-    pastDueItems.map((item) => {
+  const results = await Promise.allSettled(
+    pastDueItems.map(async (item) => {
       const newDate = getNextFutureBillingDate(item.next_billing_date, item.billing_cycle);
-      return supabase
+      const { error: updateError } = await supabase
         .from('items')
         .update({ next_billing_date: newDate })
         .eq('id', item.id)
         .eq('user_id', userId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return item.id;
     }),
   );
 
-  return results.filter((result) => !result.error).length;
+  const failures = results.filter((result) => result.status === 'rejected');
+  if (failures.length > 0) {
+    console.error(`Failed to advance ${failures.length} past-due items:`, failures);
+  }
+
+  return results.filter((result) => result.status === 'fulfilled').length;
 }
 
 export function advanceNextBillingDate(item: Item): string {

@@ -23,7 +23,7 @@ export function useAppDataSync(session: Session | null) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const itemsRef = useRef<ItemWithCategory[]>([]);
-  const hasSeededCategories = useRef(false);
+  const seededForUserId = useRef<string | null>(null);
   const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingReloadTargetsRef = useRef<Record<ReloadTarget, boolean>>({
     items: false,
@@ -142,7 +142,7 @@ export function useAppDataSync(session: Session | null) {
         })();
       }, 100);
     },
-    [loadCategoriesData, loadItemsData],
+    [loadCategoriesData, reloadItemsAndRunNotificationChecks],
   );
 
   const runStartupBackgroundTasks = useCallback(
@@ -202,16 +202,26 @@ export function useAppDataSync(session: Session | null) {
   }, [loadData, runStartupBackgroundTasks, userId]);
 
   useEffect(() => {
-    if (userId && !hasSeededCategories.current) {
-      hasSeededCategories.current = true;
-      seedDefaultCategoriesIfNeeded()
-        .then(() => {
-          getCategories().then(setCategories);
-        })
-        .catch((error) => {
-          console.error('Failed to seed categories:', error);
-        });
+    if (!userId) {
+      seededForUserId.current = null;
+      return;
     }
+
+    if (seededForUserId.current === userId) {
+      return;
+    }
+
+    seededForUserId.current = userId;
+
+    void (async () => {
+      try {
+        await seedDefaultCategoriesIfNeeded();
+        const categoriesData = await getCategories();
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Failed to seed categories:', error);
+      }
+    })();
   }, [userId]);
 
   useEffect(() => {

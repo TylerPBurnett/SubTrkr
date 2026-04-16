@@ -31,10 +31,15 @@ export function useItemFormState({
   item,
   categories,
   itemType,
+  isSaving = false,
   onSave,
-}: Pick<ItemFormProps, 'item' | 'categories' | 'itemType' | 'onSave'>) {
+}: Pick<
+  ItemFormProps,
+  'item' | 'categories' | 'itemType' | 'isSaving' | 'onSave'
+>) {
   const isEditing = Boolean(item);
   const today = formatISODate(getToday());
+  const submittingRef = useRef(false);
   const labels: ItemFormLabels = {
     singular: itemType === 'bill' ? 'Bill' : 'Subscription',
     namePlaceholder:
@@ -74,6 +79,12 @@ export function useItemFormState({
     anchorDate: string | null | undefined,
     billingCycle: BillingCycle,
   ) => getAnchoredNextBillingDate(anchorDate, billingCycle, today);
+
+  useEffect(() => {
+    if (!isSaving) {
+      submittingRef.current = false;
+    }
+  }, [isSaving]);
 
   useEffect(() => {
     if (item) {
@@ -150,6 +161,10 @@ export function useItemFormState({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
+    if (submittingRef.current || isSaving) {
+      return;
+    }
+
     const nextErrors = validate();
     if (Object.keys(nextErrors).length > 0) {
       setShake(true);
@@ -165,7 +180,9 @@ export function useItemFormState({
       return;
     }
 
-    onSave({
+    submittingRef.current = true;
+
+    const payload = {
       name: formData.name.trim(),
       amount: Math.round(parseFloat(formData.amount) * 100) / 100,
       currency: formData.currency,
@@ -180,7 +197,14 @@ export function useItemFormState({
       reminder_days: formData.reminder_days,
       status: formData.status,
       trial_end_date: formData.trial_end_date || undefined,
-    });
+    };
+
+    try {
+      onSave(payload);
+    } catch (error) {
+      submittingRef.current = false;
+      throw error;
+    }
   };
 
   const handleFieldChange = (

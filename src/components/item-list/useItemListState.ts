@@ -131,7 +131,7 @@ export function useItemListState({
     if (changed) {
       setSelectedItemIds(nextSelectedIds);
     }
-  }, [selectedItemIds, sortedItems]);
+  }, [selectedItemIds.size, sortedItems]);
 
   const selectedVisibleItems = useMemo(() => {
     if (selectedItemIds.size === 0) {

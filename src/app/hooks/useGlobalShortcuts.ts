@@ -71,12 +71,18 @@ export function useGlobalShortcuts({
       }
 
       if (mod && event.key === 'n') {
+        if (showFormRef.current || hasStatusChangeDialogRef.current) {
+          return;
+        }
         event.preventDefault();
         onAddNewRef.current('subscription');
         return;
       }
 
       if (mod && event.key === 'b' && !inInput) {
+        if (showFormRef.current || hasStatusChangeDialogRef.current) {
+          return;
+        }
         event.preventDefault();
         onAddNewRef.current('bill');
         return;

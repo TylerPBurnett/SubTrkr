@@ -6,6 +6,7 @@ import type {
   NotificationLogEntry,
   NotificationEventType,
 } from '@/types';
+import { validateWebhookUrl } from './webhookValidator';
 
 const DEFAULT_NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
   'renewal_reminder',
@@ -48,9 +49,21 @@ export async function upsertNotificationChannel(
   }
 ): Promise<void> {
   const userId = await getUserId();
+  let normalizedSecret = config.secret_value;
 
   if (
-    config.secret_value === undefined &&
+    normalizedSecret != null &&
+    (channel === 'discord' || channel === 'slack')
+  ) {
+    const validation = validateWebhookUrl(channel, normalizedSecret);
+    if (!validation.ok) {
+      throw new Error(validation.error);
+    }
+    normalizedSecret = validation.url;
+  }
+
+  if (
+    normalizedSecret === undefined &&
     config.metadata === undefined &&
     config.event_types === undefined
   ) {
@@ -89,7 +102,7 @@ export async function upsertNotificationChannel(
     enabled: config.enabled ?? true,
     metadata: config.metadata ?? {},
     event_types: config.event_types ?? DEFAULT_NOTIFICATION_EVENT_TYPES,
-    secret_value: config.secret_value,
+    secret_value: normalizedSecret,
   };
 
   const { error } = await supabase

@@ -45,6 +45,7 @@ export default function ItemForm({
     item,
     categories,
     itemType,
+    isSaving,
     onSave,
   });
 

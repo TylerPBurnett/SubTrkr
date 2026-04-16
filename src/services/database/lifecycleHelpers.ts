@@ -95,12 +95,26 @@ export function getNextBillingDateAfterResume(
   item: Item,
   resumedOn: string,
 ): string {
-  if (item.next_billing_date >= resumedOn) {
-    return item.next_billing_date;
+  const normalizedNextBillingDate = normalizeDateOnly(item.next_billing_date);
+  const normalizedResumedOn = normalizeDateOnly(resumedOn) ?? resumedOn;
+
+  if (
+    normalizedNextBillingDate &&
+    normalizedNextBillingDate >= normalizedResumedOn
+  ) {
+    return normalizedNextBillingDate;
   }
 
-  const anchorDate = item.start_date || item.next_billing_date || resumedOn;
-  return getNextBillingDateOnOrAfter(anchorDate, item.billing_cycle, resumedOn);
+  const anchorDate =
+    normalizeDateOnly(item.start_date) ??
+    normalizedNextBillingDate ??
+    normalizedResumedOn;
+
+  return getNextBillingDateOnOrAfter(
+    anchorDate,
+    item.billing_cycle,
+    normalizedResumedOn,
+  );
 }
 
 export function normalizeDateOnly(value: string | null | undefined): string | null {
