@@ -92,7 +92,7 @@ describe('analytics helpers', () => {
       }),
       buildItem({
         id: 'item-bill-quarterly',
-        amount: 90,
+        amount: 60,
         billing_cycle: 'quarterly',
         item_type: 'bill',
         category_id: billCategory.id,
@@ -105,7 +105,7 @@ describe('analytics helpers', () => {
     assert.equal(spending.length, 1);
     assert.equal(spending[0].category.id, billCategory.id);
     assert.equal(spending[0].count, 2);
-    assert.equal(spending[0].total, 90);
+    assert.equal(spending[0].total, 80);
   });
 
   test('calculates monthly savings from cancelled and archived items', () => {
