@@ -242,5 +242,5 @@ WHERE channel IN ('discord','slack')
 - [x] Items 5–15 service/helper regressions: `bun test src/services/*.test.ts src/services/database/*.test.ts`
 - [ ] Item 2 (negative path): try saving `https://example.com/foo` → confirm clean validator error in UI
 - [ ] Item 2 (DB): run inspection query, decide on any stale rows
-- [ ] Final: `bun run build` passes
+- [x] Final: `bun run build` passes
 - [ ] Final: full smoke pass via `/smoke` slash command after all items land
