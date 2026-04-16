@@ -34,7 +34,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 - Reminder evaluation regressed in `useAppDataSync`: realtime item reloads now refresh cached rows without rerunning `checkAndNotifyUpcomingRenewals()` / `checkAndNotifyExpiringTrials()`, so items created or edited after startup can miss reminders until relaunch.
 - Category realtime invalidation is incomplete: category table events refresh the standalone categories array, but item-facing UI still renders and sorts from the joined `item.category` snapshot returned by `getItems()`, leaving cross-device renames/colors stale until an item reload.
-- CSP/logo compatibility is unresolved: production `img-src` now allows only `self`, `data:`, `blob:`, and `https://img.logo.dev`, while persisted `logo_url` values are still rendered directly. Existing custom/external logos will fail in packaged builds unless the policy or logo strategy is adjusted. Long-term fix is tracked as `TASK-019` in [docs/plans/CUSTOM_LOGO_IMPORT_PLAN.md](CUSTOM_LOGO_IMPORT_PLAN.md).
+- CSP/logo compatibility is resolved: all `items.logo_url` rows have been migrated from direct `img.logo.dev` URLs to the Supabase `logo-proxy` edge function, and `https://img.logo.dev` has been removed from `img-src`. The CSP now only allows the app's own Supabase origin for logo images. Long-term custom logo import (user-supplied arbitrary URLs) is still tracked as `TASK-019` in [docs/plans/CUSTOM_LOGO_IMPORT_PLAN.md](CUSTOM_LOGO_IMPORT_PLAN.md).
 
 ## Problem
 

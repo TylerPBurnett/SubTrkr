@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
-    `img-src 'self' data: blob: https://img.logo.dev ${supabaseOrigin}`,
+    `img-src 'self' data: blob: ${supabaseOrigin}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
   ];
