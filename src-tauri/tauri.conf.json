@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob: https://bpgsfyallqqvvtjorybl.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co https://api.telegram.org"
     }
   },
   "bundle": {

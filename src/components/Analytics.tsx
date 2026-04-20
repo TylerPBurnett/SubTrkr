@@ -33,7 +33,7 @@ import {
   calculateMonthlySavings,
   calculateMonthlySpending,
   calculateYearlySpending,
-  getAllStatusHistory,
+  getStatusHistoryForItems,
   getSpendingByCategory,
 } from '../services/database';
 import { formatCurrency } from '../utils/currency';
@@ -388,6 +388,19 @@ function Analytics({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [statusHistoryEntries, setStatusHistoryEntries] = useState<StatusHistory[]>([]);
   const [trendRange, setTrendRange] = useState<TrendRange>('6m');
+  const trackedItemIds = useMemo(() => Array.from(new Set(items.map((item) => item.id))), [items]);
+  const trackedItemIdsKey = useMemo(
+    () => [...trackedItemIds].sort().join('|'),
+    [trackedItemIds],
+  );
+  const statusHistoryKey = useMemo(
+    () =>
+      items
+        .map((item) => `${item.id}:${item.status}:${item.cancellation_date ?? ''}`)
+        .sort()
+        .join('|'),
+    [items],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -397,12 +410,10 @@ function Analytics({
       return;
     }
 
-    const itemIdSet = new Set(items.map((item) => item.id));
-
-    getAllStatusHistory()
+    getStatusHistoryForItems(trackedItemIds)
       .then((historyData) => {
         if (!cancelled) {
-          setStatusHistoryEntries(historyData.filter((entry) => itemIdSet.has(entry.item_id)));
+          setStatusHistoryEntries(historyData);
         }
       })
       .catch((error) => {
@@ -415,7 +426,7 @@ function Analytics({
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [items.length, statusHistoryKey, trackedItemIdsKey]);
 
   const filteredItems = useMemo(() => {
     if (activeTab === 'all') return items;

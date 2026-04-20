@@ -106,17 +106,20 @@ export function calculateNextBillingDate(dateStr: string, cycle: BillingCycle): 
  * @param cycle - The billing cycle
  * @returns ISO date string (YYYY-MM-DD) of the next future billing date
  */
-export function getNextFutureBillingDate(anchorDateStr: string, cycle: BillingCycle): string {
+export function getNextFutureBillingDate(
+  anchorDateStr: string,
+  cycle: BillingCycle,
+  referenceDate: Date = getToday(),
+): string {
   const anchor = parseLocalDate(anchorDateStr);
-  const today = getToday();
-  
+
   let nextDate = anchor;
-  
-  // Advance until we're strictly in the future
-  while (nextDate <= today) {
+
+  // Advance until we're strictly in the future relative to referenceDate
+  while (nextDate <= referenceDate) {
     nextDate = addBillingCycle(nextDate, cycle);
   }
-  
+
   return formatISODate(nextDate);
 }
 

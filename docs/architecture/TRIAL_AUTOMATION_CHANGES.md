@@ -117,7 +117,6 @@ import {
   deleteItem,
   toggleItemActive,
   advancePastDueItems,
-  archivePastCancellations,
   resumePausedItems,
   executeStatusChange,
 } from './services/database';
@@ -131,7 +130,6 @@ import {
   deleteItem,
   toggleItemActive,
   advancePastDueItems,
-  archivePastCancellations,
   resumePausedItems,
   handleExpiredTrials, // ← ADDED
   executeStatusChange,
@@ -152,7 +150,6 @@ import { checkAndNotifyUpcomingRenewals, checkAndNotifyExpiringTrials } from './
 // Before:
 await Promise.all([
   advancePastDueItems(),
-  archivePastCancellations(),
   resumePausedItems(),
 ]);
 
@@ -165,7 +162,6 @@ checkAndNotifyUpcomingRenewals(itemsData).catch((notifyError) => {
 // After:
 await Promise.all([
   advancePastDueItems(),
-  archivePastCancellations(),
   resumePausedItems(),
   handleExpiredTrials(), // ← ADDED
 ]);

@@ -101,6 +101,25 @@ curl -fsSL https://github.com/TylerPBurnett/SubTrkr/releases/latest/download/lat
 - [ ] Settings → Check for Updates → detected new version
 - [ ] Downloaded, installed, relaunched successfully
 
+### Phase 0 Hardening Regression Pass
+
+- [ ] Created a new item and confirmed `next_billing_date` is anchored from the selected `start_date`
+- [ ] Edited an existing item, changed `billing_cycle`, and confirmed the next billing date stayed on the item's recurrence anchor instead of shifting from today's date
+- [ ] Ran pause, resume, cancel, reactivate, archive, start-trial, and convert flows without status/history regressions
+- [ ] Confirmed analytics still reflects recent lifecycle changes correctly
+- [ ] Connected, disconnected, and test-sent notification channels without breaking delivery setup
+- [ ] Verified the in-app updater still reports the current release version correctly
+
+### Phase 1 CSP Validation Pass
+
+- [ ] App launches without CSP violations in the console
+- [ ] Auth flows still work: existing session restore, sign-in, sign-out, and OAuth browser handoff
+- [ ] Supabase-backed data loads correctly and realtime updates still arrive
+- [ ] Notification settings load, Telegram verification works, and test-send still succeeds
+- [ ] Known service logos still render from `img.logo.dev`
+- [ ] Existing user-supplied external `logo_url` images were spot-checked for CSP blocking
+- [ ] Fonts and overall styling load correctly in both dev and packaged builds
+
 ---
 
 ## Sign-Off

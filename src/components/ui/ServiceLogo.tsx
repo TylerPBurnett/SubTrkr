@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { CreditCard, Receipt, Wifi, Zap, type LucideIcon } from 'lucide-react';
 import type { ItemType } from '../../types';
 
 interface ServiceLogoProps {
@@ -18,10 +17,10 @@ const sizeMap = {
   lg: 56,
 };
 
-const iconSizeMap = {
-  sm: 16,
-  md: 20,
-  lg: 28,
+const letterSizeMap = {
+  sm: 14,
+  md: 18,
+  lg: 24,
 };
 
 function getColorFromName(name: string): string {
@@ -48,29 +47,11 @@ function getColorFromName(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-function getFallbackIcon(itemType?: ItemType, categoryName?: string): LucideIcon {
-  // Check category name for specific icons
-  if (categoryName) {
-    const lowerCategory = categoryName.toLowerCase();
-
-    // Utilities - Zap icon
-    if (lowerCategory.includes('utilit') || lowerCategory.includes('electric') || lowerCategory.includes('power') || lowerCategory.includes('energy')) {
-      return Zap;
-    }
-
-    // Internet/Phone - Wifi icon
-    if (lowerCategory.includes('internet') || lowerCategory.includes('phone') || lowerCategory.includes('mobile') || lowerCategory.includes('wireless') || lowerCategory.includes('broadband')) {
-      return Wifi;
-    }
-  }
-
-  // Default based on item type
-  if (itemType === 'bill') {
-    return Receipt;
-  }
-
-  // Default for subscriptions
-  return CreditCard;
+function getInitial(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return '?';
+  const first = [...trimmed][0];
+  return first ? first.toUpperCase() : '?';
 }
 
 export default function ServiceLogo({
@@ -78,32 +59,30 @@ export default function ServiceLogo({
   name,
   size = 'md',
   className = '',
-  itemType,
-  categoryName,
-  categoryColor
+  categoryColor,
 }: ServiceLogoProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(!!logoUrl);
 
   const dimensions = sizeMap[size];
-  const iconSize = iconSizeMap[size];
+  const letterSize = letterSizeMap[size];
   // Use category color if provided, otherwise fall back to name-based color
   const bgColor = categoryColor || getColorFromName(name);
 
-  // Show icon fallback if no URL or if loading failed
+  // Show initial-letter fallback if no URL or if loading failed
   if (!logoUrl || hasError) {
-    const FallbackIcon = getFallbackIcon(itemType, categoryName);
-
     return (
       <div
-        className={`flex items-center justify-center rounded-lg text-white flex-shrink-0 ${className}`}
+        className={`flex items-center justify-center rounded-lg text-white font-semibold select-none flex-shrink-0 ${className}`}
         style={{
           width: dimensions,
           height: dimensions,
           backgroundColor: bgColor,
+          fontSize: letterSize,
+          lineHeight: 1,
         }}
       >
-        <FallbackIcon size={iconSize} />
+        {getInitial(name)}
       </div>
     );
   }
