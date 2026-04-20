@@ -24,6 +24,7 @@ supabase/.temp/
 !.claude/skills/
 !.claude/skills/**
 .claude/settings.local.json
+.claude/worktrees/
 
 # Editor directories and files
 .vscode/*
