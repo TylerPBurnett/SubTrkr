@@ -17,6 +17,7 @@ dist-ssr
 .dmux/
 .superpowers/
 .playwright-mcp/
+supabase/.temp/
 
 # Override global gitignore to commit shared .claude/ config
 !.claude/

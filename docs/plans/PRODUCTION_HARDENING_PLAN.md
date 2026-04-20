@@ -12,29 +12,29 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 ## Status Update
 
 - Phase 0 repo-owned fixes are complete on the current desktop branch.
-- Phase 1 trimmed scope is partially complete on the current desktop branch; CSP and safe notification-channel reads landed, but logo compatibility under the new CSP is still unresolved.
+- Phase 1 repo-owned scope is complete on the current desktop branch. CSP, safe notification-channel reads, webhook validation, and logo-proxy compatibility are all in place. Long-term arbitrary custom-logo import remains a separate follow-up tracked as `TASK-019`.
 - Phase 2 is complete across the current desktop branch and shared backend contract.
-- Phase 3 is partially complete on the current desktop branch; selective realtime invalidation landed, but reminder evaluation and category invalidation behavior still need follow-up.
+- Phase 3 repo-owned scope is complete on the current desktop branch. Realtime invalidation now reruns reminder checks after item reloads and refreshes both category state and joined item snapshots on category events. Long-term category normalization remains a separate follow-up tracked as `TASK-018`.
 - Shared lifecycle writes now flow through the backend-owned `execute_item_status_change` RPC instead of a two-step client write path.
 - Archive is enforced as `cancelled -> archived` across the shared backend contract and both clients.
 - `edit_cancellation` now rewrites the authoritative cancellation event instead of appending a second cancelled transition.
 - Desktop audit did not find a remaining lifecycle corruption path, and the shared backend migration source of truth in the mobile repo confirms that `execute_item_status_change` locks the item row, validates transitions against the current status, and keeps the item update plus history write transactional.
 - Trend analytics currently count an item toward a month if it was active at any point during that month. That is acceptable for now, but it remains an approximation rather than invoice-date-exact accounting.
-- App realtime invalidation now reloads `items` and `categories` selectively instead of routing all table changes through one global reload path, and the app no longer performs app-shell reloads for `payments` changes. Category-originated item snapshot invalidation still needs a follow-up fix.
+- App realtime invalidation now reloads `items` and `categories` selectively instead of routing all table changes through one global reload path, and the app no longer performs app-shell reloads for `payments` changes. Category-originated changes now invalidate both category state and joined item snapshots.
 - Initial data load now renders first and schedules maintenance afterward, instead of coupling maintenance work to every generic data reload.
 - Dashboard and Analytics now scope status-history support queries to the tracked item set instead of downloading the full user history on every item refresh.
 - Desktop `ItemForm` now recalculates billing changes from the form's `start_date` anchor instead of `today`, including service-driven billing-cycle changes.
 - Version metadata is currently aligned across `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` at `1.2.2`.
 - `docs/RELEASE_CAPTAIN_CHECKLIST.md` now includes a focused Phase 0 hardening regression pass for billing anchors, lifecycle flows, analytics, notifications, and updater checks.
-- Tauri CSP is now enabled in `src-tauri/tauri.conf.json` and mirrored in Vite dev/preview headers for closer dev/prod parity. Existing non-`img.logo.dev` item logos are currently a known compatibility gap under this policy.
+- Tauri CSP is now enabled in `src-tauri/tauri.conf.json` and mirrored in Vite dev/preview headers for closer dev/prod parity. Existing `img.logo.dev` rows were migrated to the Supabase `logo-proxy` edge function, so current app-owned logos remain compatible under this policy.
 - Routine notification channel reads no longer return `secret_value` to the renderer; the notification settings UI now derives connection state from the safe read model.
 - Phase 4 maintainability splits are complete: `database.ts`, `App.tsx`, `ItemForm`, `ItemList`, and `NotificationSettings` are each decomposed into focused modules with isolated responsibilities. Automated coverage now guards lifecycle transitions, deterministic billing-date calculation, and analytics derivation across dedicated test files, all passing.
 
-## Open Blockers
+## Merge Readiness
 
-- Reminder evaluation regressed in `useAppDataSync`: realtime item reloads now refresh cached rows without rerunning `checkAndNotifyUpcomingRenewals()` / `checkAndNotifyExpiringTrials()`, so items created or edited after startup can miss reminders until relaunch.
-- Category realtime invalidation is incomplete: category table events refresh the standalone categories array, but item-facing UI still renders and sorts from the joined `item.category` snapshot returned by `getItems()`, leaving cross-device renames/colors stale until an item reload.
-- CSP/logo compatibility is resolved: all `items.logo_url` rows have been migrated from direct `img.logo.dev` URLs to the Supabase `logo-proxy` edge function, and `https://img.logo.dev` has been removed from `img-src`. The CSP now only allows the app's own Supabase origin for logo images. Long-term custom logo import (user-supplied arbitrary URLs) is still tracked as `TASK-019` in [docs/plans/CUSTOM_LOGO_IMPORT_PLAN.md](CUSTOM_LOGO_IMPORT_PLAN.md).
+- Manual smoke pass completed on 2026-04-20. Auth, realtime refresh, theme switching, and notification flows were exercised successfully on the branch.
+- Notification channel testing passed in-app during closeout. The branch is approved for PR creation and merge to `main`.
+- Residual non-blockers: the webhook-validator negative-path UI check and the stale-row inspection query were not rerun during closeout. They can be handled later if needed without reopening this hardening branch.
 
 ## Problem
 
@@ -88,12 +88,12 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 ### Phase 3 - Performance Hardening
 
-- Partially complete: split `App.tsx` realtime loading into table-specific invalidation instead of routing all changes through one global `loadData()`.
+- Completed: split `App.tsx` realtime loading into table-specific invalidation instead of routing all changes through one global `loadData()`.
 - Completed: stop reloading app-shell items and categories when only `payments` changes.
 - Completed: move maintenance jobs off the hot load path so initial render is data fetch first, maintenance second.
 - Completed: scope dashboard and analytics status-history queries to the tracked item set instead of downloading the full user history on every item refresh.
-- Remaining follow-up: rerun reminder evaluation after item reloads that can change eligibility and on the daily maintenance path.
-- Remaining follow-up: make category-originated invalidation refresh item-facing category data too, or stop rendering from stale joined `item.category` snapshots.
+- Completed: rerun reminder evaluation after item reloads that can change eligibility and on the daily maintenance path.
+- Deferred architectural follow-up: normalize item-facing category presentation away from joined `item.category` snapshots. The current branch refreshes both categories and items on category table events, so cross-device renames/colors no longer stay stale between reloads.
 
 ### Phase 4 - Maintainability Follow-Through
 
@@ -113,7 +113,8 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 ## Verification
 
-- `bunx tsc --noEmit`
+- Automated on 2026-04-20: `bunx tsc --noEmit`, `bun test`, and `bun run build` all pass on this branch.
+- Manual on 2026-04-20: smoke pass completed and notification delivery tested successfully in-app.
 - Manual: create/edit item across all billing cycles and confirm `next_billing_date` stays on the expected anchor
 - Manual: pause/resume/cancel/reactivate/archive/trial flows and confirm history rows and analytics remain consistent
 - Manual: trigger duplicate maintenance scenarios where possible (app relaunch, repeated daily jobs, multi-device timing) and confirm the shared lifecycle RPC no-ops or cleanly rejects without inconsistent item/history state
@@ -122,7 +123,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 - Manual: verify realtime updates no longer trigger unrelated reloads
 - Manual: confirm version metadata matches in packaged desktop build and updater flow
 - Automated regression coverage now exists for lifecycle transitions, billing-date recalculation, and analytics derivation; remaining confidence gaps are orchestration-hook integration coverage and the manual desktop smoke pass
-- Do not mark the hardening sweep complete until the three open blockers above are either fixed in-branch or explicitly deferred with an approved follow-up task and release decision.
+- The hardening sweep can be treated as complete for merge. Remaining follow-up work is intentionally tracked in separate tasks.
 
 ## Spawned Follow-Ups
 
@@ -132,9 +133,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 ## Recommendation
 
-1. Land the billing-anchor fix and version alignment first.
-2. Then harden secrets/CSP and move notification secret handling behind a safer boundary.
-3. Then centralize status/history writes in a transactional backend path.
-4. After that, reduce global reloads and analytics over-fetching.
-5. Use the resulting boundaries to split the largest files before the next feature batch.
-6. Close the remaining Phase 4.5 gaps (orchestration hook integration tests and the manual desktop smoke pass) before shipping the next production build.
+1. Publish the final branch-closeout commit from `hardening-plan-implementation`.
+2. Open the PR from `hardening-plan-implementation` and merge it to `main`.
+3. Carry `TASK-016`, `TASK-017`, `TASK-018`, and `TASK-019` as intentional post-merge follow-ups instead of blockers for this hardening branch.
+4. Only reopen code changes on this branch if a PR review or post-merge verification exposes a concrete regression.
