@@ -252,7 +252,7 @@ export default function SearchFilterToolbar({
                         borderColor: "var(--border-strong)",
                         boxShadow:
                           "0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong)",
-                        borderRadius: "10px",
+                        borderRadius: "8px",
                         padding: "4px",
                       }}
                     >

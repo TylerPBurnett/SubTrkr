@@ -540,7 +540,7 @@ body.sidebar-resizing * {
 /* Main content area */
 .main-content {
   background-color: var(--bg-surface);
-  border-radius: 1.35rem;
+  border-radius: 1.25rem;
   margin: 0.5rem 0.5rem 0.5rem 0;
   border: 1px solid var(--main-panel-border);
   border-left-color: transparent;

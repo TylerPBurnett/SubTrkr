@@ -316,8 +316,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         />
 
         <DashboardMetricCard
-          accentColor="var(--accent-purple)"
-          accentMuted="var(--accent-purple-muted)"
+          accentColor="var(--text-secondary)"
+          accentMuted="var(--bg-hover)"
           detail={<TrendBadge current={yearlySpending} previous={prevYearlySpending} showNoBaselineDash />}
           icon={<Calendar className="h-5 w-5" />}
           label="Yearly Run Rate"
@@ -325,8 +325,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         />
 
         <DashboardMetricCard
-          accentColor="var(--accent-blue)"
-          accentMuted="var(--accent-blue-muted)"
+          accentColor="var(--text-secondary)"
+          accentMuted="var(--bg-hover)"
           detail={
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
               {activeItemsDetail}
@@ -338,8 +338,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
         />
 
         <DashboardMetricCard
-          accentColor="var(--accent-amber)"
-          accentMuted="var(--accent-amber-muted)"
+          accentColor={upcomingItems.length > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)'}
+          accentMuted={upcomingItems.length > 0 ? 'var(--accent-amber-muted)' : 'var(--bg-hover)'}
           detail={
             <p className="truncate text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
               {dueThisWeekDetail}
@@ -455,7 +455,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
               </div>
 
               <div
-                className="min-w-0 flex-1 rounded-[24px] p-3 sm:p-3.5 xl:flex xl:h-[17rem] xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
+                className="min-w-0 flex-1 rounded-2xl p-3 sm:p-3.5 xl:flex xl:h-[17rem] xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
                 style={{
                   background:
                     'linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 92%, transparent), color-mix(in srgb, var(--bg-tertiary) 74%, transparent))',
@@ -490,7 +490,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2.5 rounded-[15px] px-3 py-2 transition-all duration-300"
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all duration-300"
                         style={{
                           opacity: isDimmed ? 0.42 : 1,
                           cursor: 'pointer',
