@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
 import ServiceLogo from '@/components/ui/ServiceLogo';
-import { formatDisplayDate, formatShortDate } from '@/utils/dates';
+import { formatDisplayDate } from '@/utils/dates';
 import type { ItemWithCategory, StatusChangeData } from '@/types';
 import { BILLING_CYCLE_LABELS, formatCurrency, STATUS_STYLES } from './constants';
 import { ItemListActionsMenu } from './ItemListActionsMenu';
+import { ItemListStatusPill } from './ItemListStatusPill';
 
 interface ItemListGridViewProps {
   items: ItemWithCategory[];
@@ -115,62 +116,7 @@ export function ItemListGridView({
 
             {item.status !== 'active' && (
               <div className="mb-3">
-                {item.status === 'trial' && (
-                  <span
-                    className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    TRIAL
-                  </span>
-                )}
-                {item.status === 'paused' && (
-                  <span
-                    className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    PAUSED {item.paused_until && `· ${formatShortDate(item.paused_until)}`}
-                  </span>
-                )}
-                {item.status === 'cancelled' && (
-                  <span
-                    className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    CANCELLED{' '}
-                    {item.cancellation_date && `· ${formatShortDate(item.cancellation_date)}`}
-                  </span>
-                )}
-                {item.status === 'archived' && (
-                  <span
-                    className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold font-mono"
-                    style={{
-                      backgroundColor: 'var(--bg-hover)',
-                      color: 'var(--text-muted)',
-                      border: '1px solid var(--border-default)',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    ARCHIVED
-                  </span>
-                )}
+                <ItemListStatusPill item={item} />
               </div>
             )}
 
