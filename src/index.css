@@ -400,10 +400,8 @@ textarea {
 
 /* Focus states */
 *:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--ring-offset),
-    0 0 0 4px var(--brand-primary);
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
 }
 
 /* ============================================
