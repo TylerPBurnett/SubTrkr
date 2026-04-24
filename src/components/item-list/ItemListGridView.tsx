@@ -52,13 +52,14 @@ export function ItemListGridView({
             onClick={() => onEdit(item)}
             onMouseEnter={(event) => {
               if (item.status === 'active') {
-                event.currentTarget.style.boxShadow = `0 8px 24px -8px ${categoryColor}40, var(--shadow-elevated)`;
+                event.currentTarget.style.boxShadow =
+                  'var(--shadow-elevated), 0 10px 28px -10px rgba(0, 0, 0, 0.22)';
                 event.currentTarget.style.transform = 'translateY(-2px)';
               }
             }}
             onMouseLeave={(event) => {
-              event.currentTarget.style.boxShadow = 'var(--shadow-card)';
-              event.currentTarget.style.transform = 'translateY(0)';
+              event.currentTarget.style.boxShadow = '';
+              event.currentTarget.style.transform = '';
             }}
           >
             <div className="flex items-start gap-3 mb-3">

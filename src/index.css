@@ -641,32 +641,6 @@ body.sidebar-resizing * {
   }
 }
 
-/* Input fields */
-.input {
-  background-color: var(--bg-input);
-  border: 2px solid var(--border-default);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-weight: 500;
-  transition: all 0.2s var(--ease-out-expo);
-}
-
-.input:hover {
-  border-color: var(--border-strong);
-}
-
-.input:focus {
-  border-color: var(--brand-primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
-}
-
-.input::placeholder {
-  color: var(--text-muted);
-  font-family: var(--font-body);
-  font-weight: 400;
-}
-
 /* Buttons */
 .btn-primary {
   background-color: var(--brand-primary);
