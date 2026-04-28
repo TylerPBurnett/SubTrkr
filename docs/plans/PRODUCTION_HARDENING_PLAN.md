@@ -14,7 +14,7 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 - Phase 0 repo-owned fixes are complete on the current desktop branch.
 - Phase 1 repo-owned scope is complete on the current desktop branch. CSP, safe notification-channel reads, webhook validation, and logo-proxy compatibility are all in place. Long-term arbitrary custom-logo import remains a separate follow-up tracked as `TASK-019`.
 - Phase 2 is complete across the current desktop branch and shared backend contract.
-- Phase 3 repo-owned scope is complete on the current desktop branch. Realtime invalidation now reruns reminder checks after item reloads and refreshes both category state and joined item snapshots on category events. Long-term category normalization remains a separate follow-up tracked as `TASK-018`.
+- Phase 3 repo-owned scope is complete on the current desktop branch. Realtime invalidation now reruns reminder checks after item reloads and refreshes both category state and joined item snapshots on category events. Long-term category normalization was completed later as `TASK-018`.
 - Shared lifecycle writes now flow through the backend-owned `execute_item_status_change` RPC instead of a two-step client write path.
 - Archive is enforced as `cancelled -> archived` across the shared backend contract and both clients.
 - `edit_cancellation` now rewrites the authoritative cancellation event instead of appending a second cancelled transition.
@@ -135,5 +135,5 @@ This plan turns the current repo sweep into an ordered pre-production execution 
 
 1. Publish the final branch-closeout commit from `hardening-plan-implementation`.
 2. Open the PR from `hardening-plan-implementation` and merge it to `main`.
-3. Carry `TASK-016`, `TASK-017`, `TASK-018`, and `TASK-019` as intentional post-merge follow-ups instead of blockers for this hardening branch.
+3. Carry `TASK-016`, `TASK-017`, and `TASK-019` as intentional post-merge follow-ups instead of blockers for this hardening branch. `TASK-018` was completed separately on 2026-04-28.
 4. Only reopen code changes on this branch if a PR review or post-merge verification exposes a concrete regression.

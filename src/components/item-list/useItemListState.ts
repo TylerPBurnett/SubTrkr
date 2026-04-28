@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useItemFilters } from '@/hooks/useItemFilters';
 import type { Category, ItemType, ItemWithCategory } from '@/types';
+import { createCategoryLookup, resolveItemCategoryDisplay } from '@/utils/categories';
 import {
   SORT_COLLATOR,
   STATUS_ORDER,
@@ -71,6 +72,10 @@ export function useItemListState({
   const filteredCategories = itemType
     ? categories.filter((category) => category.category_type === itemType)
     : categories;
+  const categoryLookup = useMemo(
+    () => createCategoryLookup(categories),
+    [categories],
+  );
 
   const sortedItems = useMemo(() => {
     const direction = sortDirection === 'asc' ? 1 : -1;
@@ -87,8 +92,8 @@ export function useItemListState({
           break;
         case 'category':
           comparison = SORT_COLLATOR.compare(
-            left.category?.name || 'Uncategorized',
-            right.category?.name || 'Uncategorized',
+            resolveItemCategoryDisplay(left, categoryLookup).name,
+            resolveItemCategoryDisplay(right, categoryLookup).name,
           );
           break;
         case 'status':
@@ -109,7 +114,7 @@ export function useItemListState({
 
       return comparison * direction;
     });
-  }, [filteredItems, sortBy, sortDirection]);
+  }, [categoryLookup, filteredItems, sortBy, sortDirection]);
 
   useEffect(() => {
     if (selectedItemIds.size === 0) {
@@ -150,6 +155,7 @@ export function useItemListState({
   return {
     activeFilterCount,
     allVisibleSelected,
+    categoryLookup,
     filteredCategories,
     searchQuery,
     selectedCategory,

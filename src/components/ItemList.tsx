@@ -42,6 +42,7 @@ function ItemList({
   const {
     activeFilterCount,
     allVisibleSelected,
+    categoryLookup,
     clearFilters,
     filteredCategories,
     handleSelectAllChange,
@@ -225,6 +226,7 @@ function ItemList({
         <AnimatePresence mode="wait">
           {viewMode === 'grid' ? (
             <ItemListGridView
+              categoryLookup={categoryLookup}
               items={sortedItems}
               onDeleteClick={handleDeleteClick}
               onEdit={onEdit}
@@ -235,6 +237,7 @@ function ItemList({
           ) : (
             <ItemListTableView
               allVisibleSelected={allVisibleSelected}
+              categoryLookup={categoryLookup}
               items={sortedItems}
               onDeleteClick={handleDeleteClick}
               onEdit={onEdit}
