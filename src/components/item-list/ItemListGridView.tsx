@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
 import ServiceLogo from '@/components/ui/ServiceLogo';
 import { formatDisplayDate, formatShortDate } from '@/utils/dates';
-import type { ItemWithCategory, StatusChangeData } from '@/types';
+import { resolveItemCategoryDisplay } from '@/utils/categories';
+import type { Category, ItemWithCategory, StatusChangeData } from '@/types';
 import { BILLING_CYCLE_LABELS, formatCurrency, STATUS_STYLES } from './constants';
 import { ItemListActionsMenu } from './ItemListActionsMenu';
 
 interface ItemListGridViewProps {
+  categoryLookup: ReadonlyMap<string, Category>;
   items: ItemWithCategory[];
   onDeleteClick: (item: ItemWithCategory) => void;
   onEdit: (item: ItemWithCategory) => void;
@@ -15,6 +17,7 @@ interface ItemListGridViewProps {
 }
 
 export function ItemListGridView({
+  categoryLookup,
   items,
   onDeleteClick,
   onEdit,
@@ -33,7 +36,8 @@ export function ItemListGridView({
       transition={{ duration: 0.16, ease: 'easeOut' }}
     >
       {items.map((item, index) => {
-        const categoryColor = item.category?.color || '#6b7280';
+        const categoryDisplay = resolveItemCategoryDisplay(item, categoryLookup);
+        const categoryColor = categoryDisplay.color;
 
         return (
           <motion.div
@@ -66,8 +70,8 @@ export function ItemListGridView({
                 name={item.name}
                 size="md"
                 itemType={item.item_type}
-                categoryName={item.category?.name}
-                categoryColor={item.category?.color}
+                categoryName={categoryDisplay.name}
+                categoryColor={categoryDisplay.color}
               />
 
               <div className="flex-1 min-w-0">
@@ -98,7 +102,7 @@ export function ItemListGridView({
                     }}
                   />
                   <span className="font-medium truncate">
-                    {item.category?.name || 'Uncategorized'}
+                    {categoryDisplay.name}
                   </span>
                 </div>
               </div>

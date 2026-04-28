@@ -2,13 +2,15 @@ import { motion } from 'framer-motion';
 import { Checkbox } from '@/components/ui/checkbox';
 import ServiceLogo from '@/components/ui/ServiceLogo';
 import { formatDisplayDate, formatShortDate } from '@/utils/dates';
-import type { ItemWithCategory, StatusChangeData } from '@/types';
+import { resolveItemCategoryDisplay } from '@/utils/categories';
+import type { Category, ItemWithCategory, StatusChangeData } from '@/types';
 import { BILLING_CYCLE_LABELS, formatCurrency, STATUS_STYLES } from './constants';
 import { ItemListActionsMenu } from './ItemListActionsMenu';
 import { ItemListStatusPill } from './ItemListStatusPill';
 
 interface ItemListTableViewProps {
   allVisibleSelected: boolean;
+  categoryLookup: ReadonlyMap<string, Category>;
   items: ItemWithCategory[];
   onDeleteClick: (item: ItemWithCategory) => void;
   onEdit: (item: ItemWithCategory) => void;
@@ -23,6 +25,7 @@ interface ItemListTableViewProps {
 
 export function ItemListTableView({
   allVisibleSelected,
+  categoryLookup,
   items,
   onDeleteClick,
   onEdit,
@@ -88,7 +91,8 @@ export function ItemListTableView({
             </thead>
             <tbody>
               {items.map((item, index) => {
-                const categoryColor = item.category?.color || '#6b7280';
+                const categoryDisplay = resolveItemCategoryDisplay(item, categoryLookup);
+                const categoryColor = categoryDisplay.color;
 
                 return (
                   <motion.tr
@@ -132,8 +136,8 @@ export function ItemListTableView({
                           name={item.name}
                           size="sm"
                           itemType={item.item_type}
-                          categoryName={item.category?.name}
-                          categoryColor={item.category?.color}
+                          categoryName={categoryDisplay.name}
+                          categoryColor={categoryDisplay.color}
                         />
                         <div className="min-w-0 flex-1">
                           <button
@@ -164,7 +168,7 @@ export function ItemListTableView({
                               }}
                             />
                             <span className="font-medium">
-                              {item.category?.name || 'Uncategorized'}
+                              {categoryDisplay.name}
                             </span>
                           </div>
                         </div>

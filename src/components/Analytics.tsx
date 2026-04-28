@@ -44,6 +44,7 @@ import {
   normalizeToStartOfDay,
   parseDateValue,
 } from '../utils/projectedSpending';
+import { createCategoryLookup, resolveItemCategoryDisplay } from '../utils/categories';
 import ServiceLogo from './ui/ServiceLogo';
 import { GlowFilter, GradientFill, lightenColor } from './ui/ChartEffects';
 import SegmentedControl from './ui/SegmentedControl';
@@ -474,17 +475,24 @@ function Analytics({
     () => getSpendingByCategory(filteredItems, categories, activeTab === 'all' ? undefined : activeTab),
     [activeTab, categories, filteredItems]
   );
+  const categoryLookup = useMemo(
+    () => createCategoryLookup(categories),
+    [categories],
+  );
 
   const categoryInsights = useMemo<CategoryInsight[]>(() => {
-    const totalSpend = spendingByCategory.reduce((total, item) => total + item.total, 0);
+    const totalSpend = spendingByCategory.reduce(
+      (total, spending) => total + spending.total,
+      0,
+    );
 
-    return spendingByCategory.map((item) => ({
-      amount: Math.round(item.total),
-      color: item.category.color,
-      count: item.count,
-      id: item.category.id,
-      name: item.category.name,
-      share: totalSpend === 0 ? 0 : item.total / totalSpend,
+    return spendingByCategory.map((spending) => ({
+      amount: Math.round(spending.total),
+      color: spending.category.color,
+      count: spending.count,
+      id: spending.category.id,
+      name: spending.category.name,
+      share: totalSpend === 0 ? 0 : spending.total / totalSpend,
     }));
   }, [spendingByCategory]);
 
@@ -1085,43 +1093,47 @@ function Analytics({
             />
           ) : (
             <div className="space-y-3">
-              {topItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-4 rounded-xl p-3 transition-colors interactive-hover-bg"
-                >
+              {topItems.map((item, index) => {
+                const categoryDisplay = resolveItemCategoryDisplay(item, categoryLookup);
+
+                return (
                   <div
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold"
-                    style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                    key={item.id}
+                    className="flex items-center gap-4 rounded-xl p-3 transition-colors interactive-hover-bg"
                   >
-                    {index + 1}
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold"
+                      style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                    >
+                      {index + 1}
+                    </div>
+                    <ServiceLogo
+                      categoryColor={categoryDisplay.color}
+                      categoryName={categoryDisplay.name}
+                      itemType={item.item_type}
+                      logoUrl={item.logo_url}
+                      name={item.name}
+                      size="md"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {item.name}
+                      </p>
+                      <p className="truncate text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        {categoryDisplay.name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
+                        {formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
+                      </p>
+                      <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
+                        {formatCurrency(item.amount, { currency: item.currency, display: 'precise' })} {item.billing_cycle}
+                      </p>
+                    </div>
                   </div>
-                  <ServiceLogo
-                    categoryColor={item.category?.color}
-                    categoryName={item.category?.name}
-                    itemType={item.item_type}
-                    logoUrl={item.logo_url}
-                    name={item.name}
-                    size="md"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
-                      {item.name}
-                    </p>
-                    <p className="truncate text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {item.category?.name || 'Uncategorized'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
-                      {formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
-                    </p>
-                    <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-                      {formatCurrency(item.amount, { currency: item.currency, display: 'precise' })} {item.billing_cycle}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1176,41 +1188,45 @@ function Analytics({
               </div>
 
               <div className="max-h-80 space-y-3 overflow-y-auto">
-                {cancelledItems.slice(0, 10).map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-xl p-3"
-                    style={{ backgroundColor: 'var(--bg-hover)' }}
-                  >
-                    <ServiceLogo
-                      categoryColor={item.category?.color}
-                      categoryName={item.category?.name}
-                      className="opacity-70"
-                      itemType={item.item_type}
-                      logoUrl={item.logo_url}
-                      name={item.name}
-                      size="md"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {item.name}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {getCancelledInsightDate(item)
-                          ? `Ended ${formatDisplayDate(getCancelledInsightDate(item)!)}`
-                          : 'Ended date unavailable'}
-                      </p>
+                {cancelledItems.slice(0, 10).map((item) => {
+                  const categoryDisplay = resolveItemCategoryDisplay(item, categoryLookup);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-xl p-3"
+                      style={{ backgroundColor: 'var(--bg-hover)' }}
+                    >
+                      <ServiceLogo
+                        categoryColor={categoryDisplay.color}
+                        categoryName={categoryDisplay.name}
+                        className="opacity-70"
+                        itemType={item.item_type}
+                        logoUrl={item.logo_url}
+                        name={item.name}
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {item.name}
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {getCancelledInsightDate(item)
+                            ? `Ended ${formatDisplayDate(getCancelledInsightDate(item)!)}`
+                            : 'Ended date unavailable'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold font-mono" style={{ color: 'var(--accent-green)' }}>
+                          +{formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
+                        </p>
+                        <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                          {categoryDisplay.name}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold font-mono" style={{ color: 'var(--accent-green)' }}>
-                        +{formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
-                      </p>
-                      <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                        {item.category?.name || 'Uncategorized'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}

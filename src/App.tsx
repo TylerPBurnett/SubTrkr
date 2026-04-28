@@ -378,6 +378,7 @@ function App() {
 
       {statusChangeDialog && (
         <StatusChangeDialog
+          categories={categories}
           isOpen={true}
           item={statusChangeDialog.item}
           action={statusChangeDialog.action}

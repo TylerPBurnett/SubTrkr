@@ -19,6 +19,7 @@ import {
   getSpendingByCategory,
   getUpcomingItems
 } from '../services/database';
+import { createCategoryLookup, resolveItemCategoryDisplay } from '../utils/categories';
 import { formatCurrency } from '../utils/currency';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
 import { calculateProjectedMonthlySpendingForMonth } from '../utils/projectedSpending';
@@ -205,6 +206,10 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     () => getSpendingByCategory(items, categories, typeFilter),
     [items, categories, typeFilter]
   );
+  const categoryLookup = useMemo(
+    () => createCategoryLookup(categories),
+    [categories],
+  );
 
   const upcomingItems = useMemo(
     () => getUpcomingItems(items, 7, typeFilter),
@@ -247,11 +252,11 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
   }, [filteredItems, statusHistoryByItem]);
 
   const dashboardCategoryData = useMemo<DashboardCategorySlice[]>(() => {
-    const categorySlices = spendingByCategory.map((item) => ({
-      color: item.category.color,
-      id: item.category.id,
-      name: item.category.name,
-      value: item.total,
+    const categorySlices = spendingByCategory.map((spending) => ({
+      color: spending.category.color,
+      id: spending.category.id,
+      name: spending.category.name,
+      value: spending.total,
     }));
 
     const total = categorySlices.reduce((sum, item) => sum + item.value, 0);
@@ -370,6 +375,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
             <div className="space-y-3">
               {upcomingItems.slice(0, 5).map((item, index) => {
                 const daysUntil = getDaysUntil(item.next_billing_date);
+                const categoryDisplay = resolveItemCategoryDisplay(item, categoryLookup);
 
                 return (
                   <button
@@ -385,8 +391,8 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                       name={item.name}
                       size="md"
                       itemType={item.item_type}
-                      categoryName={item.category?.name}
-                      categoryColor={item.category?.color}
+                      categoryName={categoryDisplay.name}
+                      categoryColor={categoryDisplay.color}
                     />
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
