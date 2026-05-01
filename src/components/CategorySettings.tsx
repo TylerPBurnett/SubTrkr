@@ -3,6 +3,7 @@ import { Plus, Pencil, X, Check, Tag } from 'lucide-react';
 import type { Category, ItemType } from '../types';
 import { createCategory, updateCategory, deleteCategory } from '../services/database';
 import SegmentedControl from './ui/SegmentedControl';
+import { Input } from './ui/input';
 
 interface CategorySettingsProps {
   categories: Category[];
@@ -137,7 +138,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
               </span>
             </div>
             <div className="flex items-center gap-3 mb-3">
-              <input
+              <Input
                 type="text"
                 value={newCategory.name}
                 onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
@@ -148,7 +149,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                   }
                 }}
                 placeholder="Category name"
-                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none"
+                className="h-9 flex-1"
                 autoFocus
               />
               <button
@@ -209,7 +210,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                 className="w-6 h-6 rounded-lg shrink-0"
                 style={{ backgroundColor: editingCategory.color }}
               />
-              <input
+              <Input
                 type="text"
                 value={editingCategory.name}
                 onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
@@ -221,7 +222,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                     setEditingCategory(null);
                   }
                 }}
-                className="input flex-1 px-3 py-2 rounded-lg focus:outline-none"
+                className="h-9 flex-1"
                 autoFocus
               />
               <button

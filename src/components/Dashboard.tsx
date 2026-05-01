@@ -458,7 +458,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 className="min-w-0 flex-1 rounded-2xl p-3 sm:p-3.5 xl:flex xl:h-[17rem] xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
                 style={{
                   background:
-                    'linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 92%, transparent), color-mix(in srgb, var(--bg-tertiary) 74%, transparent))',
+                    'linear-gradient(180deg, color-mix(in srgb, var(--bg-hover) 92%, transparent), color-mix(in srgb, var(--bg-base) 74%, transparent))',
                   boxShadow:
                     'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 76%, transparent), 0 24px 48px -36px color-mix(in srgb, black 46%, transparent)',
                 }}

@@ -80,18 +80,6 @@
     0 12px 40px -12px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.07);
   --shadow-brand: 0 4px 14px -3px rgba(34, 197, 94, 0.35);
 
-  /* Card depth */
-  --card-highlight:
-    inset 0 1px 0 0 rgba(255, 255, 255, 1), inset 0 -1px 0 0 rgba(0, 0, 0, 0.03);
-  --card-noise-opacity: 0.03;
-  --card-bg: linear-gradient(
-    145deg,
-    var(--bg-card) 0%,
-    color-mix(in srgb, var(--bg-card) 94%, var(--bg-base)) 100%
-  );
-  --card-hover-glow:
-    0 0 0 1px rgba(34, 197, 94, 0.08), 0 4px 20px -4px rgba(34, 197, 94, 0.07);
-
   /* App shell (2-layer composition: sidebar surface + main panel) */
   --shell-surface: #d6ddd8;
   --sidebar-ambient: rgba(34, 197, 94, 0.1);
@@ -230,17 +218,6 @@
   --shadow-floating:
     0 12px 40px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-brand: 0 4px 14px -3px rgba(34, 197, 94, 0.25);
-
-  /* Card depth */
-  --card-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
-  --card-noise-opacity: 0.025;
-  --card-bg: linear-gradient(
-    145deg,
-    var(--bg-card) 0%,
-    color-mix(in srgb, var(--bg-card) 88%, #000000) 100%
-  );
-  --card-hover-glow:
-    0 0 0 1px rgba(34, 197, 94, 0.12), 0 4px 24px -4px rgba(34, 197, 94, 0.1);
 
   /* App shell (2-layer composition: sidebar surface + main panel) */
   --shell-surface: #080b09;
@@ -637,6 +614,33 @@ body.sidebar-resizing * {
   .page-body {
     padding: 0 1.25rem 1.5rem;
   }
+}
+
+/* Legacy input class for screens not yet migrated to the shared Input component. */
+.input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  transition:
+    border-color 0.2s var(--ease-out-expo),
+    background-color 0.2s var(--ease-out-expo);
+}
+
+.input:hover {
+  border-color: var(--border-strong);
+}
+
+.input:focus {
+  border-color: var(--brand-primary);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-weight: 400;
 }
 
 /* Buttons */
