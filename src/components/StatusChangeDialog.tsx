@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar, Check, Archive, Clock3 } from 'lucide-react';
 import { addDays } from 'date-fns';
-import type { ItemWithCategory, StatusChangeData } from '@/types';
+import type { Category, ItemWithCategory, StatusChangeData } from '@/types';
 import { formatISODate, getToday, formatDisplayDate } from '../utils/dates';
 
 interface StatusChangeDialogProps {
+  categories: Category[];
   isOpen: boolean;
   item: ItemWithCategory;
   action: StatusChangeData['action'];
@@ -13,6 +14,7 @@ interface StatusChangeDialogProps {
 }
 
 export default function StatusChangeDialog({
+  categories,
   isOpen,
   item,
   action,
@@ -35,6 +37,7 @@ export default function StatusChangeDialog({
   const [shake, setShake] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const itemCategory = categories.find((category) => category.id === item.category_id);
 
   const isoDateOnly = (value: string | null | undefined): string | null =>
     value ? value.split('T')[0] : null;
@@ -515,7 +518,7 @@ export default function StatusChangeDialog({
               </button>
             </div>
 
-            {item.category && (
+            {itemCategory && (
               <div
                 className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
                 style={{
@@ -528,7 +531,7 @@ export default function StatusChangeDialog({
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    background: item.category.color,
+                    background: itemCategory.color,
                   }}
                 />
                 <span
@@ -539,7 +542,7 @@ export default function StatusChangeDialog({
                     fontWeight: 600,
                   }}
                 >
-                  {item.category.name}
+                  {itemCategory.name}
                 </span>
               </div>
             )}

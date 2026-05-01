@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-04-20
+> Last updated: 2026-04-28
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -34,7 +34,6 @@
 | TASK-004 | P2 | Notifications | Smart annual subscription alerts | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Prevent surprise renewals on high-cost annual plans |
 | TASK-005 | P2 | Notifications | Daily digest mode | [docs/notifications/NOTIFICATION_IMPROVEMENTS.md](notifications/NOTIFICATION_IMPROVEMENTS.md) | Consolidated delivery option for heavier notification users |
 | TASK-017 | P1 | Desktop / Notifications | Unify desktop reminder delivery with server outbox | [docs/plans/DESKTOP_NOTIFICATION_OUTBOX_PLAN.md](plans/DESKTOP_NOTIFICATION_OUTBOX_PLAN.md) | Follow-up architecture change after hardening: server schedules reminders, desktop client drains pending native deliveries |
-| TASK-018 | P2 | Desktop / Data Flow | Normalize category display data away from joined item snapshots | [docs/plans/CATEGORY_DATA_NORMALIZATION_PLAN.md](plans/CATEGORY_DATA_NORMALIZATION_PLAN.md) | Follow-up architecture change after hardening: item UI should resolve category presentation from live category state instead of stale joined `item.category` blobs |
 | TASK-019 | P1 | Desktop / Security | Import and localize custom subscription logos | [docs/plans/CUSTOM_LOGO_IMPORT_PLAN.md](plans/CUSTOM_LOGO_IMPORT_PLAN.md) | Follow-up after hardening: keep CSP tight by importing custom logos into app-controlled storage instead of rendering arbitrary remote `logo_url` values directly |
 | TASK-009 | P2 | Desktop / Calendar | Calendar workspace view | [docs/plans/CALENDAR_VIEW_PLAN.md](plans/CALENDAR_VIEW_PLAN.md) | Dedicated sidebar calendar view with weekly, monthly, zoomed-out, and yearly scheduling lenses; planned as a frontend-first feature unless backend limits show up |
 | TASK-010 | P3 | Desktop / UX | Modular dashboard & analytics | [docs/ROADMAP.md](ROADMAP.md) | Drag-to-reorder layout + per-user widget visibility toggles for dashboard and analytics; local-first persistence before Supabase sync |
@@ -62,3 +61,4 @@ No active tasks right now.
 | TASK-007 | P1 | Desktop | Status-history / autopay alignment | [docs/completed-plans/2026-03-10-desktop-autopay-alignment-recommendations.md](completed-plans/2026-03-10-desktop-autopay-alignment-recommendations.md) | Implemented 2026-03-24; desktop now preserves cancelled items, excludes trials from projected spend, and exposes status-history timeline behavior |
 | TASK-015 | P1 | Desktop / Updater | Update panel redesign + persistent indicator + auto-update pref + markdown notes | [CHANGELOG.md](../CHANGELOG.md) | Completed 2026-04-06; compact/expanded modes, nav badge, auto-update toggle, markdown release notes, one-click install toast, dev simulation mode |
 | TASK-008 | P1 | Desktop / Hardening | Production hardening sweep | [docs/plans/PRODUCTION_HARDENING_PLAN.md](plans/PRODUCTION_HARDENING_PLAN.md) | Completed 2026-04-20; checks, smoke pass, notification testing, and branch closeout are done. Remaining work moved to TASK-016/TASK-017/TASK-018/TASK-019 |
+| TASK-018 | P2 | Desktop / Data Flow | Normalize category display data away from joined item snapshots | [docs/completed-plans/CATEGORY_DATA_NORMALIZATION_PLAN.md](completed-plans/CATEGORY_DATA_NORMALIZATION_PLAN.md) | Completed 2026-04-28; item-facing category display now resolves from live category state, and category realtime events no longer need to reload items |

@@ -634,7 +634,6 @@ body.sidebar-resizing * {
 
 .input:focus {
   border-color: var(--brand-primary);
-  outline: none;
 }
 
 .input::placeholder {
