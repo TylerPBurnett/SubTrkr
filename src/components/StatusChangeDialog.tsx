@@ -120,72 +120,56 @@ export default function StatusChangeDialog({
       icon: Pause,
       verb: 'Pause',
       title: 'Pause Subscription',
-      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-      glowColor: 'rgba(245, 158, 11, 0.3)',
-      textColor: '#f59e0b',
+      textColor: 'var(--accent-amber)',
       message: 'Pause takes effect immediately. You can optionally set when recurring tracking should resume.',
     },
     cancel: {
       icon: XCircle,
       verb: 'Cancel',
       title: 'Cancel Subscription',
-      gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-      glowColor: 'rgba(239, 68, 68, 0.3)',
-      textColor: '#ef4444',
+      textColor: 'var(--accent-red)',
       message: 'Subscription cancelled. Historical data preserved for accurate analytics.',
     },
     edit_cancellation: {
       icon: Calendar,
       verb: 'Edit',
       title: 'Edit Cancellation Date',
-      gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-      glowColor: 'rgba(59, 130, 246, 0.3)',
-      textColor: '#3b82f6',
+      textColor: 'var(--accent-blue)',
       message: 'Update the effective cancellation date without fabricating a new cancellation event.',
     },
     resume: {
       icon: Play,
       verb: 'Resume',
       title: 'Resume Subscription',
-      gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-      glowColor: 'rgba(59, 130, 246, 0.3)',
-      textColor: '#3b82f6',
+      textColor: 'var(--accent-blue)',
       message: 'Billing resumes while keeping the existing billing cadence whenever possible.',
     },
     reactivate: {
       icon: RotateCcw,
       verb: 'Reactivate',
       title: 'Reactivate Subscription',
-      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-      glowColor: 'rgba(16, 185, 129, 0.3)',
-      textColor: '#10b981',
+      textColor: 'var(--brand-primary)',
       message: 'Subscription reactivated. Billing cycle reinitiated from your specified date.',
     },
     convert: {
       icon: Check,
       verb: 'Convert',
       title: 'Convert Trial to Paid',
-      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-      glowColor: 'rgba(16, 185, 129, 0.3)',
-      textColor: '#10b981',
+      textColor: 'var(--brand-primary)',
       message: 'Trial converted to paid subscription. Billing starts from your specified date.',
     },
     archive: {
       icon: Archive,
       verb: 'Archive',
       title: 'Archive Item',
-      gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-      glowColor: 'rgba(100, 116, 139, 0.28)',
-      textColor: '#64748b',
+      textColor: 'var(--text-secondary)',
       message: 'Archive the item while preserving its full status history and notes.',
     },
     start_trial: {
       icon: Clock3,
       verb: 'Start Trial',
       title: 'Start Trial',
-      gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-      glowColor: 'rgba(139, 92, 246, 0.3)',
-      textColor: '#8b5cf6',
+      textColor: 'var(--accent-purple)',
       message: 'Move the item into trial status and set when the trial should end.',
     },
   };
@@ -337,13 +321,11 @@ export default function StatusChangeDialog({
 
         .status-dialog-modal {
           animation: ${isVisible ? 'fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1)' : 'none'};
-          font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         .status-dialog-header {
-          font-family: 'Archivo', sans-serif;
-          font-weight: 800;
-          letter-spacing: -0.03em;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
 
         .status-dialog-mono {
@@ -392,11 +374,8 @@ export default function StatusChangeDialog({
         }
 
         .status-dialog-button {
-          font-family: 'Archivo', sans-serif;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-          text-transform: uppercase;
-          font-size: 0.8125rem;
+          font-weight: 600;
+          font-size: 0.9375rem;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -409,11 +388,9 @@ export default function StatusChangeDialog({
         }
 
         .status-dialog-label {
-          font-family: 'Archivo', sans-serif;
-          font-weight: 600;
-          font-size: 0.6875rem;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
+          font-weight: 500;
+          font-size: 0.8125rem;
+          color: var(--text-secondary);
         }
 
         .status-dialog-hero {
@@ -451,11 +428,7 @@ export default function StatusChangeDialog({
           className={`relative w-full max-w-lg status-dialog-modal ${shake ? 'status-dialog-shake' : ''}`}
           style={{
             background: 'var(--bg-surface)',
-            boxShadow: `
-              0 0 0 1px rgba(0, 0, 0, 0.1),
-              0 20px 60px -10px ${currentConfig.glowColor},
-              0 40px 100px -20px rgba(0, 0, 0, 0.4)
-            `,
+            boxShadow: 'var(--shadow-floating)',
             borderRadius: '20px',
             overflow: 'hidden',
             maxHeight: '92vh',
@@ -463,28 +436,20 @@ export default function StatusChangeDialog({
             flexDirection: 'column',
           }}
         >
-          {/* Colored header bar */}
-          <div
-            className="status-dialog-hero"
-            style={{
-              background: currentConfig.gradient,
-              height: '6px',
-            }}
-          />
-
           {/* Header */}
           <div className="px-8 pt-8 pb-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <div
                   style={{
-                    background: currentConfig.gradient,
-                    boxShadow: `0 8px 24px ${currentConfig.glowColor}`,
+                    background: `color-mix(in srgb, ${currentConfig.textColor} 14%, transparent)`,
+                    boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${currentConfig.textColor} 24%, transparent)`,
                     borderRadius: '14px',
                     padding: '14px',
+                    color: currentConfig.textColor,
                   }}
                 >
-                  <Icon className="w-7 h-7" style={{ color: 'white', strokeWidth: 2.5 }} />
+                  <Icon className="w-7 h-7" style={{ strokeWidth: 2 }} />
                 </div>
                 <div>
                   <h2
@@ -579,8 +544,8 @@ export default function StatusChangeDialog({
             <div
               className="mb-6 p-5 rounded-2xl status-dialog-field"
               style={{
-                background: `linear-gradient(135deg, ${currentConfig.glowColor}, transparent)`,
-                border: `1px solid ${currentConfig.textColor}20`,
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border-default)',
               }}
             >
               <p
@@ -598,7 +563,7 @@ export default function StatusChangeDialog({
                   <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Auto-Resume Date</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>OPTIONAL</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>Optional</span>
                   </label>
                   <input
                     type="date"
@@ -754,7 +719,7 @@ export default function StatusChangeDialog({
                 <div className="mb-5 status-dialog-field">
                   <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
                     Reason
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>OPTIONAL</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>Optional</span>
                   </label>
                   <input
                     type="text"
@@ -774,7 +739,7 @@ export default function StatusChangeDialog({
                 <div className="mb-6 status-dialog-field">
                   <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
                     Notes
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>OPTIONAL</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>Optional</span>
                   </label>
                   <textarea
                     value={notes}
@@ -812,10 +777,9 @@ export default function StatusChangeDialog({
                 disabled={isSubmitting}
                 className={`status-dialog-button flex-1 px-5 py-4 rounded-xl disabled:cursor-not-allowed ${isSubmitting ? 'status-dialog-processing' : ''}`}
                 style={{
-                  background: currentConfig.gradient,
+                  background: currentConfig.textColor,
                   color: 'white',
                   border: 'none',
-                  boxShadow: `0 4px 16px ${currentConfig.glowColor}`,
                   opacity: isSubmitting ? 0.7 : 1,
                 }}
               >
