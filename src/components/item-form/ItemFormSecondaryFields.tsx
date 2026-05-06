@@ -68,7 +68,6 @@ export function ItemFormSecondaryFields({
                     ? 'var(--accent-green)'
                     : 'transparent'
                 }`,
-                fontFamily: "'Archivo', sans-serif",
               }}
             >
               Active (Paid)
@@ -92,7 +91,6 @@ export function ItemFormSecondaryFields({
                     ? 'var(--accent-blue)'
                     : 'transparent'
                 }`,
-                fontFamily: "'Archivo', sans-serif",
               }}
             >
               Trial (Free)

@@ -744,7 +744,7 @@ export default function AuthScreen() {
         <div className="absolute inset-0 flex items-center">
           <div className="w-full" style={{ borderTop: '2px solid var(--border-muted)' }} />
         </div>
-        <div className="relative flex justify-center text-xs font-semibold tracking-wider">
+        <div className="relative flex justify-center text-xs font-medium">
           <span
             className="px-3 py-1 rounded-full"
             style={{
@@ -878,7 +878,7 @@ export default function AuthScreen() {
             style={{
               color: 'var(--text-primary)',
               fontSize: '2.25rem',
-              fontWeight: 800,
+              fontWeight: 700,
               letterSpacing: '-0.03em',
               lineHeight: 1.1
             }}

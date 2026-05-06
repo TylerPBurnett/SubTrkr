@@ -29,13 +29,11 @@ export const ITEM_FORM_VISUAL_CONFIG: ItemFormVisualConfig = {
 export const ITEM_FORM_STYLES = `
   .item-form-modal {
     animation: itemFormFadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .item-form-header {
-    font-family: 'Archivo', sans-serif;
-    font-weight: 800;
-    letter-spacing: -0.03em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
   .item-form-mono {
@@ -44,11 +42,9 @@ export const ITEM_FORM_STYLES = `
   }
 
   .item-form-label {
-    font-family: 'Archivo', sans-serif;
-    font-weight: 600;
-    font-size: 0.6875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
   }
 
   .item-form-input,
@@ -83,11 +79,8 @@ export const ITEM_FORM_STYLES = `
   }
 
   .item-form-button {
-    font-family: 'Archivo', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    font-size: 0.8125rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 

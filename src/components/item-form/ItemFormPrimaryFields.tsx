@@ -239,7 +239,6 @@ export function ItemFormPrimaryFields({
                 }`,
                 transform:
                   formData.category_id === category.id ? 'scale(1.01)' : 'scale(1)',
-                fontFamily: "'Archivo', sans-serif",
               }}
             >
               {category.name}
@@ -259,7 +258,6 @@ export function ItemFormPrimaryFields({
                 backgroundColor: 'var(--bg-hover)',
                 border: '2px solid transparent',
                 color: 'var(--text-secondary)',
-                fontFamily: "'Archivo', sans-serif",
               }}
             >
               <option value="">More...</option>
@@ -334,7 +332,6 @@ export function ItemFormPrimaryFields({
         style={{
           backgroundColor: 'var(--bg-hover)',
           color: 'var(--text-secondary)',
-          fontFamily: "'Archivo', sans-serif",
           fontWeight: 600,
           fontSize: '0.8125rem',
         }}
