@@ -488,11 +488,8 @@ function GlowDonutChart({
             <div
               style={{
                 color: 'var(--text-muted)',
-                fontFamily: 'Inter, -apple-system, sans-serif',
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
+                fontSize: '13px',
+                fontWeight: 500,
               }}
             >
               {centerLabel}

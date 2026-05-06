@@ -290,12 +290,9 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: { paylo
       <p
         style={{
           color: 'var(--text-secondary)',
-          fontFamily: 'Inter, -apple-system, sans-serif',
-          fontSize: '11px',
-          fontWeight: 700,
-          letterSpacing: '0.08em',
+          fontSize: '12px',
+          fontWeight: 500,
           marginBottom: '8px',
-          textTransform: 'uppercase',
         }}
       >
         {tooltipLabel}
@@ -349,11 +346,8 @@ function CategoryTooltip({ active, payload }: { active?: boolean; payload?: { pa
         <span
           style={{
             color: 'var(--text-secondary)',
-            fontFamily: 'Inter, -apple-system, sans-serif',
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
+            fontSize: '12px',
+            fontWeight: 500,
           }}
         >
           {data.name}
@@ -838,11 +832,9 @@ function Analytics({
                   <XAxis
                     axisLine={false}
                     dataKey="month"
-                    fontFamily="Inter, -apple-system, sans-serif"
                     fontSize={12}
-                    fontWeight={600}
+                    fontWeight={500}
                     stroke="var(--text-muted)"
-                    style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}
                     tickLine={false}
                   />
                   <YAxis
