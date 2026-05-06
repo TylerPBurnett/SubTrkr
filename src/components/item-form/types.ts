@@ -41,8 +41,6 @@ export interface ItemFormLabels {
 }
 
 export interface ItemFormVisualConfig {
-  gradient: string;
-  glowColor: string;
   textColor: string;
   contrastText: string;
 }

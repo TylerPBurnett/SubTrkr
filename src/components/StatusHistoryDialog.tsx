@@ -157,17 +157,17 @@ export default function StatusHistoryDialog({
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center"
               style={{
-                background:
-                  'linear-gradient(135deg, var(--brand-primary-light), rgba(59, 130, 246, 0.12))',
+                background: 'var(--bg-hover)',
+                color: 'var(--brand-primary)',
               }}
             >
-              <History className="w-7 h-7" style={{ color: 'var(--brand-primary)' }} />
+              <History className="w-7 h-7" />
             </div>
             <div>
               <p className="label mb-1">STATUS HISTORY</p>
               <h3
                 className="text-2xl"
-                style={{ color: 'var(--text-primary)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                style={{ color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.02em' }}
               >
                 {item.name}
               </h3>

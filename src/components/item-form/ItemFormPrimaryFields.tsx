@@ -188,16 +188,13 @@ export function ItemFormPrimaryFields({
               className="py-3 rounded-xl text-xs font-semibold transition-all"
               style={{
                 background:
-                  formData.billing_cycle === value ? config.gradient : 'var(--bg-hover)',
+                  formData.billing_cycle === value
+                    ? 'var(--brand-primary)'
+                    : 'var(--bg-hover)',
                 color:
                   formData.billing_cycle === value
                     ? config.contrastText
                     : 'var(--text-secondary)',
-                boxShadow:
-                  formData.billing_cycle === value
-                    ? `0 4px 12px ${config.glowColor}`
-                    : 'none',
-                fontFamily: "'Archivo', sans-serif",
               }}
             >
               {label}

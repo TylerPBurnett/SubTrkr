@@ -22,8 +22,6 @@ export const CURRENCIES = [
 ];
 
 export const ITEM_FORM_VISUAL_CONFIG: ItemFormVisualConfig = {
-  gradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-  glowColor: 'rgba(34, 197, 94, 0.3)',
   textColor: 'var(--brand-text)',
   contrastText: 'white',
 };

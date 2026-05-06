@@ -67,39 +67,28 @@ export default function ItemForm({
           className={`relative w-full max-w-lg item-form-modal ${shake ? 'item-form-shake' : ''}`}
           style={{
             background: 'var(--bg-surface)',
-            boxShadow: `
-              0 0 0 1px rgba(0, 0, 0, 0.1),
-              0 20px 60px -10px ${config.glowColor},
-              0 40px 100px -20px rgba(0, 0, 0, 0.4)
-            `,
+            boxShadow: 'var(--shadow-floating)',
             borderRadius: '20px',
             overflow: 'hidden',
             maxHeight: '92vh',
           }}
         >
-          <div
-            className="item-form-hero"
-            style={{
-              background: config.gradient,
-              height: '6px',
-            }}
-          />
-
           <div className="px-8 pt-7 pb-5">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <div
                   style={{
-                    background: config.gradient,
-                    boxShadow: `0 8px 24px ${config.glowColor}`,
+                    background: 'color-mix(in srgb, var(--brand-primary) 14%, transparent)',
+                    boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--brand-primary) 24%, transparent)',
                     borderRadius: '14px',
                     padding: '14px',
+                    color: 'var(--brand-primary)',
                   }}
                 >
                   {isBill ? (
-                    <Receipt className="w-7 h-7" style={{ color: 'white', strokeWidth: 2.5 }} />
+                    <Receipt className="w-7 h-7" style={{ strokeWidth: 2 }} />
                   ) : (
-                    <CreditCard className="w-7 h-7" style={{ color: 'white', strokeWidth: 2.5 }} />
+                    <CreditCard className="w-7 h-7" style={{ strokeWidth: 2 }} />
                   )}
                 </div>
                 <div>
@@ -174,7 +163,6 @@ export default function ItemForm({
               itemType={itemType}
               labels={labels}
               selectedCategory={selectedCategory}
-              config={config}
               previewAmount={previewAmount}
               onClearLogo={() => setFormData((previous) => ({ ...previous, logo_url: '' }))}
             />
@@ -248,10 +236,9 @@ export default function ItemForm({
                 disabled={isSaving}
                 className={`item-form-button flex-1 px-5 py-4 rounded-xl disabled:cursor-not-allowed ${isSaving ? 'item-form-processing' : ''}`}
                 style={{
-                  background: config.gradient,
+                  background: 'var(--brand-primary)',
                   color: config.contrastText,
                   border: 'none',
-                  boxShadow: `0 4px 16px ${config.glowColor}`,
                   opacity: isSaving ? 0.7 : 1,
                 }}
               >

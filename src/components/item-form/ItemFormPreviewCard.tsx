@@ -2,14 +2,13 @@ import { X } from 'lucide-react';
 import ServiceLogo from '@/components/ui/ServiceLogo';
 import type { Category, ItemFormData, ItemType } from '@/types';
 import { BILLING_CYCLES, CURRENCIES } from './constants';
-import type { ItemFormLabels, ItemFormVisualConfig } from './types';
+import type { ItemFormLabels } from './types';
 
 interface ItemFormPreviewCardProps {
   formData: ItemFormData;
   itemType: ItemType;
   labels: ItemFormLabels;
   selectedCategory?: Category;
-  config: ItemFormVisualConfig;
   previewAmount: string;
   onClearLogo: () => void;
 }
@@ -19,7 +18,6 @@ export function ItemFormPreviewCard({
   itemType,
   labels,
   selectedCategory,
-  config,
   previewAmount,
   onClearLogo,
 }: ItemFormPreviewCardProps) {
@@ -27,16 +25,8 @@ export function ItemFormPreviewCard({
     <div
       className="mb-6 p-5 rounded-2xl item-form-field transition-all duration-300"
       style={{
-        background: formData.name.trim()
-          ? `linear-gradient(135deg, ${config.glowColor}, transparent)`
-          : 'var(--bg-hover)',
-        border: `1px solid ${
-          formData.name.trim()
-            ? itemType === 'bill'
-              ? 'rgba(245, 158, 11, 0.2)'
-              : 'rgba(34, 197, 94, 0.2)'
-            : 'var(--border-default)'
-        }`,
+        background: 'var(--bg-hover)',
+        border: '1px solid var(--border-default)',
         opacity: formData.name.trim() ? 1 : 0.7,
       }}
     >

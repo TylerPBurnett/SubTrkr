@@ -158,17 +158,12 @@ export function ItemFormSecondaryFields({
               style={{
                 background:
                   formData.reminder_days === option.value
-                    ? config.gradient
+                    ? 'var(--brand-primary)'
                     : 'var(--bg-hover)',
                 color:
                   formData.reminder_days === option.value
                     ? config.contrastText
                     : 'var(--text-secondary)',
-                boxShadow:
-                  formData.reminder_days === option.value
-                    ? `0 4px 12px ${config.glowColor}`
-                    : 'none',
-                fontFamily: "'Archivo', sans-serif",
               }}
             >
               {option.label}

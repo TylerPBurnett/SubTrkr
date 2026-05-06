@@ -22,32 +22,22 @@ export default function EmptyState({ icon: Icon, title, description, action, pre
 
   return (
     <div className={`empty-state-enter flex flex-col items-center justify-center ${padding}`}>
-      {/* Icon with gradient */}
       <div className={`relative ${iconMargin}`}>
-        {!compact && (
-          <div
-            className="absolute inset-0 rounded-full blur-2xl scale-150"
-            style={{
-              background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)',
-              opacity: 0.15,
-            }}
-          />
-        )}
         <div
           className={`relative ${iconSize} ${iconRadius} flex items-center justify-center`}
           style={{
-            background: 'linear-gradient(135deg, var(--brand-primary) 0%, #16a34a 100%)',
-            boxShadow: compact ? undefined : '0 4px 14px -3px rgba(34, 197, 94, 0.35)',
+            background: 'var(--bg-hover)',
+            color: 'var(--text-secondary)',
           }}
         >
-          <Icon className={`${innerIconSize} text-white`} />
+          <Icon className={innerIconSize} />
         </div>
       </div>
 
       {/* Text */}
       <h3
         className={`${titleClass} mb-1 text-center`}
-        style={{ color: 'var(--text-primary)', fontWeight: compact ? 700 : 800 }}
+        style={{ color: 'var(--text-primary)', fontWeight: compact ? 600 : 700 }}
       >
         {title}
       </h3>

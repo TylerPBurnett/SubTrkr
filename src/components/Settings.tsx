@@ -126,16 +126,6 @@ export default function Settings({
           })}
         </div>
 
-        {/* Ambient glow beneath tabs */}
-        <div
-          className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-12 rounded-full blur-2xl"
-          style={{
-            background:
-              "radial-gradient(ellipse, var(--brand-primary), transparent 70%)",
-            opacity: "var(--settings-tab-ambient-opacity)",
-            pointerEvents: "none",
-          }}
-        />
       </div>
 
       {/* Tab Content */}
