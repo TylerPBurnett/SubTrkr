@@ -3,6 +3,7 @@ import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar, Check, Archi
 import { addDays } from 'date-fns';
 import type { Category, ItemWithCategory, StatusChangeData } from '@/types';
 import { formatISODate, getToday, formatDisplayDate } from '../utils/dates';
+import { getStatusActionButtonStyle } from './statusActionStyles';
 
 interface StatusChangeDialogProps {
   categories: Category[];
@@ -176,6 +177,7 @@ export default function StatusChangeDialog({
 
   const currentConfig = config[action];
   const Icon = currentConfig.icon;
+  const actionButtonStyle = getStatusActionButtonStyle(action);
 
   const validate = (): string[] => {
     const newErrors: string[] = [];
@@ -777,9 +779,7 @@ export default function StatusChangeDialog({
                 disabled={isSubmitting}
                 className={`status-dialog-button flex-1 px-5 py-4 rounded-xl disabled:cursor-not-allowed ${isSubmitting ? 'status-dialog-processing' : ''}`}
                 style={{
-                  background: currentConfig.textColor,
-                  color: 'white',
-                  border: 'none',
+                  ...actionButtonStyle,
                   opacity: isSubmitting ? 0.7 : 1,
                 }}
               >
