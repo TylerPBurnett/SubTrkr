@@ -192,6 +192,7 @@ function App() {
       setIsSaving(true);
       try {
         await createItem(data);
+        await reloadItems();
         setShowForm(false);
         toast.success('Item created');
       } catch (error) {
@@ -201,7 +202,7 @@ function App() {
         setIsSaving(false);
       }
     },
-    [],
+    [reloadItems],
   );
 
   const handleUpdateItem = useCallback(
@@ -209,6 +210,7 @@ function App() {
       setIsSaving(true);
       try {
         await updateItem(id, data);
+        await reloadItems();
         setEditingItem(null);
         setShowForm(false);
         toast.success('Item updated');
@@ -219,7 +221,7 @@ function App() {
         setIsSaving(false);
       }
     },
-    [],
+    [reloadItems],
   );
 
   const handleDeleteItem = useCallback(async (id: string) => {
@@ -262,6 +264,7 @@ function App() {
 
       try {
         await executeStatusChange(statusChangeDialog.item.id, data);
+        await reloadItems();
         setStatusChangeDialog(null);
         const actionLabels: Record<string, string> = {
           pause: 'paused',
@@ -279,7 +282,7 @@ function App() {
         toast.error('Failed to change status. Please try again.');
       }
     },
-    [statusChangeDialog],
+    [reloadItems, statusChangeDialog],
   );
 
   const handleViewHistory = useCallback((item: ItemWithCategory) => {
