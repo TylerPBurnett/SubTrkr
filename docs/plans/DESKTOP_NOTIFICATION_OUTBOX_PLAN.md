@@ -75,7 +75,7 @@ The short-term hardening fix restored correct desktop reminder behavior, but the
 ## Source Material
 
 - Draft implementation details currently live in [docs/superpowers/plans/2026-04-10-desktop-notifications-unified.md](../superpowers/plans/2026-04-10-desktop-notifications-unified.md)
-- Hardening follow-up context is in [docs/plans/PRODUCTION_HARDENING_PLAN.md](PRODUCTION_HARDENING_PLAN.md)
+- Hardening follow-up context is in [docs/completed-plans/PRODUCTION_HARDENING_PLAN.md](../completed-plans/PRODUCTION_HARDENING_PLAN.md)
 
 ## Exit Criteria
 

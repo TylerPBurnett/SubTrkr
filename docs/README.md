@@ -12,8 +12,9 @@ Use this folder as a queue, not a dump.
 
 ## Current Active Plans
 
-- `docs/plans/PRODUCTION_HARDENING_PLAN.md` — ordered pre-production hardening pass for security, correctness, performance, and maintainability
+- `docs/plans/2026-06-19-v1.3.0-release-preparation.md` — final integration, verification, and release flow for v1.3.0
 - `docs/plans/TRIAL_PRICING_FOLLOW_UP.md` — split free-trial pricing from post-trial pricing in the data model, UI, and notifications
+- `docs/plans/CALENDAR_VIEW_PLAN.md` — frontend-first calendar workspace planning
 
 ## Structure
 

@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-04-28
+> Last updated: 2026-06-19
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -41,11 +41,13 @@
 | TASK-012 | P3 | Desktop / Updater | Remind-me-later / snooze for updates | [CHANGELOG.md](../CHANGELOG.md) | Dismiss/snooze option on the update toast and expanded panel so users can defer without permanently ignoring |
 | TASK-013 | P3 | Desktop / Updater | Show download size before install | [CHANGELOG.md](../CHANGELOG.md) | Display content length on the CTA button (e.g. "Download & install v1.2.2 (14 MB)") so users on slow connections can decide |
 | TASK-014 | P3 | Desktop / Updater | Update panel visual polish pass | [CHANGELOG.md](../CHANGELOG.md) | Revisit expanded panel styling — user noted it may need further design refinement beyond the functional redesign |
-| TASK-016 | P2 | Desktop / Analytics | Billing-date-accurate monthly trend model | [docs/plans/PRODUCTION_HARDENING_PLAN.md](plans/PRODUCTION_HARDENING_PLAN.md) | Follow-up after the hardening sweep to replace the current “active at any point in month” approximation with billing-occurrence-aware monthly trend logic |
+| TASK-016 | P2 | Desktop / Analytics | Billing-date-accurate monthly trend model | [docs/completed-plans/PRODUCTION_HARDENING_PLAN.md](completed-plans/PRODUCTION_HARDENING_PLAN.md) | Follow-up after the hardening sweep to replace the current “active at any point in month” approximation with billing-occurrence-aware monthly trend logic |
 
 ## Active
 
-No active tasks right now.
+| ID | Pri | Area | Task | Source | Note |
+|---|---|---|---|---|---|
+| TASK-020 | P0 | Desktop / Release | Prepare and ship v1.3.0 | [docs/plans/2026-06-19-v1.3.0-release-preparation.md](plans/2026-06-19-v1.3.0-release-preparation.md) | Integrate frosty UI work, close release gates, and publish after explicit changelog/tag confirmation |
 
 ## Blocked
 
@@ -60,5 +62,6 @@ No active tasks right now.
 | TASK-006 | P1 | Docs | Desktop docs workflow reorganization | [docs/README.md](README.md) | Completed 2026-03-25; desktop docs now use the same roadmap/task/active-plan/archive pattern as the mobile repo |
 | TASK-007 | P1 | Desktop | Status-history / autopay alignment | [docs/completed-plans/2026-03-10-desktop-autopay-alignment-recommendations.md](completed-plans/2026-03-10-desktop-autopay-alignment-recommendations.md) | Implemented 2026-03-24; desktop now preserves cancelled items, excludes trials from projected spend, and exposes status-history timeline behavior |
 | TASK-015 | P1 | Desktop / Updater | Update panel redesign + persistent indicator + auto-update pref + markdown notes | [CHANGELOG.md](../CHANGELOG.md) | Completed 2026-04-06; compact/expanded modes, nav badge, auto-update toggle, markdown release notes, one-click install toast, dev simulation mode |
-| TASK-008 | P1 | Desktop / Hardening | Production hardening sweep | [docs/plans/PRODUCTION_HARDENING_PLAN.md](plans/PRODUCTION_HARDENING_PLAN.md) | Completed 2026-04-20; checks, smoke pass, notification testing, and branch closeout are done. Remaining work moved to TASK-016/TASK-017/TASK-018/TASK-019 |
+| TASK-008 | P1 | Desktop / Hardening | Production hardening sweep | [docs/completed-plans/PRODUCTION_HARDENING_PLAN.md](completed-plans/PRODUCTION_HARDENING_PLAN.md) | Completed 2026-04-20; checks, smoke pass, notification testing, and branch closeout are done. Remaining work moved to TASK-016/TASK-017/TASK-018/TASK-019 |
 | TASK-018 | P2 | Desktop / Data Flow | Normalize category display data away from joined item snapshots | [docs/completed-plans/CATEGORY_DATA_NORMALIZATION_PLAN.md](completed-plans/CATEGORY_DATA_NORMALIZATION_PLAN.md) | Completed 2026-04-28; item-facing category display now resolves from live category state, and category realtime events no longer need to reload items |
+| TASK-021 | P2 | Desktop / UI | Frosty UI cleanup | [docs/completed-plans/2026-05-06-finish-ui-slop-cleanup.md](completed-plans/2026-05-06-finish-ui-slop-cleanup.md) | Completed 2026-06-19; system typography, neutral surfaces, reduced glow/gradient chrome, and accessible lifecycle buttons are ready for v1.3.0 |

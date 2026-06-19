@@ -78,7 +78,7 @@ The target model is:
 
 ## Source Material
 
-- Hardening context and current blocker tracking live in [docs/plans/PRODUCTION_HARDENING_PLAN.md](PRODUCTION_HARDENING_PLAN.md)
+- Hardening context and current blocker tracking live in [docs/completed-plans/PRODUCTION_HARDENING_PLAN.md](../completed-plans/PRODUCTION_HARDENING_PLAN.md)
 
 ## Exit Criteria
 

@@ -65,7 +65,7 @@ The earlier hardening patch reloaded items on category realtime events to restor
 
 ## Source Material
 
-- Hardening context and current regression tracking live in [docs/plans/PRODUCTION_HARDENING_PLAN.md](../plans/PRODUCTION_HARDENING_PLAN.md)
+- Hardening context and current regression tracking live in [docs/completed-plans/PRODUCTION_HARDENING_PLAN.md](PRODUCTION_HARDENING_PLAN.md)
 
 ## Exit Criteria
 
