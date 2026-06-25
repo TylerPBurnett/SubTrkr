@@ -4,6 +4,52 @@ All notable changes to SubTrkr are documented here.
 
 ---
 
+## [v1.3.0] — 2026-06-25
+
+This release turns the post-v1.2 desktop work into a safer daily-use build. It combines production hardening and category-data correctness with a calmer native-looking interface, more immediate item updates, and stronger release-time verification.
+
+---
+
+### Improvements
+
+#### Production Hardening
+
+- Scoped Supabase realtime subscriptions to the authenticated user and reduced redundant reload work
+- Routed lifecycle transitions through the shared transactional `execute_item_status_change` backend contract
+- Restored reminder checks after item reloads and retained startup maintenance behavior after the application refactor
+- Tightened the desktop CSP and moved known-service logo loading behind the app-controlled Supabase path
+- Added safe letter-initial fallbacks for unavailable service logos
+
+#### Category & Analytics Correctness
+
+- Item-facing category names and colors now resolve from current category state instead of stale joined snapshots
+- Category realtime changes refresh category data without unnecessarily reloading every item
+- Added deterministic regression coverage for category resolution, projected analytics, billing anchors, and lifecycle transitions
+
+#### Native UI Cleanup
+
+- Replaced Archivo display typography with the Apple system stack on macOS and Inter fallbacks elsewhere
+- Removed excessive rainbow gradients, glow halos, noise textures, and tracked uppercase labels from primary workflows
+- Simplified dashboard metrics, item cards, forms, empty states, analytics tooltips, and lifecycle dialogs
+- Added lifecycle-action button colors that maintain readable text contrast in both themes
+- Standardized focus treatment and form-control borders around the shared design tokens
+
+### Fixes
+
+- Item creation, editing, and lifecycle transitions now refresh item state immediately instead of waiting for a realtime round trip
+- Preserved recurrence anchors when calculating future billing dates
+- Kept notification and maintenance checks working after data-sync decomposition
+- Updated Supabase, Vite, PostCSS, Rollup, and Picomatch resolutions to remove all known production dependency advisories
+
+### Chores
+
+- Archived completed hardening and UI cleanup plans and refreshed the desktop roadmap/task queue
+- Added a repeatable v1.3.0 release-preparation plan and cleaned repository-local tooling state
+
+## Migration Guide
+
+No user migration is required. Existing subscriptions, bills, categories, payment history, notification settings, and local preferences remain compatible. The desktop app expects the shared production backend's transactional lifecycle RPC, which is already the documented backend contract.
+
 ## [v1.2.2] — 2026-04-06
 
 This release redesigns the in-app update experience to be less generic and more contextually aware. The update panel now adapts its footprint based on whether there's something for the user to do — compact when up to date, expanded only when an update is actionable. It also adds persistent update indicators, an auto-update preference, richer release notes formatting, and a one-click install path from the launch toast.
