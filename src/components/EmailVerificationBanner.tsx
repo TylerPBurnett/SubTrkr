@@ -44,6 +44,7 @@ export default function EmailVerificationBanner({ email, onDismiss }: EmailVerif
         {onDismiss && (
           <button
             onClick={onDismiss}
+            aria-label="Dismiss notification"
             className="p-1 rounded-md transition-colors duration-200"
             style={{ color: 'var(--brand-primary)' }}
           >
@@ -96,6 +97,7 @@ export default function EmailVerificationBanner({ email, onDismiss }: EmailVerif
         {onDismiss && (
           <button
             onClick={onDismiss}
+            aria-label="Dismiss email verification banner"
             className="p-1 rounded-md transition-colors duration-200"
             style={{ color: 'var(--text-muted)' }}
           >

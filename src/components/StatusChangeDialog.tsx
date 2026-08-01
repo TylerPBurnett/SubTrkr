@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
 import { X, AlertCircle, Pause, Play, XCircle, RotateCcw, Calendar, Check, Archive, Clock3 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import type { Category, ItemWithCategory, StatusChangeData } from '@/types';
@@ -397,378 +398,388 @@ export default function StatusChangeDialog({
 
       `}</style>
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 status-dialog-backdrop">
-        <div
-          className="absolute inset-0 backdrop-blur-md"
-          style={{
-            background: 'radial-gradient(circle at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7))',
-          }}
-          onClick={onCancel}
-        />
-
-        <div
-          className={`relative w-full max-w-lg status-dialog-modal ${shake ? 'status-dialog-shake' : ''}`}
-          style={{
-            background: 'var(--bg-surface)',
-            boxShadow: 'var(--shadow-floating)',
-            borderRadius: '20px',
-            overflow: 'hidden',
-            maxHeight: '92vh',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* Header */}
-          <div className="px-8 pt-8 pb-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div
-                  style={{
-                    background: `color-mix(in srgb, ${currentConfig.textColor} 14%, transparent)`,
-                    boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${currentConfig.textColor} 24%, transparent)`,
-                    borderRadius: '14px',
-                    padding: '14px',
-                    color: currentConfig.textColor,
-                  }}
-                >
-                  <Icon className="w-7 h-7" style={{ strokeWidth: 2 }} />
-                </div>
-                <div>
-                  <h2
-                    className="status-dialog-header"
-                    style={{
-                      fontSize: '1.75rem',
-                      color: 'var(--text-primary)',
-                      lineHeight: 1.1,
-                    }}
-                  >
-                    {currentConfig.verb}
-                  </h2>
-                  <p
-                    className="status-dialog-mono mt-1"
-                    style={{
-                      color: currentConfig.textColor,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {item.name}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={onCancel}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {itemCategory && (
-              <div
-                className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
-                style={{
-                  background: 'var(--bg-hover)',
-                  border: '1px solid var(--border-default)',
-                }}
-              >
-                <div
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: itemCategory.color,
-                  }}
-                />
-                <span
-                  className="status-dialog-mono"
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 600,
-                  }}
-                >
-                  {itemCategory.name}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8 overflow-y-auto flex-1">
-            {/* Error Banner */}
-            {errors.length > 0 && (
-              <div
-                className="mb-6 p-4 rounded-2xl flex items-start gap-3"
-                style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '2px solid #ef4444',
-                }}
-              >
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: '#ef4444' }}>
-                    Validation Error
-                  </p>
-                  <ul className="mt-1 text-sm space-y-1" style={{ color: '#ef4444' }}>
-                    {errors.map((error, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>{error}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Info Banner */}
-            <div
-              className="mb-6 p-5 rounded-2xl status-dialog-field"
+      <Dialog.Root
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) onCancel();
+        }}
+      >
+        <Dialog.Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 status-dialog-backdrop">
+            <Dialog.Overlay
+              className="absolute inset-0 backdrop-blur-md"
               style={{
-                background: 'var(--bg-hover)',
-                border: '1px solid var(--border-default)',
+                background: 'radial-gradient(circle at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7))',
+              }}
+            />
+
+            <Dialog.Content
+              aria-modal="true"
+              className={`relative w-full max-w-lg status-dialog-modal ${shake ? 'status-dialog-shake' : ''}`}
+              style={{
+                background: 'var(--bg-surface)',
+                boxShadow: 'var(--shadow-floating)',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                maxHeight: '92vh',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: 'var(--text-primary)', fontWeight: 500 }}
-              >
-                {currentConfig.message}
-              </p>
-            </div>
+              {/* Header */}
+              <div className="px-8 pt-8 pb-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div
+                      style={{
+                        background: `color-mix(in srgb, ${currentConfig.textColor} 14%, transparent)`,
+                        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${currentConfig.textColor} 24%, transparent)`,
+                        borderRadius: '14px',
+                        padding: '14px',
+                        color: currentConfig.textColor,
+                      }}
+                    >
+                      <Icon className="w-7 h-7" style={{ strokeWidth: 2 }} />
+                    </div>
+                    <div>
+                      <Dialog.Title
+                        className="status-dialog-header"
+                        style={{
+                          fontSize: '1.75rem',
+                          color: 'var(--text-primary)',
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {currentConfig.verb}
+                      </Dialog.Title>
+                      <Dialog.Description
+                        className="status-dialog-mono mt-1"
+                        style={{
+                          color: currentConfig.textColor,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {item.name}
+                      </Dialog.Description>
+                    </div>
+                  </div>
 
-            {/* Date Fields */}
-            {action === 'pause' && (
-              <>
-                <div className="mb-5 status-dialog-field">
-                  <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Auto-Resume Date</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>Optional</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={pauseUntil}
-                    onChange={(e) => setPauseUntil(e.target.value)}
-                    min={minimumAutoResumeDate}
-                    className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                    style={{
-                      border: '2px solid var(--border-default)',
-                      background: 'var(--bg-default)',
-                      color: 'var(--text-primary)',
-                    }}
-                  />
-                  <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                    {pauseUntil ? `Subscription resumes automatically on ${formatDisplayDate(pauseUntil)}` : 'Leave empty for an indefinite pause'}
-                  </p>
+                  <button
+                    onClick={onCancel}
+                    aria-label="Close dialog"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              </>
-            )}
 
-            {(action === 'cancel' || action === 'edit_cancellation') && (
-              <div className="mb-5 status-dialog-field">
-                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{action === 'edit_cancellation' ? 'Cancellation Date' : 'Cancelled On'}</span>
-                  <span style={{ color: currentConfig.textColor }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={cancelledOn}
-                  onChange={(e) => setCancelledOn(e.target.value)}
-                  min={cancelMinimumDate}
-                  max={today}
-                  className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                  style={{
-                    border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
-                    background: 'var(--bg-default)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  {action === 'edit_cancellation'
-                    ? `Effective cancellation date now reads ${formatDisplayDate(cancelledOn)}`
-                    : `Actual cancellation date → analytics exclude spending from ${formatDisplayDate(cancelledOn)}`}
-                </p>
+                {itemCategory && (
+                  <div
+                    className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
+                    style={{
+                      background: 'var(--bg-hover)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: itemCategory.color,
+                      }}
+                    />
+                    <span
+                      className="status-dialog-mono"
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-secondary)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {itemCategory.name}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
 
-            {(action === 'resume' || action === 'reactivate') && (
-              <div className="mb-5 status-dialog-field">
-                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{action === 'reactivate' ? 'Reactivated On' : 'Resumed On'}</span>
-                  <span style={{ color: currentConfig.textColor }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={resumedOn}
-                  onChange={(e) => setResumedOn(e.target.value)}
-                  min={action === 'resume' ? resumeMinimumDate : reactivateMinimumDate}
-                  max={today}
-                  className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                  style={{
-                    border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
-                    background: 'var(--bg-default)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  {action === 'reactivate'
-                    ? `Reactivation date → billing restarts from ${formatDisplayDate(resumedOn)}`
-                    : 'Actual resume date → keep the current billing schedule unless a due date was missed while paused'}
-                </p>
-              </div>
-            )}
+              <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8 overflow-y-auto flex-1">
+                {/* Error Banner */}
+                {errors.length > 0 && (
+                  <div
+                    className="mb-6 p-4 rounded-2xl flex items-start gap-3"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '2px solid #ef4444',
+                    }}
+                  >
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+                    <div>
+                      <p className="font-semibold text-sm" style={{ color: '#ef4444' }}>
+                        Validation Error
+                      </p>
+                      <ul className="mt-1 text-sm space-y-1" style={{ color: '#ef4444' }}>
+                        {errors.map((error, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span>•</span>
+                            <span>{error}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
 
-            {action === 'convert' && (
-              <div className="mb-5 status-dialog-field">
-                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Converted On</span>
-                  <span style={{ color: currentConfig.textColor }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={convertedOn}
-                  onChange={(e) => setConvertedOn(e.target.value)}
-                  min={convertMinimumDate}
-                  max={today}
-                  className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                  style={{
-                    border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
-                    background: 'var(--bg-default)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  Date when trial converted to paid → billing starts from {formatDisplayDate(convertedOn)}
-                </p>
-              </div>
-            )}
-
-            {action === 'start_trial' && (
-              <div className="mb-5 status-dialog-field">
-                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Trial Ends On</span>
-                  <span style={{ color: currentConfig.textColor }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={trialEndDate}
-                  onChange={(e) => setTrialEndDate(e.target.value)}
-                  min={today}
-                  className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
-                  style={{
-                    border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
-                    background: 'var(--bg-default)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  Trial starts immediately and ends on {formatDisplayDate(trialEndDate)}
-                </p>
-              </div>
-            )}
-
-            {action === 'archive' && (
-              <div className="mb-5 status-dialog-field">
-                <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Recorded On</span>
-                </label>
+                {/* Info Banner */}
                 <div
-                  className="status-dialog-input w-full px-4 py-3.5 rounded-xl"
+                  className="mb-6 p-5 rounded-2xl status-dialog-field"
                   style={{
-                    border: '2px solid var(--border-default)',
-                    background: 'var(--bg-default)',
-                    color: 'var(--text-primary)',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border-default)',
                   }}
                 >
-                  {archiveRecordedOn}
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: 'var(--text-primary)', fontWeight: 500 }}
+                  >
+                    {currentConfig.message}
+                  </p>
                 </div>
-                <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                  Archive entries are recorded immediately and remain in status history.
-                </p>
-              </div>
-            )}
 
-            {action !== 'edit_cancellation' && (
-              <>
-                {/* Reason */}
-                <div className="mb-5 status-dialog-field">
-                  <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-                    Reason
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>Optional</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder={`e.g. Too expensive, Not using enough, Found alternative`}
-                    className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                {/* Date Fields */}
+                {action === 'pause' && (
+                  <>
+                    <div className="mb-5 status-dialog-field">
+                      <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Auto-Resume Date</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '4px' }}>Optional</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={pauseUntil}
+                        onChange={(e) => setPauseUntil(e.target.value)}
+                        min={minimumAutoResumeDate}
+                        className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                        style={{
+                          border: '2px solid var(--border-default)',
+                          background: 'var(--bg-default)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                      <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {pauseUntil ? `Subscription resumes automatically on ${formatDisplayDate(pauseUntil)}` : 'Leave empty for an indefinite pause'}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {(action === 'cancel' || action === 'edit_cancellation') && (
+                  <div className="mb-5 status-dialog-field">
+                    <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>{action === 'edit_cancellation' ? 'Cancellation Date' : 'Cancelled On'}</span>
+                      <span style={{ color: currentConfig.textColor }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={cancelledOn}
+                      onChange={(e) => setCancelledOn(e.target.value)}
+                      min={cancelMinimumDate}
+                      max={today}
+                      className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                      style={{
+                        border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {action === 'edit_cancellation'
+                        ? `Effective cancellation date now reads ${formatDisplayDate(cancelledOn)}`
+                        : `Actual cancellation date → analytics exclude spending from ${formatDisplayDate(cancelledOn)}`}
+                    </p>
+                  </div>
+                )}
+
+                {(action === 'resume' || action === 'reactivate') && (
+                  <div className="mb-5 status-dialog-field">
+                    <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>{action === 'reactivate' ? 'Reactivated On' : 'Resumed On'}</span>
+                      <span style={{ color: currentConfig.textColor }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={resumedOn}
+                      onChange={(e) => setResumedOn(e.target.value)}
+                      min={action === 'resume' ? resumeMinimumDate : reactivateMinimumDate}
+                      max={today}
+                      className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                      style={{
+                        border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {action === 'reactivate'
+                        ? `Reactivation date → billing restarts from ${formatDisplayDate(resumedOn)}`
+                        : 'Actual resume date → keep the current billing schedule unless a due date was missed while paused'}
+                    </p>
+                  </div>
+                )}
+
+                {action === 'convert' && (
+                  <div className="mb-5 status-dialog-field">
+                    <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Converted On</span>
+                      <span style={{ color: currentConfig.textColor }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={convertedOn}
+                      onChange={(e) => setConvertedOn(e.target.value)}
+                      min={convertMinimumDate}
+                      max={today}
+                      className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                      style={{
+                        border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      Date when trial converted to paid → billing starts from {formatDisplayDate(convertedOn)}
+                    </p>
+                  </div>
+                )}
+
+                {action === 'start_trial' && (
+                  <div className="mb-5 status-dialog-field">
+                    <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Trial Ends On</span>
+                      <span style={{ color: currentConfig.textColor }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={trialEndDate}
+                      onChange={(e) => setTrialEndDate(e.target.value)}
+                      min={today}
+                      className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                      style={{
+                        border: `2px solid ${errors.length > 0 ? '#ef4444' : 'var(--border-default)'}`,
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      Trial starts immediately and ends on {formatDisplayDate(trialEndDate)}
+                    </p>
+                  </div>
+                )}
+
+                {action === 'archive' && (
+                  <div className="mb-5 status-dialog-field">
+                    <label className="status-dialog-label flex items-center gap-2 mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Recorded On</span>
+                    </label>
+                    <div
+                      className="status-dialog-input w-full px-4 py-3.5 rounded-xl"
+                      style={{
+                        border: '2px solid var(--border-default)',
+                        background: 'var(--bg-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {archiveRecordedOn}
+                    </div>
+                    <p className="status-dialog-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      Archive entries are recorded immediately and remain in status history.
+                    </p>
+                  </div>
+                )}
+
+                {action !== 'edit_cancellation' && (
+                  <>
+                    {/* Reason */}
+                    <div className="mb-5 status-dialog-field">
+                      <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+                        Reason
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>Optional</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder={`e.g. Too expensive, Not using enough, Found alternative`}
+                        className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
+                        style={{
+                          border: '2px solid var(--border-default)',
+                          background: 'var(--bg-default)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                    </div>
+
+                    {/* Notes */}
+                    <div className="mb-6 status-dialog-field">
+                      <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+                        Notes
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>Optional</span>
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        placeholder="Additional context or details..."
+                        className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
+                        style={{
+                          border: '2px solid var(--border-default)',
+                          background: 'var(--bg-default)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    disabled={isSubmitting}
+                    className="status-dialog-button flex-1 px-5 py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
                       border: '2px solid var(--border-default)',
-                      background: 'var(--bg-default)',
-                      color: 'var(--text-primary)',
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
                     }}
-                  />
-                </div>
-
-                {/* Notes */}
-                <div className="mb-6 status-dialog-field">
-                  <label className="status-dialog-label mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-                    Notes
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.625rem', marginLeft: '6px' }}>Optional</span>
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    placeholder="Additional context or details..."
-                    className="status-dialog-input w-full px-4 py-3.5 rounded-xl focus:outline-none resize-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`status-dialog-button flex-1 px-5 py-4 rounded-xl disabled:cursor-not-allowed ${isSubmitting ? 'status-dialog-processing' : ''}`}
                     style={{
-                      border: '2px solid var(--border-default)',
-                      background: 'var(--bg-default)',
-                      color: 'var(--text-primary)',
+                      ...actionButtonStyle,
+                      opacity: isSubmitting ? 0.7 : 1,
                     }}
-                  />
+                  >
+                    {isSubmitting ? 'Processing...' : `Confirm ${currentConfig.verb}`}
+                  </button>
                 </div>
-              </>
-            )}
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={isSubmitting}
-                className="status-dialog-button flex-1 px-5 py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  border: '2px solid var(--border-default)',
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`status-dialog-button flex-1 px-5 py-4 rounded-xl disabled:cursor-not-allowed ${isSubmitting ? 'status-dialog-processing' : ''}`}
-                style={{
-                  ...actionButtonStyle,
-                  opacity: isSubmitting ? 0.7 : 1,
-                }}
-              >
-                {isSubmitting ? 'Processing...' : `Confirm ${currentConfig.verb}`}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+              </form>
+            </Dialog.Content>
+          </div>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }

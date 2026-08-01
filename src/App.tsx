@@ -180,8 +180,6 @@ function App() {
     showForm,
     hasStatusChangeDialog: Boolean(statusChangeDialog),
     windowNarrow,
-    onCloseForm: handleCloseForm,
-    onCancelStatusChange: handleStatusChangeCancel,
     onAddNew: handleAddNew,
     onNavigateView: handleViewChange,
     onToggleSidebar: toggleSidebarCollapsed,
@@ -295,20 +293,55 @@ function App() {
     setShowForm(true);
   }, []);
 
+  // Rendered in every branch so toasts survive sign-out (account deletion
+  // success) and appear while signed out (auth deep-link callback errors).
+  const toaster = (
+    <Toaster
+      position="bottom-right"
+      theme={themeTone}
+      toastOptions={{
+        style: {
+          borderRadius: '12px',
+          fontSize: '14px',
+        },
+      }}
+    />
+  );
+
   if (authLoading) {
-    return <LoadingScreen />;
+    return (
+      <>
+        <LoadingScreen />
+        {toaster}
+      </>
+    );
   }
 
   if (!session) {
-    return <AuthScreen />;
+    return (
+      <>
+        <AuthScreen />
+        {toaster}
+      </>
+    );
   }
 
   if (!isOnline) {
-    return <OfflineScreen />;
+    return (
+      <>
+        <OfflineScreen />
+        {toaster}
+      </>
+    );
   }
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <>
+        <LoadingScreen />
+        {toaster}
+      </>
+    );
   }
 
   return (
@@ -353,16 +386,7 @@ function App() {
         />
       </div>
 
-      <Toaster
-        position="bottom-right"
-        theme={themeTone}
-        toastOptions={{
-          style: {
-            borderRadius: '12px',
-            fontSize: '14px',
-          },
-        }}
-      />
+      {toaster}
 
       {showForm && (
         <ItemForm
@@ -399,7 +423,10 @@ function App() {
       )}
 
       {showPasswordRecovery && (
-        <SetNewPassword onComplete={() => setShowPasswordRecovery(false)} />
+        <SetNewPassword
+          onComplete={() => setShowPasswordRecovery(false)}
+          onDismiss={() => setShowPasswordRecovery(false)}
+        />
       )}
     </div>
   );

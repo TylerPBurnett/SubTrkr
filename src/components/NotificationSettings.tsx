@@ -79,7 +79,7 @@ export default function NotificationSettings() {
             style={{ backgroundColor: 'var(--accent-red)15', color: 'var(--accent-red)' }}
           >
             <span>{error}</span>
-            <button onClick={() => setError(null)}>
+            <button onClick={() => setError(null)} aria-label="Dismiss error">
               <X className="w-4 h-4" />
             </button>
           </div>

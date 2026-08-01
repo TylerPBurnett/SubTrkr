@@ -7,8 +7,6 @@ interface UseGlobalShortcutsOptions {
   showForm: boolean;
   hasStatusChangeDialog: boolean;
   windowNarrow: boolean;
-  onCloseForm: () => void;
-  onCancelStatusChange: () => void;
   onAddNew: (itemType: ItemType) => void;
   onNavigateView: (view: View) => void;
   onToggleSidebar: () => void;
@@ -19,8 +17,6 @@ export function useGlobalShortcuts({
   showForm,
   hasStatusChangeDialog,
   windowNarrow,
-  onCloseForm,
-  onCancelStatusChange,
   onAddNew,
   onNavigateView,
   onToggleSidebar,
@@ -28,8 +24,6 @@ export function useGlobalShortcuts({
   const showFormRef = useRef(showForm);
   const hasStatusChangeDialogRef = useRef(hasStatusChangeDialog);
   const windowNarrowRef = useRef(windowNarrow);
-  const onCloseFormRef = useRef(onCloseForm);
-  const onCancelStatusChangeRef = useRef(onCancelStatusChange);
   const onAddNewRef = useRef(onAddNew);
   const onNavigateViewRef = useRef(onNavigateView);
   const onToggleSidebarRef = useRef(onToggleSidebar);
@@ -37,8 +31,6 @@ export function useGlobalShortcuts({
   showFormRef.current = showForm;
   hasStatusChangeDialogRef.current = hasStatusChangeDialog;
   windowNarrowRef.current = windowNarrow;
-  onCloseFormRef.current = onCloseForm;
-  onCancelStatusChangeRef.current = onCancelStatusChange;
   onAddNewRef.current = onAddNew;
   onNavigateViewRef.current = onNavigateView;
   onToggleSidebarRef.current = onToggleSidebar;
@@ -56,19 +48,8 @@ export function useGlobalShortcuts({
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable;
 
-      if (event.key === 'Escape') {
-        if (showFormRef.current) {
-          onCloseFormRef.current();
-          event.preventDefault();
-          return;
-        }
-
-        if (hasStatusChangeDialogRef.current) {
-          onCancelStatusChangeRef.current();
-          event.preventDefault();
-          return;
-        }
-      }
+      // Escape is owned by the Radix dialogs themselves so that only the
+      // topmost layer closes and the close callback fires exactly once.
 
       if (mod && event.key === 'n') {
         if (showFormRef.current || hasStatusChangeDialogRef.current) {
