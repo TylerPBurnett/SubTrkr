@@ -125,6 +125,20 @@ export async function deleteNotificationChannel(channelType: NotificationChannel
 
 // ============ Preferences ============
 
+/**
+ * The IANA zone this machine is in. The server sends reminders at 9 AM in the
+ * stored zone, and the column defaults to UTC, so a user who never opens the
+ * dropdown would otherwise get pinged at 9 AM UTC. Falls back to UTC when the
+ * runtime cannot report a zone — same as the existing server-side default.
+ */
+export function getDetectedTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
 export async function getNotificationPreferences(): Promise<NotificationPreferences | null> {
   const userId = await getUserId();
   const { data, error } = await supabase
@@ -135,6 +149,24 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Writes the detected timezone only when the user has no preferences row yet.
+ * Uses ON CONFLICT DO NOTHING so a row created concurrently (another device,
+ * another tab) keeps whatever timezone the user already chose.
+ */
+export async function seedNotificationTimezone(timezone: string): Promise<void> {
+  const userId = await getUserId();
+
+  const { error } = await supabase
+    .from('notification_preferences')
+    .upsert(
+      { user_id: userId, timezone },
+      { onConflict: 'user_id', ignoreDuplicates: true }
+    );
+
+  if (error) throw error;
 }
 
 export async function upsertNotificationPreferences(

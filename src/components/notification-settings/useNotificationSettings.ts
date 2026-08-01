@@ -7,9 +7,11 @@ import type {
 } from '@/types';
 import {
   deleteNotificationChannel,
+  getDetectedTimezone,
   getNotificationChannels,
   getNotificationLog,
   getNotificationPreferences,
+  seedNotificationTimezone,
   sendTestNotification,
   upsertNotificationChannel,
   upsertNotificationPreferences,
@@ -44,6 +46,7 @@ export function useNotificationSettings() {
   const savingWebhookRef = useRef(false);
   const detectingTelegramRef = useRef(false);
   const verifyingTelegramRef = useRef(false);
+  const seedingTimezoneRef = useRef(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -78,6 +81,28 @@ export function useNotificationSettings() {
       mountedRef.current = false;
     };
   }, [loadData]);
+
+  // Seed the timezone on the very first save so the server does not fall back
+  // to its UTC default. Only runs when no preferences row exists yet — an
+  // existing row's timezone is never overwritten.
+  useEffect(() => {
+    if (loading || error || preferences !== null || seedingTimezoneRef.current) {
+      return;
+    }
+
+    seedingTimezoneRef.current = true;
+    void (async () => {
+      try {
+        await seedNotificationTimezone(getDetectedTimezone());
+        if (!mountedRef.current) {
+          return;
+        }
+        await loadData();
+      } catch (err) {
+        console.error('Failed to seed notification timezone:', err);
+      }
+    })();
+  }, [error, loadData, loading, preferences]);
 
   const getChannelConfig = useCallback(
     (type: NotificationChannelType) => {

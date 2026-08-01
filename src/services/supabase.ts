@@ -11,6 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
+    flowType: 'pkce', // Auth codes only — never accept tokens from a deep link
     storage: localStorage, // Works in Tauri webview
   },
 });

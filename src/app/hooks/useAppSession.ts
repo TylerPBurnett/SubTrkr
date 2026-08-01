@@ -47,21 +47,36 @@ export function useAppSession() {
             return;
           }
 
+          // PKCE only: the callback must carry an auth code. Tokens supplied
+          // directly in the URL fragment are ignored — any local process could
+          // forge one and swap the user onto an attacker-controlled account.
           const code = url.searchParams.get('code');
-          if (code) {
+          if (!code) {
+            console.warn('Rejected deep link without an auth code:', urlStr);
+            toast.error(
+              'Could not complete sign-in. Request a new link and open it on this computer.',
+            );
+            continue;
+          }
+
+          const { error: exchangeError } =
             await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            // The PKCE verifier lives in this install's localStorage, so a link
+            // opened on another device or browser can never be exchanged here.
+            console.error('Deep link code exchange failed:', exchangeError);
+            toast.error(
+              'Could not complete sign-in. Request a new link and open it on this computer.',
+            );
             return;
           }
 
-          const hashParams = new URLSearchParams(url.hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
+          // With PKCE, supabase-js may only emit SIGNED_IN for a recovery code,
+          // so fall back to the type hint Supabase puts on the redirect.
+          if (url.searchParams.get('type') === 'recovery') {
+            setShowPasswordRecovery(true);
           }
+          return;
         } catch (error) {
           console.error('Deep link auth error:', error);
           toast.error('Failed to complete sign-in. Please try again.');

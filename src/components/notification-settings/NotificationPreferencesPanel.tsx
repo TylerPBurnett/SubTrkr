@@ -1,5 +1,6 @@
 import { Globe } from 'lucide-react';
 import type { NotificationPreferences } from '@/types';
+import { getDetectedTimezone } from '@/services/notificationChannels';
 import { TIMEZONES } from './constants';
 
 interface NotificationPreferencesPanelProps {
@@ -11,6 +12,13 @@ export function NotificationPreferencesPanel({
   preferences,
   onUpdatePreference,
 }: NotificationPreferencesPanelProps) {
+  // The static list cannot cover every IANA zone, so make sure whatever is
+  // stored (or detected before the first row is written) is always selectable.
+  const currentTimezone = preferences?.timezone ?? getDetectedTimezone();
+  const timezoneOptions = TIMEZONES.includes(currentTimezone)
+    ? TIMEZONES
+    : [currentTimezone, ...TIMEZONES];
+
   return (
     <>
       <div className="label mb-3">Preferences</div>
@@ -43,11 +51,11 @@ export function NotificationPreferencesPanel({
             Timezone
           </label>
           <select
-            value={preferences?.timezone ?? 'UTC'}
+            value={currentTimezone}
             onChange={(event) => onUpdatePreference('timezone', event.target.value)}
             className="input px-3 py-2 rounded-lg text-sm"
           >
-            {TIMEZONES.map((timezone) => (
+            {timezoneOptions.map((timezone) => (
               <option key={timezone} value={timezone}>
                 {timezone.replace(/_/g, ' ')}
               </option>

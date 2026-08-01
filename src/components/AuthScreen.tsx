@@ -52,9 +52,24 @@ export default function AuthScreen() {
       return { message: 'Please enter a valid email address.', isRateLimit: false };
     }
 
-    // OTP expired
-    if (lowerError.includes('expired') || lowerError.includes('otp')) {
-      return { message: 'Code has expired. Please request a new one.', isRateLimit: false };
+    // Email OTP / magic link. Supabase reports a wrong code and an expired code
+    // with the same "Token has expired or is invalid" text, so don't claim to
+    // know which one it was.
+    const mentionsToken =
+      lowerError.includes('token') ||
+      lowerError.includes('otp') ||
+      lowerError.includes('code') ||
+      lowerError.includes('link');
+    if (mentionsToken && (lowerError.includes('expired') || lowerError.includes('invalid'))) {
+      return {
+        message: 'That code is invalid or has expired. Double-check the 6 digits or request a new code.',
+        isRateLimit: false,
+      };
+    }
+
+    // Anything else that only reports expiry
+    if (lowerError.includes('expired')) {
+      return { message: 'That has expired. Please request a new one.', isRateLimit: false };
     }
 
     // Network error
@@ -250,6 +265,8 @@ export default function AuthScreen() {
             }}
             required
             autoFocus
+            autoComplete="email"
+            spellCheck={false}
             className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
             style={{
               fontFamily: 'JetBrains Mono, monospace',
@@ -353,6 +370,9 @@ export default function AuthScreen() {
           required
           maxLength={6}
           autoFocus
+          autoComplete="one-time-code"
+          inputMode="numeric"
+          spellCheck={false}
           className="input w-full px-4 py-4 rounded-lg text-center transition-all duration-200"
           style={{
             fontFamily: 'JetBrains Mono, monospace',
@@ -430,6 +450,8 @@ export default function AuthScreen() {
           }}
           required
           autoFocus
+          autoComplete="email"
+          spellCheck={false}
           className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
           style={{
             fontFamily: 'JetBrains Mono, monospace',
@@ -531,6 +553,8 @@ export default function AuthScreen() {
           }}
           required
           autoFocus
+          autoComplete="email"
+          spellCheck={false}
           className="input w-full px-4 py-2.5 rounded-lg transition-all duration-200"
           style={{
             fontFamily: 'JetBrains Mono, monospace',
@@ -572,7 +596,8 @@ export default function AuthScreen() {
               setSuccessMessage(null);
             }}
             required
-            minLength={6}
+            minLength={mode === 'signup' ? 8 : 6}
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             className="input w-full px-4 py-2.5 pr-12 rounded-lg transition-all duration-200"
             style={{
               fontFamily: 'JetBrains Mono, monospace',
