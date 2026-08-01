@@ -108,22 +108,6 @@ export const ITEM_FORM_STYLES = `
     animation: itemFormPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  .item-form-hero {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .item-form-hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    animation: itemFormShimmer 3s infinite;
-  }
-
   @keyframes itemFormFadeInScale {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
@@ -145,8 +129,4 @@ export const ITEM_FORM_STYLES = `
     50% { opacity: 0.5; }
   }
 
-  @keyframes itemFormShimmer {
-    0% { left: -100%; }
-    100% { left: 200%; }
-  }
 `;

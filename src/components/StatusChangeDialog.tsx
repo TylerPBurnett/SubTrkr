@@ -395,26 +395,6 @@ export default function StatusChangeDialog({
           color: var(--text-secondary);
         }
 
-        .status-dialog-hero {
-          position: relative;
-          overflow: hidden;
-        }
-
-        .status-dialog-hero::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-          animation: shimmer 3s infinite;
-        }
-
-        @keyframes shimmer {
-          0% { left: -100%; }
-          100% { left: 200%; }
-        }
       `}</style>
 
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 status-dialog-backdrop">

@@ -47,7 +47,7 @@
 
 | ID | Pri | Area | Task | Source | Note |
 |---|---|---|---|---|---|
-| TASK-020 | P0 | Desktop / Release | Prepare and ship v1.3.0 | [docs/plans/2026-06-19-v1.3.0-release-preparation.md](plans/2026-06-19-v1.3.0-release-preparation.md) | Integrate frosty UI work, close release gates, and publish after explicit changelog/tag confirmation |
+| TASK-020 | P0 | Desktop / Release | Prepare and ship v1.3.0 | [docs/plans/2026-06-19-v1.3.0-release-preparation.md](plans/2026-06-19-v1.3.0-release-preparation.md) | Release preparation is merged and pushed; publication is waiting at the explicit tag-confirmation gate |
 
 ## Blocked
 

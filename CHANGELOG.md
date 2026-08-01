@@ -4,9 +4,9 @@ All notable changes to SubTrkr are documented here.
 
 ---
 
-## [v1.3.0] — 2026-06-25
+## [v1.3.0] — Unreleased
 
-This release turns the post-v1.2 desktop work into a safer daily-use build. It combines production hardening and category-data correctness with a calmer native-looking interface, more immediate item updates, and stronger release-time verification.
+This upcoming release turns the post-v1.2 desktop work into a safer daily-use build. It combines production hardening and category-data correctness with a calmer native-looking interface, more immediate item updates, and stronger release-time verification.
 
 ---
 
