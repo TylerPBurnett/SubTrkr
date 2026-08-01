@@ -7,11 +7,14 @@ import {
   RefreshCw,
   RotateCw,
   Sparkles,
+  Trash2,
   User,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '../services/supabase';
-import { signOut } from '../services/auth';
+import { deleteAccount, signOut } from '../services/auth';
 import { Switch } from './ui/Switch';
+import DeleteAccountDialog from './ui/DeleteAccountDialog';
 import {
   checkForUpdates,
   getUpdaterStateSnapshot,
@@ -505,6 +508,8 @@ function UpdateStatusPanel() {
 
 export default function AccountSettings() {
   const [userEmail, setUserEmail] = useState<string>('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -519,6 +524,44 @@ export default function AccountSettings() {
       await signOut();
     } catch (error) {
       console.error('Failed to sign out:', error);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) return;
+    setIsDeletingAccount(true);
+
+    let result: { success: boolean; error?: string };
+    try {
+      result = await deleteAccount();
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      result = {
+        success: false,
+        error: error instanceof Error ? error.message : undefined,
+      };
+    }
+
+    if (!result.success) {
+      console.error('Account deletion failed:', result.error);
+      setIsDeletingAccount(false);
+      toast.error('Account deletion is temporarily unavailable', {
+        description: result.error
+          ? `${result.error} — the deletion service may not be deployed yet.`
+          : 'The deletion service may not be deployed yet. Please try again later.',
+      });
+      return;
+    }
+
+    setShowDeleteDialog(false);
+    toast.success('Your account and all of its data have been permanently deleted');
+
+    // The access token is dead server-side now; signOut still clears the local
+    // session (it treats a 401 from the logout call as already-signed-out).
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Failed to sign out after account deletion:', error);
     }
   };
 
@@ -583,7 +626,46 @@ export default function AccountSettings() {
           <LogOut className="w-4 h-4" />
           Sign Out
         </button>
+
+        <div className="my-6" style={{ borderTop: '1px solid var(--border-default)' }} />
+
+        <div className="label mb-3" style={{ color: 'var(--accent-red)' }}>
+          Danger Zone
+        </div>
+        <div
+          className="rounded-2xl p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            border: '1px solid color-mix(in srgb, var(--accent-red) 30%, var(--border-default))',
+            backgroundColor: 'color-mix(in srgb, var(--accent-red-muted) 45%, var(--bg-card))',
+          }}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              Delete account
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              Permanently erases your account along with every item, category, history entry,
+              and notification channel. This cannot be undone.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDeleteDialog(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-white shrink-0 transition-all hover:opacity-90"
+            style={{ backgroundColor: 'var(--accent-red)' }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete account
+          </button>
+        </div>
       </div>
+
+      <DeleteAccountDialog
+        isOpen={showDeleteDialog}
+        isDeleting={isDeletingAccount}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
     </div>
   );
 }

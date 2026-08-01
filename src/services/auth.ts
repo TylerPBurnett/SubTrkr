@@ -54,6 +54,33 @@ export async function signOut() {
   if (error) throw error;
 }
 
+/**
+ * Permanently deletes the signed-in user's account via the `delete-account`
+ * edge function. The user id is never sent -- the function resolves it from the
+ * access token supabase-js attaches to the request.
+ *
+ * Returns a result object rather than throwing so the caller can distinguish a
+ * backend failure (function not deployed yet, network down) from success and
+ * message accordingly.
+ */
+export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await supabase.functions.invoke('delete-account', {
+    method: 'POST',
+  });
+
+  if (error) {
+    const detail =
+      (error as any)?.context?.body?.error ||
+      (error as any)?.context?.body?.message ||
+      error.message;
+    return { success: false, error: detail };
+  }
+  if (data?.error) {
+    return { success: false, error: data.error };
+  }
+  return data ?? { success: true };
+}
+
 export async function resetPassword(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: AUTH_REDIRECT_URL,
