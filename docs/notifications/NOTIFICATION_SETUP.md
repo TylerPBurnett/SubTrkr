@@ -9,8 +9,8 @@ This guide walks through the final setup steps to enable Telegram, Discord, and 
 - Database tables with RLS policies
 - Edge Functions deployed:
   - `send-notifications` — main scheduled function + test mode
-  - `save-channel-secret` — secure Vault write proxy
-  - ~~`telegram-webhook`~~ — **Not needed** (users own their bots)
+  - Channel secrets are written directly to `notification_channels.secret_value` (RLS protected) — no separate proxy function
+  - Telegram uses user-owned bots with auto-detected chat IDs — no webhook function needed
 - Complete UI in Settings with connect/test/toggle
 
 ---

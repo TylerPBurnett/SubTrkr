@@ -18,10 +18,10 @@ A complete, privacy-first notification system where users can receive subscripti
 - [x] Vault helper functions (create/get/delete secrets)
 - [x] `get_items_due_for_notification()` function
 
-### Edge Functions (3 deployed)
+### Edge Functions
 - [x] `send-notifications` — scheduled + test mode, all 3 channels
-- [x] `save-channel-secret` — Vault write proxy
-- [x] ~~`telegram-webhook`~~ — Removed (not needed for user-owned bots)
+- [x] Channel secrets written directly to `notification_channels.secret_value` (RLS protected) — no separate proxy function
+- [x] Telegram uses user-owned bots with auto-detected chat IDs — no webhook function needed
 
 ### Frontend
 - [x] `NotificationSettings.tsx` — complete UI with:
@@ -131,7 +131,6 @@ Users can:
 
 **Edge Functions:**
 - `supabase/functions/send-notifications/` (index.ts + channels/ + utils/)
-- `supabase/functions/save-channel-secret/index.ts`
 
 **Frontend:**
 - `src/types/index.ts` (notification types)
