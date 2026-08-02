@@ -57,9 +57,10 @@ foldCategoryTail(slices: DashboardCategorySlice[], limit = 5): {
 }
 ```
 
-`visible` is the single array rendered by both the donut and the list. When
-`otherCount > 0` its last element is the synthetic `Other` slice; callers detect
-it by `otherCount > 0` rather than by inspecting ids.
+`visible` is the single array rendered by both the donut and the list.
+`otherCount > 0` tells callers whether folding happened; when it did, the
+exported `OTHER_CATEGORY_ID` constant identifies the synthetic `Other` slice
+(the last element of `visible`) when mapping over the array.
 
 Rules:
 
@@ -87,8 +88,12 @@ variables resolve in SVG `fill` — `GlowDonutChart` already does this with
 
 The `Other` row is a real `<button>` carrying `aria-expanded`. Clicking it
 unfolds **both** the list and the donut, so the grey arc splits into its real
-slices; clicking again collapses. State is local to `Dashboard`
-(`showAllCategories`), and resets when the filter tab changes.
+slices. Collapsing is a separate "Show less" button rendered below the list
+while expanded, not a second click on the `Other` row. State is local to
+`Dashboard` (`showAllCategories`), and resets when the filter tab changes.
+Because the two controls occupy different DOM positions, toggling moves
+keyboard focus explicitly to the counterpart control so it isn't dropped when
+the originating element unmounts.
 
 The donut's reveal animation runs only on mount (`useEffect` with `[]` deps), so
 expanding recomputes segments without re-triggering the animation.
@@ -100,8 +105,10 @@ which is what makes the `Other` row legible.
 
 Removed: `xl:h-[17rem]`, `max-h-[18.5rem]`, `overflow-y-auto`,
 `scrollbarGutter`, and the `xl:max-h-none` override. Height comes from content.
-The existing `xl:items-center` on the flex container keeps the donut and panel
-centered against each other. Below `xl` the card stacks as it does today, minus
+The existing `xl:items-center` on the flex container vertically centers the
+donut against the panel. The panel itself carries `xl:self-start`, which
+overrides that alignment for the panel — so only the donut is centered; the
+panel stays top-aligned. Below `xl` the card stacks as it does today, minus
 the nested scroll region.
 
 ### Accessibility fix in passing
@@ -118,7 +125,7 @@ and keep their hover highlight; only the `Other` row is clickable.
 | 1–5 categories | All rows, no `Other`, no button |
 | 6 categories | All six rows (tail of 1 is not folded) |
 | 7+ categories | Top 5 + `Other · N categories` |
-| Expanded | All rows, donut unfolded, button reads collapsed state |
+| Expanded | All rows, donut unfolded, `Other` row (`aria-expanded={true}`) stays in place and a separate "Show less" button appears below the list; focus moves explicitly from whichever control was activated to its counterpart so keyboard users aren't dropped to the top of the document |
 | Long names | Existing `truncate` on the name span |
 | Filter tab change | `showAllCategories` resets to collapsed |
 

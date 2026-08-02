@@ -337,7 +337,7 @@ Replace with:
 
 Leave the header badge above it alone. It reads `{spendingByCategory.length} total`
 and must keep reporting the **true** category count — that honest number is what
-makes an `Other · N categories` row legible. Do not "fix" it to match the
+makes an `Other (N)` row legible. Do not "fix" it to match the
 visible row count.
 
 - [ ] **Step 7: Replace the row map**
@@ -380,7 +380,7 @@ Replace the whole `{dashboardCategoryData.map((item, index) => { … })}` block
 
       <div className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-          {isOther ? `Other · ${foldedCategories.otherCount} categories` : item.name}
+          {isOther ? `Other (${foldedCategories.otherCount})` : item.name}
         </span>
       </div>
 
@@ -403,8 +403,9 @@ Replace the whole `{dashboardCategoryData.map((item, index) => { … })}` block
     return (
       <button
         key={item.id}
+        ref={otherRowRef}
         type="button"
-        aria-expanded={false}
+        aria-expanded={showAllCategories}
         className={rowClassName}
         style={rowStyle}
         onClick={handleToggleAllCategories}
@@ -430,8 +431,21 @@ Replace the whole `{dashboardCategoryData.map((item, index) => { … })}` block
 })}
 ```
 
-Note `Other · N categories` needs no pluralization: `otherCount` is 2 or more by
+Note `Other (N)` needs no pluralization: `otherCount` is 2 or more by
 construction.
+
+The `Other` button does not carry an `aria-label`. Deliberately: an
+`aria-label` would replace the whole subtree's accessible name and hide the
+amount/percentage that every other row exposes, and it would also fail Label
+in Name (the visible text is `Other (N)` but a hand-written label wouldn't
+contain that string verbatim). Let the button's own text content name it —
+it reads as "Other (N)" plus the amount and percentage, consistent with the
+other rows. `aria-expanded` is bound to `showAllCategories` rather than
+hardcoded `false`, since both this button and "Show less" persist
+conceptually across the collapsed/expanded toggle even though only one of
+them is mounted at a time.
+
+Add a ref (e.g. `otherRowRef`) to this button — see Step 8a for why.
 
 - [ ] **Step 8: Add the "Show less" control**
 
@@ -440,8 +454,9 @@ Immediately after the closing `</div>` of the list container from Step 6, add:
 ```tsx
 {canFoldCategories && showAllCategories && (
   <button
+    ref={showLessRef}
     type="button"
-    aria-expanded
+    aria-expanded={showAllCategories}
     onClick={handleToggleAllCategories}
     className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors interactive-hover-bg"
     style={{ color: 'var(--text-secondary)' }}
@@ -454,6 +469,21 @@ Immediately after the closing `</div>` of the list container from Step 6, add:
 
 Without this the expanded state has no way back, because expanding removes the
 `Other` row that opened it.
+
+- [ ] **Step 8a: Preserve keyboard focus across the toggle**
+
+Because the `Other` row and "Show less" are different elements at the same
+list position, React unmounts whichever one triggered the toggle — a keyboard
+user pressing Enter would otherwise be dropped to `<body>`. Add
+`otherRowRef`/`showLessRef` (`useRef<HTMLButtonElement>(null)`) attached to
+the two buttons above, plus a `shouldRestoreFocusRef` boolean ref. In
+`handleToggleAllCategories`, before flipping state, record whether
+`document.activeElement` is the button being clicked. In a `useEffect` keyed
+on `showAllCategories`, if that flag was set, focus the counterpart control
+(`showLessRef` when expanding, `otherRowRef` when collapsing) and clear the
+flag. Also render a visually-hidden `aria-live="polite"` element near the list
+announcing e.g. "Showing all 8 categories" / "Showing top 5 categories" so
+screen-reader users learn the rows changed.
 
 - [ ] **Step 9: Import the chevron icons**
 
@@ -516,7 +546,7 @@ Read console messages. Expected: no React warnings, and specifically no
 
 - [ ] **Step 3: Verify the collapsed state**
 
-With 7+ categories present, confirm: five named rows plus one `Other · N categories`
+With 7+ categories present, confirm: five named rows plus one `Other (N)`
 row, no scrollbar in the panel, and the donut showing six arcs with the last one
 grey.
 
