@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -7,7 +7,9 @@ import {
   CreditCard,
   Receipt,
   AlertCircle,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Plus,
 } from 'lucide-react';
 import GlowDonutChart from './ui/GlowDonutChart';
@@ -23,6 +25,11 @@ import { createCategoryLookup, resolveItemCategoryDisplay } from '../utils/categ
 import { formatCurrency } from '../utils/currency';
 import { formatShortDate, getDaysUntil } from '../utils/dates';
 import { calculateProjectedMonthlySpendingForMonth } from '../utils/projectedSpending';
+import {
+  OTHER_CATEGORY_ID,
+  foldCategoryTail,
+  type CategorySlice,
+} from '../utils/categoryFolding';
 import ServiceLogo from './ui/ServiceLogo';
 import EmptyState from './ui/EmptyState';
 import GhostListPreview from './ui/GhostListPreview';
@@ -38,13 +45,6 @@ interface DashboardProps {
 }
 
 type FilterTab = 'all' | 'bill' | 'subscription';
-type DashboardCategorySlice = {
-  color: string;
-  id: string;
-  name: string;
-  share: number;
-  value: number;
-};
 
 interface DashboardMetricCardProps {
   accentColor: string;
@@ -148,6 +148,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [statusHistoryEntries, setStatusHistoryEntries] = useState<StatusHistory[]>([]);
   const [chartHover, setChartHover] = useState<number | null>(null);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   // Get the type filter for database queries
   const typeFilter = filterTab === 'all' ? undefined : filterTab;
@@ -251,7 +252,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     ) * 12;
   }, [filteredItems, statusHistoryByItem]);
 
-  const dashboardCategoryData = useMemo<DashboardCategorySlice[]>(() => {
+  const dashboardCategoryData = useMemo<CategorySlice[]>(() => {
     const categorySlices = spendingByCategory.map((spending) => ({
       color: spending.category.color,
       id: spending.category.id,
@@ -268,6 +269,16 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     return withShare;
   }, [spendingByCategory]);
 
+  const foldedCategories = useMemo(
+    () => foldCategoryTail(dashboardCategoryData),
+    [dashboardCategoryData],
+  );
+  const canFoldCategories = foldedCategories.otherCount > 0;
+  const visibleCategoryData =
+    canFoldCategories && !showAllCategories
+      ? foldedCategories.visible
+      : dashboardCategoryData;
+
   const topCategory = useMemo(() => {
     if (dashboardCategoryData.length === 0) return null;
 
@@ -275,6 +286,19 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
       return entry.value > topEntry.value ? entry : topEntry;
     });
   }, [dashboardCategoryData]);
+
+  // Row indices are the hover key shared with the donut, and folding changes what
+  // each index means — so any change to the rendered set must clear the hover.
+  const handleFilterTabChange = useCallback((tab: FilterTab) => {
+    setFilterTab(tab);
+    setShowAllCategories(false);
+    setChartHover(null);
+  }, []);
+
+  const handleToggleAllCategories = useCallback(() => {
+    setShowAllCategories((previous) => !previous);
+    setChartHover(null);
+  }, []);
 
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
@@ -293,7 +317,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
 
   return (
     <div className="space-y-6">
-      <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={setFilterTab} />
+      <SegmentedControl tabs={tabs} activeTab={filterTab} onTabChange={handleFilterTabChange} />
 
       {/* First-run: show only the welcome state, hide everything else */}
       {items.length === 0 ? (
@@ -452,7 +476,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:gap-7">
               <div className="mx-auto shrink-0 xl:mx-0">
                 <GlowDonutChart
-                  data={dashboardCategoryData}
+                  data={visibleCategoryData}
                   centerValue={formatCurrency(monthlySpending, { display: 'summary' })}
                   size={263}
                   hoveredIndex={chartHover}
@@ -461,7 +485,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
               </div>
 
               <div
-                className="min-w-0 flex-1 rounded-2xl p-3 sm:p-3.5 xl:flex xl:h-[17rem] xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
+                className="min-w-0 flex-1 rounded-2xl p-3 sm:p-3.5 xl:flex xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
                 style={{
                   background:
                     'linear-gradient(180deg, color-mix(in srgb, var(--bg-hover) 92%, transparent), color-mix(in srgb, var(--bg-base) 74%, transparent))',
@@ -485,44 +509,42 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                   </span>
                 </div>
 
-                <div
-                  className="max-h-[18.5rem] space-y-1.25 overflow-y-auto pr-3 xl:min-h-0 xl:flex-1 xl:max-h-none"
-                  style={{ scrollbarGutter: 'stable' }}
-                >
-                  {dashboardCategoryData.map((item, index) => {
+                <div className="space-y-1.25">
+                  {visibleCategoryData.map((item, index) => {
                     const isHovered = chartHover === index;
                     const isDimmed = chartHover !== null && !isHovered;
+                    const isOther = item.id === OTHER_CATEGORY_ID;
 
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all duration-300"
-                        style={{
-                          opacity: isDimmed ? 0.42 : 1,
-                          cursor: 'pointer',
-                          background: isHovered
-                            ? 'color-mix(in srgb, var(--bg-card) 68%, transparent)'
-                            : 'color-mix(in srgb, var(--bg-card) 36%, transparent)',
-                          boxShadow: isHovered
-                            ? `inset 0 0 0 1px color-mix(in srgb, ${item.color} 22%, transparent), 0 14px 24px -24px color-mix(in srgb, ${item.color} 62%, transparent)`
-                            : 'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 55%, transparent)',
-                        }}
-                        onMouseEnter={() => setChartHover(index)}
-                        onMouseLeave={() => setChartHover(null)}
-                      >
+                    const rowClassName =
+                      'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-all duration-300';
+                    const rowStyle: React.CSSProperties = {
+                      opacity: isDimmed ? 0.42 : 1,
+                      cursor: isOther ? 'pointer' : 'default',
+                      background: isHovered
+                        ? 'color-mix(in srgb, var(--bg-card) 68%, transparent)'
+                        : 'color-mix(in srgb, var(--bg-card) 36%, transparent)',
+                      boxShadow: isHovered
+                        ? `inset 0 0 0 1px color-mix(in srgb, ${item.color} 22%, transparent), 0 14px 24px -24px color-mix(in srgb, ${item.color} 62%, transparent)`
+                        : 'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 55%, transparent)',
+                    };
+
+                    const rowContent = (
+                      <>
                         <div
                           className="h-1.5 w-1.5 shrink-0 rounded-full transition-shadow duration-300"
                           style={{
                             backgroundColor: item.color,
+                            // color-mix, not `${color}33` — item.color may be a CSS variable for
+                            // the Other slice, and `var(--accent-gray)33` is invalid CSS.
                             boxShadow: isHovered
-                              ? `0 0 0 2px ${item.color}33`
-                              : `0 0 0 2px ${item.color}20`,
+                              ? `0 0 0 2px color-mix(in srgb, ${item.color} 20%, transparent)`
+                              : `0 0 0 2px color-mix(in srgb, ${item.color} 12%, transparent)`,
                           }}
                         />
 
                         <div className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {item.name}
+                            {isOther ? `Other (${foldedCategories.otherCount})` : item.name}
                           </span>
                         </div>
 
@@ -534,10 +556,56 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                             {Math.round(item.share * 100)}%
                           </p>
                         </div>
+
+                        {isOther && (
+                          <ChevronDown className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                        )}
+                      </>
+                    );
+
+                    if (isOther) {
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          aria-expanded={false}
+                          aria-label={`Other · ${foldedCategories.otherCount} categories, show all`}
+                          className={rowClassName}
+                          style={rowStyle}
+                          onClick={handleToggleAllCategories}
+                          onMouseEnter={() => setChartHover(index)}
+                          onMouseLeave={() => setChartHover(null)}
+                        >
+                          {rowContent}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={rowClassName}
+                        style={rowStyle}
+                        onMouseEnter={() => setChartHover(index)}
+                        onMouseLeave={() => setChartHover(null)}
+                      >
+                        {rowContent}
                       </div>
                     );
                   })}
                 </div>
+                {canFoldCategories && showAllCategories && (
+                  <button
+                    type="button"
+                    aria-expanded
+                    onClick={handleToggleAllCategories}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors interactive-hover-bg"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    Show less
+                  </button>
+                )}
               </div>
             </div>
           )}
