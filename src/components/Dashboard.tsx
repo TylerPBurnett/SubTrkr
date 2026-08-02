@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -295,10 +295,27 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     setChartHover(null);
   }, []);
 
+  const otherRowRef = useRef<HTMLButtonElement>(null);
+  const showLessRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
+
   const handleToggleAllCategories = useCallback(() => {
+    const activeElement = document.activeElement;
+    shouldRestoreFocusRef.current =
+      activeElement === otherRowRef.current || activeElement === showLessRef.current;
     setShowAllCategories((previous) => !previous);
     setChartHover(null);
   }, []);
+
+  useEffect(() => {
+    if (!shouldRestoreFocusRef.current) return;
+    shouldRestoreFocusRef.current = false;
+    if (showAllCategories) {
+      showLessRef.current?.focus();
+    } else {
+      otherRowRef.current?.focus();
+    }
+  }, [showAllCategories]);
 
   // Tab config
   const tabs: { id: FilterTab; label: string; icon?: React.ReactNode }[] = [
@@ -567,9 +584,9 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                       return (
                         <button
                           key={item.id}
+                          ref={otherRowRef}
                           type="button"
-                          aria-expanded={false}
-                          aria-label={`Other · ${foldedCategories.otherCount} categories, show all`}
+                          aria-expanded={showAllCategories}
                           className={rowClassName}
                           style={rowStyle}
                           onClick={handleToggleAllCategories}
@@ -596,8 +613,9 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 </div>
                 {canFoldCategories && showAllCategories && (
                   <button
+                    ref={showLessRef}
                     type="button"
-                    aria-expanded
+                    aria-expanded={showAllCategories}
                     onClick={handleToggleAllCategories}
                     className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors interactive-hover-bg"
                     style={{ color: 'var(--text-secondary)' }}
@@ -605,6 +623,24 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     <ChevronUp className="w-3.5 h-3.5" />
                     Show less
                   </button>
+                )}
+                {canFoldCategories && (
+                  <span
+                    aria-live="polite"
+                    style={{
+                      position: 'absolute',
+                      width: '1px',
+                      height: '1px',
+                      overflow: 'hidden',
+                      clip: 'rect(0 0 0 0)',
+                      whiteSpace: 'nowrap',
+                      border: 0,
+                    }}
+                  >
+                    {showAllCategories
+                      ? `Showing all ${dashboardCategoryData.length} categories`
+                      : `Showing top ${foldedCategories.visible.length} categories`}
+                  </span>
                 )}
               </div>
             </div>
