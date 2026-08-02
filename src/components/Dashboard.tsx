@@ -504,10 +504,14 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
               <div
                 className="min-w-0 flex-1 rounded-2xl p-3 sm:p-3.5 xl:flex xl:max-w-[18rem] xl:flex-col xl:self-start xl:-mt-1"
                 style={{
-                  background:
-                    'linear-gradient(180deg, color-mix(in srgb, var(--bg-hover) 92%, transparent), color-mix(in srgb, var(--bg-base) 74%, transparent))',
+                  // Flat surface token, matching every other inset panel in the
+                  // app (CategorySettings, AccountSettings, NotificationSettings).
+                  // The old vertical gradient ramped between two tokens, so once
+                  // the panel became content-sized it visibly reshaded on every
+                  // expand/collapse.
+                  backgroundColor: 'var(--bg-hover)',
                   boxShadow:
-                    'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 76%, transparent), 0 24px 48px -36px color-mix(in srgb, black 46%, transparent)',
+                    'inset 0 0 0 1px color-mix(in srgb, var(--border-default) 76%, transparent)',
                 }}
               >
                 <div className="mb-2 flex items-center justify-between gap-3">
