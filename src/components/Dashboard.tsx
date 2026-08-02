@@ -27,6 +27,7 @@ import { formatShortDate, getDaysUntil } from '../utils/dates';
 import { calculateProjectedMonthlySpendingForMonth } from '../utils/projectedSpending';
 import {
   OTHER_CATEGORY_ID,
+  buildCategorySlices,
   foldCategoryTail,
   type CategorySlice,
 } from '../utils/categoryFolding';
@@ -252,22 +253,13 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
     ) * 12;
   }, [filteredItems, statusHistoryByItem]);
 
-  const dashboardCategoryData = useMemo<CategorySlice[]>(() => {
-    const categorySlices = spendingByCategory.map((spending) => ({
-      color: spending.category.color,
-      id: spending.category.id,
-      name: spending.category.name,
-      value: spending.total,
-    }));
-
-    const total = categorySlices.reduce((sum, item) => sum + item.value, 0);
-    const withShare = categorySlices.map((item) => ({
-      ...item,
-      share: total === 0 ? 0 : item.value / total,
-    }));
-
-    return withShare;
-  }, [spendingByCategory]);
+  // Passing monthlySpending (every active item) lets the slices account for
+  // spend that resolves to no live category, so the arcs add up to the centre
+  // label instead of silently under-counting it.
+  const dashboardCategoryData = useMemo<CategorySlice[]>(
+    () => buildCategorySlices(spendingByCategory, monthlySpending),
+    [monthlySpending, spendingByCategory],
+  );
 
   const foldedCategories = useMemo(
     () => foldCategoryTail(dashboardCategoryData),
