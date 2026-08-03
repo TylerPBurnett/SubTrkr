@@ -7,4 +7,4 @@ description: Run TypeScript type checking and fix errors
 !`bunx tsc --noEmit 2>&1`
 
 Fix any type errors found above. Do not suppress errors with `any` or `@ts-ignore`.
-Note: `database.ts:750` unused var `now` (TS6133) is pre-existing — ignore it.
+There are no known pre-existing type errors — a clean run prints nothing and exits 0, so treat any output as a real failure.

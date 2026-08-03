@@ -40,7 +40,7 @@ Work through these checks in order. Stop and explain what to fix if any check fa
    ```bash
    bunx tsc --noEmit
    ```
-   Abort on any errors. Note: `database.ts:750` unused var `now` (TS6133) is pre-existing — ignore it.
+   Abort on any errors. There are no known pre-existing type errors — a clean run is exit 0 with no output, so treat anything it prints as a real failure.
 
 If all checks pass, tell the user preflight is clear and proceed to Stage 2.
 
