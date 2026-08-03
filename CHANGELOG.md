@@ -4,13 +4,35 @@ All notable changes to SubTrkr are documented here.
 
 ---
 
-## [v1.3.0] — Unreleased
+## [v1.3.0] — 2026-08-02
 
-This upcoming release turns the post-v1.2 desktop work into a safer daily-use build. It combines production hardening and category-data correctness with a calmer native-looking interface, more immediate item updates, and stronger release-time verification.
+This release turns the post-v1.2 desktop work into a safer daily-use build. It closes a set of authentication and backend security gaps, makes every dialog usable from the keyboard and a screen reader, adds account deletion, and rebuilds the dashboard's category breakdown so the chart and its legend can no longer disagree — alongside production hardening, category-data correctness, and a calmer native-looking interface.
 
 ---
 
+### Features
+
+- **Account deletion** — a Danger Zone in Account settings permanently erases your account and all associated data, with a type-to-confirm gate. Backed by a new server function that only ever deletes the authenticated caller.
+- **Category breakdown rework** — the dashboard's spending panel no longer hides rows behind a nested scrollbar. It shows the top five categories plus a foldable `Other` row that expands in place, and the donut folds in step so both always describe the same set.
+
+### Security
+
+- Desktop sign-in now uses the PKCE flow. The deep-link handler no longer accepts session tokens from a URL fragment, closing a path where a crafted `subtrkr://` link could silently switch the signed-in account.
+- Locked down a database function that could return every user's item data to any caller, removed unused public secret-management helpers, and required a shared secret on scheduled notification dispatch.
+- Notification delivery now claims each reminder before sending, so overlapping runs can no longer deliver duplicates.
+
+### Accessibility
+
+- Every dialog — item form, confirmations, status changes, status history, and password reset — now uses proper dialog semantics with focus trapping and Escape handling.
+- The password-reset screen can be dismissed instead of trapping you until a new password is set.
+- Expanding or collapsing the category breakdown keeps keyboard focus on a real control and announces the change to screen readers.
+- Added accessible names to icon-only buttons throughout settings and banners.
+
 ### Improvements
+
+- Reminder times now default to your computer's timezone instead of UTC, so "9 AM" means 9 AM where you are.
+- Auth forms fill correctly from password managers, and an expired or mistyped sign-in code now says which it was.
+- The category panel sits on a flat surface consistent with every other inset panel in the app.
 
 #### Production Hardening
 
@@ -36,6 +58,8 @@ This upcoming release turns the post-v1.2 desktop work into a safer daily-use bu
 
 ### Fixes
 
+- The dashboard donut's centre total counted every active item while its arcs counted only categorized spend, so untagged spend vanished from the chart and every percentage was inflated — a single uncategorized item could make one category read 100% when its true share was 60%. Untagged spend now appears as its own `Uncategorized` slice and percentages are measured against the real total.
+- Editing a cancellation date silently failed to update the underlying history record, leaving spending trends computed from a stale date.
 - Item creation, editing, and lifecycle transitions now refresh item state immediately instead of waiting for a realtime round trip
 - Preserved recurrence anchors when calculating future billing dates
 - Kept notification and maintenance checks working after data-sync decomposition
@@ -45,10 +69,16 @@ This upcoming release turns the post-v1.2 desktop work into a safer daily-use bu
 
 - Archived completed hardening and UI cleanup plans and refreshed the desktop roadmap/task queue
 - Added a repeatable v1.3.0 release-preparation plan and cleaned repository-local tooling state
+- Recovered the logo proxy's source into the backend repository and hardened its input validation
+- Removed two deprecated backend functions that were still deployed without authentication
 
 ## Migration Guide
 
 No user migration is required. Existing subscriptions, bills, categories, payment history, notification settings, and local preferences remain compatible. The desktop app expects the shared production backend's transactional lifecycle RPC, which is already the documented backend contract.
+
+Two notes on the authentication change. Because sign-in now uses PKCE, confirmation, magic-link, and password-reset emails must be opened **on the same computer that requested them** — opening one on a phone will report that the link can't be completed there. Existing sessions are unaffected and no one is signed out by this upgrade.
+
+The backend changes in this release were deployed on 2026-08-02 and are already live for all clients, including v1.2.x.
 
 ## [v1.2.2] — 2026-04-06
 
