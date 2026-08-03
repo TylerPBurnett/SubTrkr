@@ -139,7 +139,28 @@ Once CI passes, extract the full intro paragraph from the CHANGELOG entry and se
 gh release edit vX.Y.Z --notes "<full intro paragraph from CHANGELOG>"
 ```
 
-This is what populates the release notes shown in the in-app updater toast and the update panel.
+This affects the **GitHub release web page only**.
+
+The text the in-app updater shows — both the launch toast and the update panel's
+"What's New" — comes from the `notes` field inside `latest.json`, which
+`tauri-action` writes from the workflow's `releaseBody` input at build time.
+`gh release edit` does not touch it. The workflow derives `releaseBody` from
+this version's CHANGELOG intro paragraph (see the "Extract release notes from
+CHANGELOG" step in `.github/workflows/release.yml`), so the in-app text is only
+as good as that paragraph.
+
+Verify what users will actually see:
+```bash
+curl -fsSL "https://github.com/TylerPBurnett/SubTrkr/releases/download/vX.Y.Z/latest.json" | jq -r .notes
+```
+
+If it reads `See the release notes for this version.`, the extraction step fell
+back — the CHANGELOG heading probably doesn't match `## [vX.Y.Z]` exactly. Fix
+the heading for next time, and patch this release in place by downloading
+`latest.json`, editing only its `notes` field, and re-uploading with
+`gh release upload vX.Y.Z latest.json --clobber`. The per-platform signatures
+live in separate fields and stay valid. Note the `releases/latest/download/`
+URL is CDN-cached for a few minutes; check the versioned URL to confirm.
 
 ### 4c. Verify artifacts
 
