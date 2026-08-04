@@ -37,6 +37,13 @@ export function summarizeBulkResult(
     return null;
   }
 
+  if (successCount === 0 && failureCount === 0 && skippedCount > 0) {
+    return {
+      message: `Nothing to do — ${skippedCount} skipped`,
+      tone: 'success',
+    };
+  }
+
   const suffix = skippedCount > 0 ? ` · ${skippedCount} skipped` : '';
 
   if (successCount === 0 && failureCount > 0) {

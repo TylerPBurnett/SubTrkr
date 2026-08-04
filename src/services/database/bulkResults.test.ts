@@ -71,4 +71,14 @@ describe('summarizeBulkResult', () => {
   test('returns a null summary when nothing was attempted', () => {
     assert.equal(summarizeBulkResult(emptyBulkResult(), DELETE_COPY), null);
   });
+
+  test('reports an all-skipped batch as nothing to do', () => {
+    const summary = summarizeBulkResult(
+      { succeeded: [], failed: [], skipped: ['a', 'b', 'c'] },
+      DELETE_COPY,
+    );
+
+    assert.equal(summary!.message, 'Nothing to do — 3 skipped');
+    assert.equal(summary!.tone, 'success');
+  });
 });
