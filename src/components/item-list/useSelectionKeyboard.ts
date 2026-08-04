@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 interface UseSelectionKeyboardOptions {
-  /** false while a dialog is open, so shortcuts never fire behind a modal */
+  /** false while a modal is open; non-modal overlays rely on the defaultPrevented check */
   enabled: boolean;
   hasSelection: boolean;
   onSelectAll: () => void;
@@ -38,6 +38,10 @@ export function useSelectionKeyboard({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTextEntry(event.target)) {
+        return;
+      }
+
+      if (event.defaultPrevented) {
         return;
       }
 
