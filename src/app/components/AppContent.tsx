@@ -34,6 +34,8 @@ interface AppContentProps {
     ids: string[],
     data: StatusChangeData,
     copy: BulkCopy,
+    /** selected but ineligible ids, surfaced in the toast as "· N skipped" */
+    skippedIds?: string[],
   ) => Promise<BulkResult>;
   onBulkCategoryChange: (
     ids: string[],

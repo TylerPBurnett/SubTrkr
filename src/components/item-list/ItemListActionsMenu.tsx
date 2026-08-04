@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ItemWithCategory, StatusChangeData } from '@/types';
 import { isActionEligible } from './statusActions';
+import { useMenuOpenReporter } from './useMenuOpenReporter';
 
 interface ItemListActionsMenuProps {
   item: ItemWithCategory;
@@ -31,6 +32,11 @@ interface ItemListActionsMenuProps {
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
+  /**
+   * Fires when this menu opens or closes. The list uses it to suppress the
+   * selection shortcuts while this non-modal layer is up.
+   */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function ShortcutHint({ keys }: { keys: string }) {
@@ -51,15 +57,17 @@ export function ItemListActionsMenu({
   onToggleActive,
   onStatusChange,
   onViewHistory,
+  onOpenChange,
 }: ItemListActionsMenuProps) {
   const modKey = useMemo(() => {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     return isMac ? '⌘' : 'Ctrl+';
   }, []);
+  const reportOpen = useMenuOpenReporter(onOpenChange);
 
   return (
     <div className="relative" onClick={(event) => event.stopPropagation()}>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={reportOpen}>
         <DropdownMenuTrigger asChild>
           <button
             onClick={(event) => event.stopPropagation()}

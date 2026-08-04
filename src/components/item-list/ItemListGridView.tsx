@@ -21,6 +21,8 @@ interface ItemListGridViewProps {
     checked: boolean | 'indeterminate',
     options?: { extendRange?: boolean },
   ) => void;
+  /** Reports a row's actions menu opening/closing, so the list can gate its shortcuts. */
+  onActionsMenuOpenChange?: (open: boolean) => void;
   selectedItemIds: Set<string>;
 }
 
@@ -33,6 +35,7 @@ export function ItemListGridView({
   onStatusChange,
   onViewHistory,
   onSelectItemChange,
+  onActionsMenuOpenChange,
   selectedItemIds,
 }: ItemListGridViewProps) {
   return (
@@ -168,6 +171,7 @@ export function ItemListGridView({
                 onToggleActive={onToggleActive}
                 onStatusChange={onStatusChange}
                 onViewHistory={onViewHistory}
+                onOpenChange={onActionsMenuOpenChange}
               />
             </div>
 

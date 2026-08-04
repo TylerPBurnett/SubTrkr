@@ -38,9 +38,6 @@ const BULK_ACTION_COPY: Record<
   archive: { pastTense: 'Archived', failedVerb: 'archive' },
 };
 
-/** Reserves room under the list so the floating HUD can't cover the last row. */
-const HUD_CLEARANCE = 76;
-
 interface ItemListProps {
   items: ItemWithCategory[];
   categories: Category[];
@@ -55,6 +52,8 @@ interface ItemListProps {
     ids: string[],
     data: StatusChangeData,
     copy: BulkCopy,
+    /** selected but ineligible ids, surfaced in the toast as "· N skipped" */
+    skippedIds?: string[],
   ) => Promise<BulkResult>;
   onBulkCategoryChange: (
     ids: string[],
@@ -142,11 +141,23 @@ function ItemList({
   const [bulkStatusAction, setBulkStatusAction] = useState<{
     action: BulkStatusAction;
     items: ItemWithCategory[];
-    skippedCount: number;
+    /**
+     * Selected but ineligible ids. Held as ids, not a count, so they can be
+     * merged into `BulkResult.skipped` (a `string[]`) and reach the toast —
+     * otherwise the dialog promises "N will be skipped" and the toast that
+     * follows never mentions them.
+     */
+    skippedIds: string[];
   } | null>(null);
   // Drives BulkCategoryDialog, rendered below. Reset to false on both its
   // cancel and confirm paths — see the useSelectionKeyboard guard note below.
   const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
+  // True while any row-actions or HUD-overflow dropdown is open. Those are
+  // non-modal Radix popover layers, so without this the selection shortcuts
+  // would fire straight through them — Backspace would stack a bulk-delete
+  // confirmation on top of an open menu, leaving two layers fighting over
+  // focus and pointer-events.
+  const [hasOpenMenu, setHasOpenMenu] = useState(false);
 
   const labels = {
     singular: itemType === 'bill' ? 'bill' : 'subscription',
@@ -233,7 +244,7 @@ function ItemList({
     setBulkStatusAction({
       action: descriptor.action,
       items: eligibleItems,
-      skippedCount: descriptor.skippedIds.length,
+      skippedIds: descriptor.skippedIds,
     });
   };
 
@@ -252,6 +263,10 @@ function ItemList({
         singular: labels.singular,
         plural: labels.plural,
       },
+      // The ids the HUD already ruled ineligible. The service only ever
+      // reports ids it attempted, so this is the only path by which the
+      // "· N skipped" suffix can reach the toast.
+      bulkStatusAction.skippedIds,
     );
 
     deselectSucceeded(result);
@@ -267,13 +282,19 @@ function ItemList({
   // and resets the flag on both its cancel and confirm paths — without that
   // reset this guard would disable Cmd+A, Escape and Backspace permanently
   // after the first Category click.
+  //
+  // `hasOpenMenu` covers the non-modal popover layer (row-actions and HUD
+  // overflow dropdowns). Backspace isn't Radix typeahead, so nothing inside
+  // the menu would intercept it — real open state is what keeps the shortcuts
+  // off while a menu is up.
   useSelectionKeyboard({
     enabled:
       !isModalOpen &&
       !deleteConfirm &&
       !bulkDeleteConfirmOpen &&
       !bulkStatusAction &&
-      !bulkCategoryOpen,
+      !bulkCategoryOpen &&
+      !hasOpenMenu,
     hasSelection: selectedCount > 0,
     onSelectAll: () => handleSelectAllChange(true),
     onClear: clearSelection,
@@ -281,10 +302,7 @@ function ItemList({
   });
 
   return (
-    <div
-      className="space-y-6"
-      style={{ paddingBottom: selectedCount > 0 ? HUD_CLEARANCE : 0 }}
-    >
+    <div className="space-y-6">
       <SearchFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -367,6 +385,7 @@ function ItemList({
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
+              onActionsMenuOpenChange={setHasOpenMenu}
               selectedItemIds={selectedItemIds}
             />
           ) : (
@@ -381,6 +400,7 @@ function ItemList({
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
+              onActionsMenuOpenChange={setHasOpenMenu}
               selectedItemIds={selectedItemIds}
               someVisibleSelected={someVisibleSelected}
             />
@@ -419,7 +439,7 @@ function ItemList({
           item={bulkStatusAction.items[0]}
           action={bulkStatusAction.action}
           bulkItems={bulkStatusAction.items}
-          skippedCount={bulkStatusAction.skippedCount}
+          skippedCount={bulkStatusAction.skippedIds.length}
           onConfirm={handleBulkStatusConfirm}
           onCancel={() => setBulkStatusAction(null)}
         />
@@ -431,6 +451,15 @@ function ItemList({
           categories={filteredCategories}
           itemCount={selectedCount}
           onConfirm={async (categoryId) => {
+            // Same guard the delete path uses: a background realtime reload
+            // can prune the selection to empty while this dialog is open, and
+            // an empty batch summarizes to `null` — closing with no toast at
+            // all, the silent no-op BulkResult exists to prevent.
+            if (selectedCount === 0) {
+              setBulkCategoryOpen(false);
+              return;
+            }
+
             const result = await onBulkCategoryChange(
               selectedVisibleItems.map((item) => item.id),
               categoryId,
@@ -454,6 +483,7 @@ function ItemList({
         onAction={handleHudAction}
         onDelete={() => setBulkDeleteConfirmOpen(true)}
         onDismiss={clearSelection}
+        onOverflowOpenChange={setHasOpenMenu}
       />
     </div>
   );

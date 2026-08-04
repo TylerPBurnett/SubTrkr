@@ -151,7 +151,9 @@ export function useItemListState({
     allVisibleSelected,
     categoryLookup,
     filteredCategories,
-    lastSelectedId,
+    // `lastSelectedId` is deliberately not returned: the range anchor is
+    // consumed by the closures below, and a consumer reading it from here
+    // would see a value one render stale relative to them.
     searchQuery,
     selectedCategory,
     selectedCount,

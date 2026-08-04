@@ -23,6 +23,8 @@ interface ItemListTableViewProps {
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
+  /** Reports a row's actions menu opening/closing, so the list can gate its shortcuts. */
+  onActionsMenuOpenChange?: (open: boolean) => void;
   selectedItemIds: Set<string>;
   someVisibleSelected: boolean;
 }
@@ -38,6 +40,7 @@ export function ItemListTableView({
   onToggleActive,
   onStatusChange,
   onViewHistory,
+  onActionsMenuOpenChange,
   selectedItemIds,
   someVisibleSelected,
 }: ItemListTableViewProps) {
@@ -239,6 +242,7 @@ export function ItemListTableView({
                         onToggleActive={onToggleActive}
                         onStatusChange={onStatusChange}
                         onViewHistory={onViewHistory}
+                        onOpenChange={onActionsMenuOpenChange}
                       />
                     </td>
                   </motion.tr>

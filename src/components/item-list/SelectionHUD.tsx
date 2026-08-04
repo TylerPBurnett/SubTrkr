@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ItemStatus } from '@/types';
 import { buildHudActions, type HudAction, type HudActionDescriptor } from './hudActions';
+import { useMenuOpenReporter } from './useMenuOpenReporter';
 
 const NARROW_QUERY = '(max-width: 560px)';
 const MAX_INLINE_WIDE = 3;
@@ -37,6 +38,11 @@ interface SelectionHUDProps<T extends { id: string; status: ItemStatus }> {
   onAction: (descriptor: HudActionDescriptor) => void;
   onDelete: () => void;
   onDismiss: () => void;
+  /**
+   * Fires when the overflow dropdown opens or closes. The list uses it to
+   * suppress the selection shortcuts while this non-modal layer is up.
+   */
+  onOverflowOpenChange?: (open: boolean) => void;
 }
 
 function useIsNarrow(): boolean {
@@ -93,8 +99,10 @@ export function SelectionHUD<T extends { id: string; status: ItemStatus }>({
   onAction,
   onDelete,
   onDismiss,
+  onOverflowOpenChange,
 }: SelectionHUDProps<T>) {
   const isNarrow = useIsNarrow();
+  const reportOverflowOpen = useMenuOpenReporter(onOverflowOpenChange);
   const { inline, overflow } = buildHudActions(items, isNarrow ? 0 : MAX_INLINE_WIDE);
   const selectedCount = items.length;
 
@@ -144,7 +152,7 @@ export function SelectionHUD<T extends { id: string; status: ItemStatus }>({
             ))}
 
             {overflow.length > 0 ? (
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={reportOverflowOpen}>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
