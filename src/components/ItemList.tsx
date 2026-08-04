@@ -425,21 +425,23 @@ function ItemList({
         />
       ) : null}
 
-      <BulkCategoryDialog
-        isOpen={bulkCategoryOpen}
-        categories={filteredCategories}
-        itemCount={selectedCount}
-        onConfirm={async (categoryId) => {
-          const result = await onBulkCategoryChange(
-            selectedVisibleItems.map((item) => item.id),
-            categoryId,
-            { singular: labels.singular, plural: labels.plural },
-          );
-          deselectSucceeded(result);
-          setBulkCategoryOpen(false);
-        }}
-        onCancel={() => setBulkCategoryOpen(false)}
-      />
+      {bulkCategoryOpen ? (
+        <BulkCategoryDialog
+          isOpen={bulkCategoryOpen}
+          categories={filteredCategories}
+          itemCount={selectedCount}
+          onConfirm={async (categoryId) => {
+            const result = await onBulkCategoryChange(
+              selectedVisibleItems.map((item) => item.id),
+              categoryId,
+              { singular: labels.singular, plural: labels.plural },
+            );
+            deselectSucceeded(result);
+            setBulkCategoryOpen(false);
+          }}
+          onCancel={() => setBulkCategoryOpen(false)}
+        />
+      ) : null}
 
       {/*
         Last child on purpose. `SelectionHUD` is position: sticky with a bottom
