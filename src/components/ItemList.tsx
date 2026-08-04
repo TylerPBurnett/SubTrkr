@@ -13,6 +13,7 @@ import type {
   StatusChangeData,
 } from '@/types';
 import type { BulkCopy, BulkResult } from '@/services/database';
+import { BulkCategoryDialog } from '@/components/item-list/BulkCategoryDialog';
 import { SORT_OPTIONS } from '@/components/item-list/constants';
 import type { HudActionDescriptor } from '@/components/item-list/hudActions';
 import { ItemListGridView } from '@/components/item-list/ItemListGridView';
@@ -55,6 +56,11 @@ interface ItemListProps {
     data: StatusChangeData,
     copy: BulkCopy,
   ) => Promise<BulkResult>;
+  onBulkCategoryChange: (
+    ids: string[],
+    categoryId: string | null,
+    labels: { singular: string; plural: string },
+  ) => Promise<BulkResult>;
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
@@ -77,6 +83,7 @@ function ItemList({
   onDelete,
   onBulkDelete,
   onBulkStatusChange,
+  onBulkCategoryChange,
   onToggleActive,
   onStatusChange,
   onViewHistory,
@@ -137,10 +144,9 @@ function ItemList({
     items: ItemWithCategory[];
     skippedCount: number;
   } | null>(null);
-  // Task 16 renders the picker; until then the Category action is inert on
-  // purpose — this flag is written but nothing reads it yet. See the note on
-  // the useSelectionKeyboard guard below before wiring it in.
-  const [, setBulkCategoryOpen] = useState(false);
+  // Drives BulkCategoryDialog, rendered below. Reset to false on both its
+  // cancel and confirm paths — see the useSelectionKeyboard guard note below.
+  const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
 
   const labels = {
     singular: itemType === 'bill' ? 'bill' : 'subscription',
@@ -257,17 +263,17 @@ function ItemList({
   // modals, which render as siblings of the page content and leave this list
   // mounted with its window listener live underneath them.
   //
-  // `bulkCategoryOpen` is deliberately NOT in this guard. Nothing renders or
-  // resets it until Task 16 ships BulkCategoryDialog, so including it here
-  // would let one click on the HUD's Category button disable Cmd+A, Escape and
-  // Backspace permanently. Add it back in the same change that adds the dialog
-  // and resets the flag on both cancel and confirm — not before.
+  // `bulkCategoryOpen` is included now that BulkCategoryDialog renders below
+  // and resets the flag on both its cancel and confirm paths — without that
+  // reset this guard would disable Cmd+A, Escape and Backspace permanently
+  // after the first Category click.
   useSelectionKeyboard({
     enabled:
       !isModalOpen &&
       !deleteConfirm &&
       !bulkDeleteConfirmOpen &&
-      !bulkStatusAction,
+      !bulkStatusAction &&
+      !bulkCategoryOpen,
     hasSelection: selectedCount > 0,
     onSelectAll: () => handleSelectAllChange(true),
     onClear: clearSelection,
@@ -418,6 +424,22 @@ function ItemList({
           onCancel={() => setBulkStatusAction(null)}
         />
       ) : null}
+
+      <BulkCategoryDialog
+        isOpen={bulkCategoryOpen}
+        categories={filteredCategories}
+        itemCount={selectedCount}
+        onConfirm={async (categoryId) => {
+          const result = await onBulkCategoryChange(
+            selectedVisibleItems.map((item) => item.id),
+            categoryId,
+            { singular: labels.singular, plural: labels.plural },
+          );
+          deselectSucceeded(result);
+          setBulkCategoryOpen(false);
+        }}
+        onCancel={() => setBulkCategoryOpen(false)}
+      />
 
       {/*
         Last child on purpose. `SelectionHUD` is position: sticky with a bottom

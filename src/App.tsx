@@ -17,6 +17,7 @@ import {
   summarizeBulkResult,
   toggleItemActive,
   updateItem,
+  updateItemsCategory,
   type BulkCopy,
   type BulkResult,
 } from '@/services/database';
@@ -325,6 +326,55 @@ function App() {
     [reloadItems],
   );
 
+  // Same shape as handleBulkDelete: one batched statement, one refetch, one
+  // toast. `categoryId: null` clears the category for the whole batch.
+  const handleBulkCategoryChange = useCallback(
+    async (
+      ids: string[],
+      categoryId: string | null,
+      labels: { singular: string; plural: string },
+    ): Promise<BulkResult> => {
+      let result: BulkResult;
+
+      try {
+        result = await updateItemsCategory(ids, categoryId);
+      } catch (error) {
+        // updateItemsCategory folds row-level errors into `failed`, so
+        // reaching here means the call itself blew up (no session, network).
+        // Report every id as failed so nothing is cleared from the selection.
+        console.error('Failed to update item categories:', error);
+        result = {
+          succeeded: [],
+          failed: ids.map((id) => ({
+            id,
+            error: error instanceof Error ? error.message : String(error),
+          })),
+          skipped: [],
+        };
+      }
+
+      await reloadItems();
+
+      const summary = summarizeBulkResult(result, {
+        pastTense: 'Moved',
+        failedVerb: 'update',
+        singular: labels.singular,
+        plural: labels.plural,
+      });
+
+      if (summary) {
+        if (summary.tone === 'success') {
+          toast.success(summary.message);
+        } else {
+          toast.error(summary.message);
+        }
+      }
+
+      return result;
+    },
+    [reloadItems],
+  );
+
   const handleToggleActive = useCallback(async (id: string) => {
     try {
       await toggleItemActive(id);
@@ -468,6 +518,7 @@ function App() {
           onDeleteItem={handleDeleteItem}
           onBulkDelete={handleBulkDelete}
           onBulkStatusChange={handleBulkStatusChange}
+          onBulkCategoryChange={handleBulkCategoryChange}
           onToggleActive={handleToggleActive}
           onStatusChange={handleStatusChange}
           onViewHistory={handleViewHistory}

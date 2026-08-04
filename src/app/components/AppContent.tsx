@@ -35,6 +35,11 @@ interface AppContentProps {
     data: StatusChangeData,
     copy: BulkCopy,
   ) => Promise<BulkResult>;
+  onBulkCategoryChange: (
+    ids: string[],
+    categoryId: string | null,
+    labels: { singular: string; plural: string },
+  ) => Promise<BulkResult>;
   onToggleActive: (id: string) => void;
   onStatusChange: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory: (item: ItemWithCategory) => void;
@@ -61,6 +66,7 @@ export function AppContent({
   onDeleteItem,
   onBulkDelete,
   onBulkStatusChange,
+  onBulkCategoryChange,
   onToggleActive,
   onStatusChange,
   onViewHistory,
@@ -117,6 +123,7 @@ export function AppContent({
               onDelete={onDeleteItem}
               onBulkDelete={onBulkDelete}
               onBulkStatusChange={onBulkStatusChange}
+              onBulkCategoryChange={onBulkCategoryChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
@@ -134,6 +141,7 @@ export function AppContent({
               onDelete={onDeleteItem}
               onBulkDelete={onBulkDelete}
               onBulkStatusChange={onBulkStatusChange}
+              onBulkCategoryChange={onBulkCategoryChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}

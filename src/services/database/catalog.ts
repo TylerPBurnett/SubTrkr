@@ -327,3 +327,45 @@ export async function deleteItems(ids: string[]): Promise<BulkResult> {
     skipped: [],
   };
 }
+
+/**
+ * Reassigns many items to one category in a single statement. A null
+ * categoryId clears the category. Structurally identical to `deleteItems`:
+ * `.select('id')` returns the rows actually updated, so a partial result is
+ * detectable rather than silently reported as success.
+ */
+export async function updateItemsCategory(
+  ids: string[],
+  categoryId: string | null,
+): Promise<BulkResult> {
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (uniqueIds.length === 0) {
+    return emptyBulkResult();
+  }
+
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('items')
+    .update({ category_id: categoryId })
+    .in('id', uniqueIds)
+    .eq('user_id', userId)
+    .select('id');
+
+  if (error) {
+    return {
+      succeeded: [],
+      failed: uniqueIds.map((id) => ({ id, error: error.message })),
+      skipped: [],
+    };
+  }
+
+  const updatedIds = new Set((data ?? []).map((row) => row.id as string));
+
+  return {
+    succeeded: uniqueIds.filter((id) => updatedIds.has(id)),
+    failed: uniqueIds
+      .filter((id) => !updatedIds.has(id))
+      .map((id) => ({ id, error: 'Item not found' })),
+    skipped: [],
+  };
+}
