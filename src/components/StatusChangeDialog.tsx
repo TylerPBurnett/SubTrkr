@@ -5,6 +5,7 @@ import { addDays } from 'date-fns';
 import type { Category, ItemWithCategory, StatusChangeData } from '@/types';
 import { formatISODate, getToday, formatDisplayDate } from '../utils/dates';
 import { getStatusActionButtonStyle } from './statusActionStyles';
+import { getBatchMinimumEffectiveDate } from '@/services/database/lifecycle';
 
 interface StatusChangeDialogProps {
   categories: Category[];
@@ -13,6 +14,10 @@ interface StatusChangeDialogProps {
   action: StatusChangeData['action'];
   onConfirm: (data: StatusChangeData) => Promise<void>;
   onCancel: () => void;
+  /** When present the dialog is in bulk mode and `item` is the first of the batch. */
+  bulkItems?: ItemWithCategory[];
+  /** Selected items that are ineligible for this action, reported in the header. */
+  skippedCount?: number;
 }
 
 export default function StatusChangeDialog({
@@ -22,10 +27,13 @@ export default function StatusChangeDialog({
   action,
   onConfirm,
   onCancel,
+  bulkItems,
+  skippedCount,
 }: StatusChangeDialogProps) {
   const today = formatISODate(getToday());
   const itemStartDate = item.start_date.split('T')[0];
   const minimumAutoResumeDate = formatISODate(addDays(getToday(), 1));
+  const effectiveItems = bulkItems && bulkItems.length > 0 ? bulkItems : [item];
 
   const [cancelledOn, setCancelledOn] = useState(today);
   const [resumedOn, setResumedOn] = useState(today);
@@ -41,26 +49,14 @@ export default function StatusChangeDialog({
   const formRef = useRef<HTMLFormElement>(null);
   const itemCategory = categories.find((category) => category.id === item.category_id);
 
-  const isoDateOnly = (value: string | null | undefined): string | null =>
-    value ? value.split('T')[0] : null;
   const clampDate = (value: string, minimum: string): string => (value < minimum ? minimum : value);
-  const latestDate = (...dates: Array<string | null | undefined>): string | null => {
-    const validDates = dates.filter((date): date is string => Boolean(date));
-    if (validDates.length === 0) return null;
 
-    validDates.sort();
-    return validDates[validDates.length - 1];
-  };
-
-  const cancelMinimumDate = itemStartDate;
-  const resumeMinimumDate = latestDate(itemStartDate, isoDateOnly(item.paused_at)) ?? itemStartDate;
-  const reactivateMinimumDate = latestDate(
-    itemStartDate,
-    item.cancellation_date,
-    isoDateOnly(item.cancelled_at),
-    isoDateOnly(item.archived_at)
-  ) ?? itemStartDate;
-  const convertMinimumDate = latestDate(itemStartDate, isoDateOnly(item.trial_started_at)) ?? itemStartDate;
+  // The floor for date validation. In single-item mode (the default —
+  // bulkItems absent or too short) this collapses to exactly the per-item
+  // minimum getMinimumEffectiveDate would have returned for `item` alone.
+  // In bulk mode it's the latest of every batch member's own floor, so a
+  // date valid for one item can't be invalid for another in the same batch.
+  const minimumEffectiveDate = getBatchMinimumEffectiveDate(effectiveItems, action) ?? itemStartDate;
   const archiveRecordedOn = formatDisplayDate(today);
   const defaultTrialEndDate = formatISODate(addDays(getToday(), 14));
 
@@ -82,19 +78,19 @@ export default function StatusChangeDialog({
 
     switch (action) {
       case 'cancel':
-        setCancelledOn(clampDate(today, cancelMinimumDate));
+        setCancelledOn(clampDate(today, minimumEffectiveDate));
         break;
       case 'edit_cancellation':
-        setCancelledOn(clampDate(item.cancellation_date || today, cancelMinimumDate));
+        setCancelledOn(clampDate(item.cancellation_date || today, minimumEffectiveDate));
         break;
       case 'resume':
-        setResumedOn(clampDate(today, resumeMinimumDate));
+        setResumedOn(clampDate(today, minimumEffectiveDate));
         break;
       case 'reactivate':
-        setResumedOn(clampDate(today, reactivateMinimumDate));
+        setResumedOn(clampDate(today, minimumEffectiveDate));
         break;
       case 'convert':
-        setConvertedOn(clampDate(today, convertMinimumDate));
+        setConvertedOn(clampDate(today, minimumEffectiveDate));
         break;
       case 'start_trial':
         setTrialEndDate(item.trial_end_date || defaultTrialEndDate);
@@ -104,11 +100,8 @@ export default function StatusChangeDialog({
     }
   }, [
     action,
-    cancelMinimumDate,
-    convertMinimumDate,
     isOpen,
-    reactivateMinimumDate,
-    resumeMinimumDate,
+    minimumEffectiveDate,
     today,
     item.cancellation_date,
     item.trial_end_date,
@@ -188,7 +181,7 @@ export default function StatusChangeDialog({
     }
 
     if (action === 'cancel') {
-      if (cancelledOn < cancelMinimumDate) {
+      if (cancelledOn < minimumEffectiveDate) {
         newErrors.push('Cancellation date cannot be before subscription start');
       }
       if (cancelledOn > today) {
@@ -197,7 +190,7 @@ export default function StatusChangeDialog({
     }
 
     if (action === 'edit_cancellation') {
-      if (cancelledOn < cancelMinimumDate) {
+      if (cancelledOn < minimumEffectiveDate) {
         newErrors.push('Cancellation date cannot be before subscription start');
       }
       if (cancelledOn > today) {
@@ -206,7 +199,7 @@ export default function StatusChangeDialog({
     }
 
     if (action === 'resume') {
-      if (resumedOn < resumeMinimumDate) {
+      if (resumedOn < minimumEffectiveDate) {
         newErrors.push('Resume date cannot be before the item was paused');
       }
       if (resumedOn > today) {
@@ -215,7 +208,7 @@ export default function StatusChangeDialog({
     }
 
     if (action === 'reactivate') {
-      if (resumedOn < reactivateMinimumDate) {
+      if (resumedOn < minimumEffectiveDate) {
         newErrors.push('Reactivation date cannot be before the item was cancelled or archived');
       }
       if (resumedOn > today) {
@@ -224,7 +217,7 @@ export default function StatusChangeDialog({
     }
 
     if (action === 'convert') {
-      if (convertedOn < convertMinimumDate) {
+      if (convertedOn < minimumEffectiveDate) {
         newErrors.push('Conversion date cannot be before the trial started');
       }
       if (convertedOn > today) {
@@ -502,6 +495,18 @@ export default function StatusChangeDialog({
                     </span>
                   </div>
                 )}
+
+                {bulkItems && bulkItems.length > 1 ? (
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    Applies to {bulkItems.length}{' '}
+                    {bulkItems.length === 1 ? 'item' : 'items'}
+                    {skippedCount && skippedCount > 0
+                      ? ` — ${skippedCount} selected ${
+                          skippedCount === 1 ? 'item is' : 'items are'
+                        } not eligible and will be skipped.`
+                      : '.'}
+                  </p>
+                ) : null}
               </div>
 
               <form ref={formRef} onSubmit={handleSubmit} className="px-8 pb-8 overflow-y-auto flex-1">
@@ -586,7 +591,7 @@ export default function StatusChangeDialog({
                       type="date"
                       value={cancelledOn}
                       onChange={(e) => setCancelledOn(e.target.value)}
-                      min={cancelMinimumDate}
+                      min={minimumEffectiveDate}
                       max={today}
                       className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                       style={{
@@ -614,7 +619,7 @@ export default function StatusChangeDialog({
                       type="date"
                       value={resumedOn}
                       onChange={(e) => setResumedOn(e.target.value)}
-                      min={action === 'resume' ? resumeMinimumDate : reactivateMinimumDate}
+                      min={minimumEffectiveDate}
                       max={today}
                       className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                       style={{
@@ -642,7 +647,7 @@ export default function StatusChangeDialog({
                       type="date"
                       value={convertedOn}
                       onChange={(e) => setConvertedOn(e.target.value)}
-                      min={convertMinimumDate}
+                      min={minimumEffectiveDate}
                       max={today}
                       className="status-dialog-input status-dialog-date-input w-full px-4 py-3.5 rounded-xl focus:outline-none"
                       style={{
