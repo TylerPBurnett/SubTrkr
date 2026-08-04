@@ -13,6 +13,7 @@ import {
   ITEM_WITH_CATEGORY_SELECT,
   mapItemWithCategory,
 } from './shared';
+import { emptyBulkResult, type BulkResult } from './bulkResults';
 
 export interface CreateItemInput {
   name: string;
@@ -287,4 +288,42 @@ export async function deleteItem(id: string): Promise<void> {
   if (error) {
     throw error;
   }
+}
+
+/**
+ * Deletes many items in a single statement. `.select('id')` returns the rows
+ * actually removed, so a partial result (RLS mismatch, already-deleted row) is
+ * detectable rather than silently reported as success.
+ */
+export async function deleteItems(ids: string[]): Promise<BulkResult> {
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (uniqueIds.length === 0) {
+    return emptyBulkResult();
+  }
+
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from('items')
+    .delete()
+    .in('id', uniqueIds)
+    .eq('user_id', userId)
+    .select('id');
+
+  if (error) {
+    return {
+      succeeded: [],
+      failed: uniqueIds.map((id) => ({ id, error: error.message })),
+      skipped: [],
+    };
+  }
+
+  const deletedIds = new Set((data ?? []).map((row) => row.id as string));
+
+  return {
+    succeeded: uniqueIds.filter((id) => deletedIds.has(id)),
+    failed: uniqueIds
+      .filter((id) => !deletedIds.has(id))
+      .map((id) => ({ id, error: 'Item not found' })),
+    skipped: [],
+  };
 }
