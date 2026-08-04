@@ -1,3 +1,4 @@
+export * from './database/bulkResults';
 export * from './database/catalog';
 export * from './database/lifecycle';
 export * from './database/payments';

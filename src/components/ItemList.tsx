@@ -1,20 +1,44 @@
 import { memo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { CreditCard, Plus, Receipt, Search, Trash2 } from 'lucide-react';
+import { CreditCard, Plus, Receipt, Search } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import EmptyState from '@/components/ui/EmptyState';
 import GhostListPreview from '@/components/ui/GhostListPreview';
 import SearchFilterToolbar from '@/components/SearchFilterToolbar';
+import StatusChangeDialog from '@/components/StatusChangeDialog';
 import type {
   Category,
   ItemType,
   ItemWithCategory,
   StatusChangeData,
 } from '@/types';
+import type { BulkCopy, BulkResult } from '@/services/database';
 import { SORT_OPTIONS } from '@/components/item-list/constants';
+import type { HudActionDescriptor } from '@/components/item-list/hudActions';
 import { ItemListGridView } from '@/components/item-list/ItemListGridView';
 import { ItemListTableView } from '@/components/item-list/ItemListTableView';
+import { SelectionHUD } from '@/components/item-list/SelectionHUD';
+import type { BulkStatusAction } from '@/components/item-list/statusActions';
 import { useItemListState } from '@/components/item-list/useItemListState';
+import { useSelectionKeyboard } from '@/components/item-list/useSelectionKeyboard';
+
+/**
+ * Toast wording per bulk action. `singular`/`plural` are filled in from the
+ * list's own item-type labels so a bill batch never reads "subscriptions".
+ */
+const BULK_ACTION_COPY: Record<
+  BulkStatusAction,
+  { pastTense: string; failedVerb: string }
+> = {
+  pause: { pastTense: 'Paused', failedVerb: 'pause' },
+  resume: { pastTense: 'Resumed', failedVerb: 'resume' },
+  cancel: { pastTense: 'Cancelled', failedVerb: 'cancel' },
+  reactivate: { pastTense: 'Reactivated', failedVerb: 'reactivate' },
+  archive: { pastTense: 'Archived', failedVerb: 'archive' },
+};
+
+/** Reserves room under the list so the floating HUD can't cover the last row. */
+const HUD_CLEARANCE = 76;
 
 interface ItemListProps {
   items: ItemWithCategory[];
@@ -22,6 +46,15 @@ interface ItemListProps {
   itemType?: ItemType;
   onEdit: (item: ItemWithCategory) => void;
   onDelete: (id: string) => void;
+  onBulkDelete: (
+    ids: string[],
+    labels: { singular: string; plural: string },
+  ) => Promise<BulkResult>;
+  onBulkStatusChange: (
+    ids: string[],
+    data: StatusChangeData,
+    copy: BulkCopy,
+  ) => Promise<BulkResult>;
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
@@ -34,6 +67,8 @@ function ItemList({
   itemType,
   onEdit,
   onDelete,
+  onBulkDelete,
+  onBulkStatusChange,
   onToggleActive,
   onStatusChange,
   onViewHistory,
@@ -44,6 +79,7 @@ function ItemList({
     allVisibleSelected,
     categoryLookup,
     clearFilters,
+    clearSelection,
     filteredCategories,
     handleSelectAllChange,
     handleSelectItemChange,
@@ -82,6 +118,15 @@ function ItemList({
     name: string;
   } | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [bulkStatusAction, setBulkStatusAction] = useState<{
+    action: BulkStatusAction;
+    items: ItemWithCategory[];
+    skippedCount: number;
+  } | null>(null);
+  // Task 16 renders the picker; until then the Category action is inert on
+  // purpose. It still participates in the keyboard guard below so it cannot be
+  // left open behind a stray Backspace once the dialog lands.
+  const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
 
   const labels = {
     singular: itemType === 'bill' ? 'bill' : 'subscription',
@@ -110,21 +155,94 @@ function ItemList({
     setDeleteConfirm(null);
   };
 
-  const handleBulkDeleteConfirm = () => {
+  /** Drops only the ids the batch actually mutated; failures stay selected. */
+  const deselectSucceeded = (result: BulkResult) => {
+    if (result.succeeded.length === 0) {
+      return;
+    }
+
+    setSelectedItemIds((previous) => {
+      const nextSelectedIds = new Set(previous);
+      result.succeeded.forEach((id) => nextSelectedIds.delete(id));
+      return nextSelectedIds;
+    });
+  };
+
+  const handleBulkDeleteConfirm = async () => {
     if (selectedCount === 0) {
       setBulkDeleteConfirmOpen(false);
       return;
     }
 
-    selectedVisibleItems.forEach((item) => {
-      onDelete(item.id);
-    });
-    setSelectedItemIds(new Set());
+    const result = await onBulkDelete(
+      selectedVisibleItems.map((item) => item.id),
+      { singular: labels.singular, plural: labels.plural },
+    );
+
+    deselectSucceeded(result);
     setBulkDeleteConfirmOpen(false);
   };
 
+  const handleHudAction = (descriptor: HudActionDescriptor) => {
+    if (descriptor.action === 'category') {
+      setBulkCategoryOpen(true);
+      return;
+    }
+
+    const eligibleIds = new Set(descriptor.eligibleIds);
+    const eligibleItems = selectedVisibleItems.filter((item) =>
+      eligibleIds.has(item.id),
+    );
+
+    if (eligibleItems.length === 0) {
+      return;
+    }
+
+    setBulkStatusAction({
+      action: descriptor.action,
+      items: eligibleItems,
+      skippedCount: descriptor.skippedIds.length,
+    });
+  };
+
+  const handleBulkStatusConfirm = async (data: StatusChangeData) => {
+    if (!bulkStatusAction) {
+      return;
+    }
+
+    const actionCopy = BULK_ACTION_COPY[bulkStatusAction.action];
+    const result = await onBulkStatusChange(
+      bulkStatusAction.items.map((item) => item.id),
+      data,
+      {
+        pastTense: actionCopy.pastTense,
+        failedVerb: actionCopy.failedVerb,
+        singular: labels.singular,
+        plural: labels.plural,
+      },
+    );
+
+    deselectSucceeded(result);
+    setBulkStatusAction(null);
+  };
+
+  useSelectionKeyboard({
+    enabled:
+      !deleteConfirm &&
+      !bulkDeleteConfirmOpen &&
+      !bulkStatusAction &&
+      !bulkCategoryOpen,
+    hasSelection: selectedCount > 0,
+    onSelectAll: () => handleSelectAllChange(true),
+    onClear: clearSelection,
+    onDelete: () => setBulkDeleteConfirmOpen(true),
+  });
+
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      style={{ paddingBottom: selectedCount > 0 ? HUD_CLEARANCE : 0 }}
+    >
       <SearchFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -162,33 +280,6 @@ function ItemList({
               {addButtonLabel}
             </button>
           ) : null}
-
-          {viewMode === 'list' && selectedCount > 0 && (
-            <div className="flex items-center gap-2">
-              <span
-                className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                style={{
-                  backgroundColor: 'var(--bg-active)',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                {selectedCount} selected
-              </span>
-              <button
-                type="button"
-                onClick={() => setBulkDeleteConfirmOpen(true)}
-                className="flex items-center gap-2 h-9 px-3 rounded-lg border-2 text-xs font-semibold transition-colors interactive-hover-danger"
-                style={{
-                  backgroundColor: 'var(--bg-input)',
-                  borderColor: 'var(--accent-red-muted)',
-                  color: 'var(--accent-red)',
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete selected
-              </button>
-            </div>
-          )}
         </div>
       </SearchFilterToolbar>
 
@@ -230,9 +321,11 @@ function ItemList({
               items={sortedItems}
               onDeleteClick={handleDeleteClick}
               onEdit={onEdit}
+              onSelectItemChange={handleSelectItemChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
+              selectedItemIds={selectedItemIds}
             />
           ) : (
             <ItemListTableView
@@ -273,6 +366,32 @@ function ItemList({
         variant="danger"
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => setBulkDeleteConfirmOpen(false)}
+      />
+
+      {bulkStatusAction ? (
+        <StatusChangeDialog
+          categories={categories}
+          isOpen={true}
+          item={bulkStatusAction.items[0]}
+          action={bulkStatusAction.action}
+          bulkItems={bulkStatusAction.items}
+          skippedCount={bulkStatusAction.skippedCount}
+          onConfirm={handleBulkStatusConfirm}
+          onCancel={() => setBulkStatusAction(null)}
+        />
+      ) : null}
+
+      {/*
+        Last child on purpose. `SelectionHUD` is position: sticky with a bottom
+        offset, so it only floats over the list when its flow slot sits below
+        the scrollport — anywhere higher in the tree it would render as a static
+        bar wedged between the toolbar and the first row.
+      */}
+      <SelectionHUD
+        items={selectedVisibleItems}
+        onAction={handleHudAction}
+        onDelete={() => setBulkDeleteConfirmOpen(true)}
+        onDismiss={clearSelection}
       />
     </div>
   );

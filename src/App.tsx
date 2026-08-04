@@ -11,9 +11,14 @@ import type { SettingsTab } from '@/components/Settings';
 import {
   createItem,
   deleteItem,
+  deleteItems,
   executeStatusChange,
+  executeStatusChangeForItems,
+  summarizeBulkResult,
   toggleItemActive,
   updateItem,
+  type BulkCopy,
+  type BulkResult,
 } from '@/services/database';
 import {
   getUpdaterStateSnapshot,
@@ -233,6 +238,93 @@ function App() {
     }
   }, [reloadItems]);
 
+  // One batched statement, one refetch, one toast — the whole point of the
+  // bulk path. Never call this in a loop.
+  const handleBulkDelete = useCallback(
+    async (
+      ids: string[],
+      labels: { singular: string; plural: string },
+    ): Promise<BulkResult> => {
+      let result: BulkResult;
+
+      try {
+        result = await deleteItems(ids);
+      } catch (error) {
+        // deleteItems folds row-level errors into `failed`, so reaching here
+        // means the call itself blew up (no session, network). Report every id
+        // as failed so nothing is cleared from the selection.
+        console.error('Failed to delete items:', error);
+        result = {
+          succeeded: [],
+          failed: ids.map((id) => ({
+            id,
+            error: error instanceof Error ? error.message : String(error),
+          })),
+          skipped: [],
+        };
+      }
+
+      await reloadItems();
+
+      const summary = summarizeBulkResult(result, {
+        pastTense: 'Deleted',
+        failedVerb: 'delete',
+        singular: labels.singular,
+        plural: labels.plural,
+      });
+
+      if (summary) {
+        if (summary.tone === 'success') {
+          toast.success(summary.message);
+        } else {
+          toast.error(summary.message);
+        }
+      }
+
+      return result;
+    },
+    [reloadItems],
+  );
+
+  const handleBulkStatusChange = useCallback(
+    async (
+      ids: string[],
+      data: StatusChangeData,
+      copy: BulkCopy,
+    ): Promise<BulkResult> => {
+      let result: BulkResult;
+
+      try {
+        result = await executeStatusChangeForItems(ids, data);
+      } catch (error) {
+        console.error(`Failed to apply ${data.action} to items:`, error);
+        result = {
+          succeeded: [],
+          failed: ids.map((id) => ({
+            id,
+            error: error instanceof Error ? error.message : String(error),
+          })),
+          skipped: [],
+        };
+      }
+
+      await reloadItems();
+
+      const summary = summarizeBulkResult(result, copy);
+
+      if (summary) {
+        if (summary.tone === 'success') {
+          toast.success(summary.message);
+        } else {
+          toast.error(summary.message);
+        }
+      }
+
+      return result;
+    },
+    [reloadItems],
+  );
+
   const handleToggleActive = useCallback(async (id: string) => {
     try {
       await toggleItemActive(id);
@@ -374,6 +466,8 @@ function App() {
           onViewChange={handleViewChange}
           onEditItem={handleEdit}
           onDeleteItem={handleDeleteItem}
+          onBulkDelete={handleBulkDelete}
+          onBulkStatusChange={handleBulkStatusChange}
           onToggleActive={handleToggleActive}
           onStatusChange={handleStatusChange}
           onViewHistory={handleViewHistory}

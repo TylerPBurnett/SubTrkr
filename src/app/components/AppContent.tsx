@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Category, ItemType, ItemWithCategory, StatusChangeData } from '@/types';
+import type { BulkCopy, BulkResult } from '@/services/database';
 import Dashboard from '@/components/Dashboard';
 import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -25,6 +26,15 @@ interface AppContentProps {
   onViewChange: (view: View) => void;
   onEditItem: (item: ItemWithCategory) => void;
   onDeleteItem: (id: string) => void;
+  onBulkDelete: (
+    ids: string[],
+    labels: { singular: string; plural: string },
+  ) => Promise<BulkResult>;
+  onBulkStatusChange: (
+    ids: string[],
+    data: StatusChangeData,
+    copy: BulkCopy,
+  ) => Promise<BulkResult>;
   onToggleActive: (id: string) => void;
   onStatusChange: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory: (item: ItemWithCategory) => void;
@@ -47,6 +57,8 @@ export function AppContent({
   onViewChange,
   onEditItem,
   onDeleteItem,
+  onBulkDelete,
+  onBulkStatusChange,
   onToggleActive,
   onStatusChange,
   onViewHistory,
@@ -100,6 +112,8 @@ export function AppContent({
               itemType="bill"
               onEdit={onEditItem}
               onDelete={onDeleteItem}
+              onBulkDelete={onBulkDelete}
+              onBulkStatusChange={onBulkStatusChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
@@ -114,6 +128,8 @@ export function AppContent({
               itemType="subscription"
               onEdit={onEditItem}
               onDelete={onDeleteItem}
+              onBulkDelete={onBulkDelete}
+              onBulkStatusChange={onBulkStatusChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
