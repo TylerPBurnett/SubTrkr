@@ -109,6 +109,13 @@ export function ItemListGridView({
                 checked={isSelected}
                 onCheckedChange={(checked) => onSelectItemChange(item.id, checked)}
                 aria-label={`Select ${item.name}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (event.shiftKey) {
+                    event.preventDefault();
+                    onSelectItemChange(item.id, true, { extendRange: true });
+                  }
+                }}
               />
             </div>
             <div className="flex items-start gap-3 mb-3">
