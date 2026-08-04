@@ -10,6 +10,15 @@ interface ConfirmDialogProps {
   variant?: 'danger' | 'warning' | 'info';
   onConfirm: () => void;
   onCancel: () => void;
+  /**
+   * Set while an async `onConfirm` is in flight: disables both buttons and
+   * every dismissal path, and swaps the confirm label for a busy one. Defaults
+   * to false, so callers with a synchronous `onConfirm` behave exactly as
+   * before. Mirrors StatusChangeDialog's isSubmitting handling.
+   */
+  isSubmitting?: boolean;
+  /** Busy label shown in place of `confirmLabel` while submitting. */
+  submittingLabel?: string;
 }
 
 export default function ConfirmDialog({
@@ -21,6 +30,8 @@ export default function ConfirmDialog({
   variant = 'danger',
   onConfirm,
   onCancel,
+  isSubmitting = false,
+  submittingLabel = 'Processing...',
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
@@ -54,7 +65,7 @@ export default function ConfirmDialog({
     <AlertDialog.Root
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) onCancel();
+        if (!open && !isSubmitting) onCancel();
       }}
     >
       <AlertDialog.Portal>
@@ -62,7 +73,9 @@ export default function ConfirmDialog({
           {/* Backdrop */}
           <AlertDialog.Overlay
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={onCancel}
+            onClick={() => {
+              if (!isSubmitting) onCancel();
+            }}
           />
 
           {/* Dialog */}
@@ -74,8 +87,9 @@ export default function ConfirmDialog({
             {/* Close button */}
             <button
               onClick={onCancel}
+              disabled={isSubmitting}
               aria-label="Close dialog"
-              className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+              className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'var(--text-muted)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -105,16 +119,26 @@ export default function ConfirmDialog({
               {/* Actions */}
               <div className="flex gap-3">
                 <AlertDialog.Cancel asChild>
-                  <button className="btn-secondary flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors">
+                  <button
+                    disabled={isSubmitting}
+                    className="btn-secondary flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     {cancelLabel}
                   </button>
                 </AlertDialog.Cancel>
                 <button
                   onClick={onConfirm}
-                  className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium shadow-lg transition-all hover:opacity-90"
-                  style={{ backgroundColor: styles.buttonBg }}
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                  className={`flex-1 px-4 py-2.5 text-white rounded-xl font-medium shadow-lg transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:hover:opacity-100 ${
+                    isSubmitting ? 'animate-pulse' : ''
+                  }`}
+                  style={{
+                    backgroundColor: styles.buttonBg,
+                    opacity: isSubmitting ? 0.7 : 1,
+                  }}
                 >
-                  {confirmLabel}
+                  {isSubmitting ? submittingLabel : confirmLabel}
                 </button>
               </div>
             </div>

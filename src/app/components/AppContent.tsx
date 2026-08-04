@@ -44,6 +44,8 @@ interface AppContentProps {
   setUseVibrancy: (val: boolean | ((prev: boolean) => boolean)) => void;
   settingsTab: SettingsTab;
   onSettingsTabChange: (tab: SettingsTab) => void;
+  /** True while any App-level modal is open; suppresses ItemList's shortcuts. */
+  isModalOpen: boolean;
 }
 
 export function AppContent({
@@ -68,6 +70,7 @@ export function AppContent({
   setUseVibrancy,
   settingsTab,
   onSettingsTabChange,
+  isModalOpen,
 }: AppContentProps) {
   const viewContent = VIEW_CONTENT[view];
 
@@ -118,6 +121,7 @@ export function AppContent({
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
               onAddNew={() => onAddNew('bill')}
+              isModalOpen={isModalOpen}
             />
           )}
 
@@ -134,6 +138,7 @@ export function AppContent({
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
               onAddNew={() => onAddNew('subscription')}
+              isModalOpen={isModalOpen}
             />
           )}
 

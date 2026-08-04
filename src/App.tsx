@@ -477,6 +477,12 @@ function App() {
           setUseVibrancy={setUseVibrancy}
           settingsTab={settingsTab}
           onSettingsTabChange={setSettingsTab}
+          isModalOpen={Boolean(
+            showForm ||
+              statusChangeDialog ||
+              historyDialogItem ||
+              showPasswordRecovery,
+          )}
         />
       </div>
 

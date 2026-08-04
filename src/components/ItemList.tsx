@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { CreditCard, Plus, Receipt, Search } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -59,6 +59,14 @@ interface ItemListProps {
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
   onAddNew?: () => void;
+  /**
+   * True while any App-level modal (item form, single-item status dialog,
+   * status history, password recovery) is open. Those render as siblings of the
+   * page content, so this list stays mounted underneath them with its keydown
+   * listener still on window — without this the selection shortcuts would fire
+   * straight through an open modal.
+   */
+  isModalOpen?: boolean;
 }
 
 function ItemList({
@@ -73,6 +81,7 @@ function ItemList({
   onStatusChange,
   onViewHistory,
   onAddNew,
+  isModalOpen = false,
 }: ItemListProps) {
   const {
     activeFilterCount,
@@ -118,6 +127,11 @@ function ItemList({
     name: string;
   } | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [bulkDeletePending, setBulkDeletePending] = useState(false);
+  // The ref is the actual latch: it flips synchronously, so a second click can
+  // never slip through in the window before React re-renders the disabled
+  // button. The state exists to drive that re-render.
+  const bulkDeleteInFlight = useRef(false);
   const [bulkStatusAction, setBulkStatusAction] = useState<{
     action: BulkStatusAction;
     items: ItemWithCategory[];
@@ -169,18 +183,30 @@ function ItemList({
   };
 
   const handleBulkDeleteConfirm = async () => {
+    if (bulkDeleteInFlight.current) {
+      return;
+    }
+
     if (selectedCount === 0) {
       setBulkDeleteConfirmOpen(false);
       return;
     }
 
-    const result = await onBulkDelete(
-      selectedVisibleItems.map((item) => item.id),
-      { singular: labels.singular, plural: labels.plural },
-    );
+    bulkDeleteInFlight.current = true;
+    setBulkDeletePending(true);
 
-    deselectSucceeded(result);
-    setBulkDeleteConfirmOpen(false);
+    try {
+      const result = await onBulkDelete(
+        selectedVisibleItems.map((item) => item.id),
+        { singular: labels.singular, plural: labels.plural },
+      );
+
+      deselectSucceeded(result);
+      setBulkDeleteConfirmOpen(false);
+    } finally {
+      bulkDeleteInFlight.current = false;
+      setBulkDeletePending(false);
+    }
   };
 
   const handleHudAction = (descriptor: HudActionDescriptor) => {
@@ -227,7 +253,9 @@ function ItemList({
   };
 
   // Covers every dialog that actually renders today, so Backspace can't stack a
-  // second confirmation behind the first.
+  // second confirmation behind the first. `isModalOpen` covers the App-level
+  // modals, which render as siblings of the page content and leave this list
+  // mounted with its window listener live underneath them.
   //
   // `bulkCategoryOpen` is deliberately NOT in this guard. Nothing renders or
   // resets it until Task 16 ships BulkCategoryDialog, so including it here
@@ -235,7 +263,11 @@ function ItemList({
   // Backspace permanently. Add it back in the same change that adds the dialog
   // and resets the flag on both cancel and confirm — not before.
   useSelectionKeyboard({
-    enabled: !deleteConfirm && !bulkDeleteConfirmOpen && !bulkStatusAction,
+    enabled:
+      !isModalOpen &&
+      !deleteConfirm &&
+      !bulkDeleteConfirmOpen &&
+      !bulkStatusAction,
     hasSelection: selectedCount > 0,
     onSelectAll: () => handleSelectAllChange(true),
     onClear: clearSelection,
@@ -368,6 +400,8 @@ function ItemList({
         confirmLabel={`Delete ${selectedCount}`}
         cancelLabel={selectedCount === 1 ? 'Keep it' : 'Keep them'}
         variant="danger"
+        isSubmitting={bulkDeletePending}
+        submittingLabel="Deleting..."
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => setBulkDeleteConfirmOpen(false)}
       />
