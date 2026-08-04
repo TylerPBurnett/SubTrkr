@@ -135,13 +135,22 @@ describe('getBatchMinimumEffectiveDate', () => {
     assert.equal(getBatchMinimumEffectiveDate(items, 'cancel'), '2025-06-01');
   });
 
-  test('ignores items with no floor', () => {
+  test('returns the later floor for a two-item batch', () => {
     const items = [
       buildItem({ id: 'a', start_date: '2025-01-10' }),
       buildItem({ id: 'b', start_date: '2025-02-10' }),
     ];
 
     assert.equal(getBatchMinimumEffectiveDate(items, 'cancel'), '2025-02-10');
+  });
+
+  test('returns null when no item in the batch has a floor', () => {
+    const items = [
+      buildItem({ id: 'a', start_date: '2025-01-10' }),
+      buildItem({ id: 'b', start_date: '2025-06-01' }),
+    ];
+
+    assert.equal(getBatchMinimumEffectiveDate(items, 'pause'), null);
   });
 
   test('returns null for an empty batch', () => {
