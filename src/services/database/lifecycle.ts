@@ -22,6 +22,7 @@ import {
 export {
   buildExecuteStatusChangeRpcParams,
   calculateNextBillingDate,
+  getBatchMinimumEffectiveDate,
   getCanonicalStatusChangeAction,
   getMinimumEffectiveDate,
   getNextBillingDateAfterResume,
