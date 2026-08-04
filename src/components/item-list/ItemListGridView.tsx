@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Checkbox } from '@/components/ui/checkbox';
 import ServiceLogo from '@/components/ui/ServiceLogo';
 import { formatDisplayDate } from '@/utils/dates';
 import { resolveItemCategoryDisplay } from '@/utils/categories';
@@ -15,6 +16,12 @@ interface ItemListGridViewProps {
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
+  onSelectItemChange: (
+    itemId: string,
+    checked: boolean | 'indeterminate',
+    options?: { extendRange?: boolean },
+  ) => void;
+  selectedItemIds: Set<string>;
 }
 
 export function ItemListGridView({
@@ -25,6 +32,8 @@ export function ItemListGridView({
   onToggleActive,
   onStatusChange,
   onViewHistory,
+  onSelectItemChange,
+  selectedItemIds,
 }: ItemListGridViewProps) {
   return (
     <motion.div
@@ -39,12 +48,14 @@ export function ItemListGridView({
       {items.map((item, index) => {
         const categoryDisplay = resolveItemCategoryDisplay(item, categoryLookup);
         const categoryColor = categoryDisplay.color;
+        const isSelected = selectedItemIds.has(item.id);
+        const hasSelection = selectedItemIds.size > 0;
 
         return (
           <motion.div
             layout
             key={item.id}
-            className={`stagger-item card group cursor-pointer ${STATUS_STYLES[item.status]}`}
+            className={`stagger-item card group relative cursor-pointer ${STATUS_STYLES[item.status]}`}
             style={{
               filter:
                 item.status === 'cancelled' || item.status === 'archived'
@@ -52,20 +63,54 @@ export function ItemListGridView({
                   : undefined,
               animationDelay: `${index * 0.05}s`,
               transition: 'all 0.2s var(--ease-out-expo)',
+              boxShadow: isSelected ? '0 0 0 2px var(--ring)' : undefined,
+              borderColor: isSelected ? 'transparent' : undefined,
             }}
-            onClick={() => onEdit(item)}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey) {
+                event.preventDefault();
+                onSelectItemChange(item.id, !isSelected);
+                return;
+              }
+
+              if (event.shiftKey) {
+                event.preventDefault();
+                onSelectItemChange(item.id, true, { extendRange: true });
+                return;
+              }
+
+              onEdit(item);
+            }}
             onMouseEnter={(event) => {
-              if (item.status === 'active') {
+              if (item.status === 'active' && !isSelected) {
                 event.currentTarget.style.boxShadow =
                   'var(--shadow-elevated), 0 10px 28px -10px rgba(0, 0, 0, 0.22)';
                 event.currentTarget.style.transform = 'translateY(-2px)';
               }
             }}
             onMouseLeave={(event) => {
-              event.currentTarget.style.boxShadow = '';
+              event.currentTarget.style.boxShadow = isSelected ? '0 0 0 2px var(--ring)' : '';
               event.currentTarget.style.transform = '';
             }}
           >
+            <div
+              className={`absolute top-2.5 left-2.5 z-10 p-[3px] rounded-[7px] transition-opacity ${
+                hasSelection ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--bg-base) 70%, transparent)',
+                backdropFilter: 'blur(10px) saturate(160%)',
+                WebkitBackdropFilter: 'blur(10px) saturate(160%)',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelectItemChange(item.id, checked)}
+                aria-label={`Select ${item.name}`}
+              />
+            </div>
             <div className="flex items-start gap-3 mb-3">
               <ServiceLogo
                 logoUrl={item.logo_url}
