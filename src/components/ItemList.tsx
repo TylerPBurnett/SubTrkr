@@ -124,9 +124,9 @@ function ItemList({
     skippedCount: number;
   } | null>(null);
   // Task 16 renders the picker; until then the Category action is inert on
-  // purpose. It still participates in the keyboard guard below so it cannot be
-  // left open behind a stray Backspace once the dialog lands.
-  const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
+  // purpose — this flag is written but nothing reads it yet. See the note on
+  // the useSelectionKeyboard guard below before wiring it in.
+  const [, setBulkCategoryOpen] = useState(false);
 
   const labels = {
     singular: itemType === 'bill' ? 'bill' : 'subscription',
@@ -226,12 +226,16 @@ function ItemList({
     setBulkStatusAction(null);
   };
 
+  // Covers every dialog that actually renders today, so Backspace can't stack a
+  // second confirmation behind the first.
+  //
+  // `bulkCategoryOpen` is deliberately NOT in this guard. Nothing renders or
+  // resets it until Task 16 ships BulkCategoryDialog, so including it here
+  // would let one click on the HUD's Category button disable Cmd+A, Escape and
+  // Backspace permanently. Add it back in the same change that adds the dialog
+  // and resets the flag on both cancel and confirm — not before.
   useSelectionKeyboard({
-    enabled:
-      !deleteConfirm &&
-      !bulkDeleteConfirmOpen &&
-      !bulkStatusAction &&
-      !bulkCategoryOpen,
+    enabled: !deleteConfirm && !bulkDeleteConfirmOpen && !bulkStatusAction,
     hasSelection: selectedCount > 0,
     onSelectAll: () => handleSelectAllChange(true),
     onClear: clearSelection,
