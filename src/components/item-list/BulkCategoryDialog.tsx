@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import type { Category } from '@/types';
 
 interface BulkCategoryDialogProps {
@@ -115,46 +115,73 @@ export function BulkCategoryDialog({
                 Pick the category to apply to every selected item.
               </AlertDialog.Description>
 
-              <div className="max-h-64 overflow-y-auto flex flex-col gap-1 mb-6">
+              {/*
+                Single-select picker, so the rows are radios: the highlight
+                alone is under the 3:1 non-text contrast minimum in dark, and
+                carries nothing for assistive tech. The Check icon matches the
+                sort picker in SearchFilterToolbar.
+              */}
+              <div
+                role="radiogroup"
+                aria-label="Category"
+                className="max-h-64 overflow-y-auto flex flex-col gap-1 mb-6"
+              >
                 <button
                   type="button"
+                  role="radio"
+                  aria-checked={selectedId === null}
                   onClick={() => setSelectedId(null)}
                   disabled={isSubmitting}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors interactive-hover-bg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors interactive-hover-bg disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     backgroundColor:
                       selectedId === null ? 'var(--bg-active)' : 'transparent',
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: 'var(--accent-gray)' }}
-                  />
-                  No category
-                </button>
-                {categories.map((category) => (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => setSelectedId(category.id)}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors interactive-hover-bg disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{
-                      backgroundColor:
-                        selectedId === category.id
-                          ? 'var(--bg-active)'
-                          : 'transparent',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
+                  <span className="flex items-center gap-2.5">
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: category.color }}
+                      style={{ backgroundColor: 'var(--accent-gray)' }}
                     />
-                    {category.name}
-                  </button>
-                ))}
+                    No category
+                  </span>
+                  {selectedId === null ? (
+                    <Check className="size-3.5 shrink-0 opacity-80" />
+                  ) : null}
+                </button>
+                {categories.map((category) => {
+                  const isSelected = selectedId === category.id;
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setSelectedId(category.id)}
+                      disabled={isSubmitting}
+                      className="flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors interactive-hover-bg disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: isSelected
+                          ? 'var(--bg-active)'
+                          : 'transparent',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        {category.name}
+                      </span>
+                      {isSelected ? (
+                        <Check className="size-3.5 shrink-0 opacity-80" />
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex gap-3">

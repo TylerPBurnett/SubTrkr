@@ -94,6 +94,71 @@ function ActionButton({
   );
 }
 
+/**
+ * The overflow menu lives in its own component so `useMenuOpenReporter` sits
+ * inside the subtree that actually unmounts. `SelectionHUD` is rendered
+ * unconditionally by the list and never unmounts, so a reporter hoisted up
+ * there would never run its cleanup — the dropdown can disappear while open
+ * (selection pruned to empty, or the viewport widening until nothing overflows)
+ * and Radix fires no `onOpenChange` for that, latching the caller's flag on.
+ */
+function OverflowMenu({
+  overflow,
+  onAction,
+  onOpenChange,
+}: {
+  overflow: readonly HudActionDescriptor[];
+  onAction: (descriptor: HudActionDescriptor) => void;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const reportOverflowOpen = useMenuOpenReporter(onOpenChange);
+
+  return (
+    <DropdownMenu onOpenChange={reportOverflowOpen}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center h-7 px-2 rounded-md transition-colors interactive-hover-bg"
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label="More actions"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="center"
+        side="top"
+        className="w-[190px]"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-strong)',
+        }}
+      >
+        {overflow.map((descriptor) => {
+          const Icon = ACTION_ICONS[descriptor.action];
+
+          return (
+            <DropdownMenuItem
+              key={descriptor.action}
+              onClick={() => onAction(descriptor)}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <Icon className="w-4 h-4" />
+              {descriptor.label}
+              {descriptor.showCount ? (
+                <span className="ml-auto text-[10px] font-mono opacity-60">
+                  {descriptor.eligibleCount}
+                </span>
+              ) : null}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function SelectionHUD<T extends { id: string; status: ItemStatus }>({
   items,
   onAction,
@@ -102,7 +167,6 @@ export function SelectionHUD<T extends { id: string; status: ItemStatus }>({
   onOverflowOpenChange,
 }: SelectionHUDProps<T>) {
   const isNarrow = useIsNarrow();
-  const reportOverflowOpen = useMenuOpenReporter(onOverflowOpenChange);
   const { inline, overflow } = buildHudActions(items, isNarrow ? 0 : MAX_INLINE_WIDE);
   const selectedCount = items.length;
 
@@ -152,48 +216,11 @@ export function SelectionHUD<T extends { id: string; status: ItemStatus }>({
             ))}
 
             {overflow.length > 0 ? (
-              <DropdownMenu onOpenChange={reportOverflowOpen}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center h-7 px-2 rounded-md transition-colors interactive-hover-bg"
-                    style={{ color: 'var(--text-secondary)' }}
-                    aria-label="More actions"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="center"
-                  side="top"
-                  className="w-[190px]"
-                  style={{
-                    backgroundColor: 'var(--bg-surface)',
-                    borderColor: 'var(--border-strong)',
-                  }}
-                >
-                  {overflow.map((descriptor) => {
-                    const Icon = ACTION_ICONS[descriptor.action];
-
-                    return (
-                      <DropdownMenuItem
-                        key={descriptor.action}
-                        onClick={() => onAction(descriptor)}
-                        className="gap-2.5 menu-item"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        <Icon className="w-4 h-4" />
-                        {descriptor.label}
-                        {descriptor.showCount ? (
-                          <span className="ml-auto text-[10px] font-mono opacity-60">
-                            {descriptor.eligibleCount}
-                          </span>
-                        ) : null}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <OverflowMenu
+                overflow={overflow}
+                onAction={onAction}
+                onOpenChange={onOverflowOpenChange}
+              />
             ) : null}
 
             <span
