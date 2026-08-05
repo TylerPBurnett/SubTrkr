@@ -37,12 +37,63 @@ export function BulkCategoryDialog({
   // before React re-renders the disabled button. The state exists only to
   // drive that re-render (busy label, disabled attributes).
   const inFlight = useRef(false);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   if (!isOpen) {
     return null;
   }
 
   const itemLabel = itemCount === 1 ? 'item' : 'items';
+
+  // "No category" is a peer option, not a special case — folding it into the
+  // same list is what makes roving focus a single loop instead of two.
+  const options: { id: string | null; name: string; color: string }[] = [
+    { id: null, name: 'No category', color: 'var(--accent-gray)' },
+    ...categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      color: category.color,
+    })),
+  ];
+
+  const selectedIndex = options.findIndex((option) => option.id === selectedId);
+  // A radiogroup is one tab stop: the checked row owns it, or the first row
+  // when nothing is checked yet.
+  const focusableIndex = selectedIndex === -1 ? 0 : selectedIndex;
+
+  const moveTo = (index: number) => {
+    const wrapped = (index + options.length) % options.length;
+    setSelectedId(options[wrapped].id);
+    optionRefs.current[wrapped]?.focus();
+  };
+
+  // Arrow keys in a radiogroup move focus *and* change the selection — that is
+  // the ARIA contract, not an embellishment. Without it the roles announce
+  // behaviour the widget doesn't have.
+  const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
+    switch (event.key) {
+      case 'ArrowDown':
+      case 'ArrowRight':
+        event.preventDefault();
+        moveTo(index + 1);
+        break;
+      case 'ArrowUp':
+      case 'ArrowLeft':
+        event.preventDefault();
+        moveTo(index - 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        moveTo(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        moveTo(options.length - 1);
+        break;
+      default:
+        break;
+    }
+  };
 
   const handleConfirm = async () => {
     if (inFlight.current || selectedId === undefined) {
@@ -124,42 +175,24 @@ export function BulkCategoryDialog({
               <div
                 role="radiogroup"
                 aria-label="Category"
+                aria-required="true"
                 className="max-h-64 overflow-y-auto flex flex-col gap-1 mb-6"
               >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedId === null}
-                  onClick={() => setSelectedId(null)}
-                  disabled={isSubmitting}
-                  className="flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors interactive-hover-bg disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor:
-                      selectedId === null ? 'var(--bg-active)' : 'transparent',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: 'var(--accent-gray)' }}
-                    />
-                    No category
-                  </span>
-                  {selectedId === null ? (
-                    <Check className="size-3.5 shrink-0 opacity-80" />
-                  ) : null}
-                </button>
-                {categories.map((category) => {
-                  const isSelected = selectedId === category.id;
+                {options.map((option, index) => {
+                  const isSelected = selectedId === option.id;
 
                   return (
                     <button
-                      key={category.id}
+                      key={option.id ?? '__none__'}
+                      ref={(node) => {
+                        optionRefs.current[index] = node;
+                      }}
                       type="button"
                       role="radio"
                       aria-checked={isSelected}
-                      onClick={() => setSelectedId(category.id)}
+                      tabIndex={index === focusableIndex ? 0 : -1}
+                      onClick={() => setSelectedId(option.id)}
+                      onKeyDown={(event) => handleKeyDown(event, index)}
                       disabled={isSubmitting}
                       className="flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors interactive-hover-bg disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
@@ -172,9 +205,9 @@ export function BulkCategoryDialog({
                       <span className="flex items-center gap-2.5">
                         <span
                           className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: category.color }}
+                          style={{ backgroundColor: option.color }}
                         />
-                        {category.name}
+                        {option.name}
                       </span>
                       {isSelected ? (
                         <Check className="size-3.5 shrink-0 opacity-80" />
