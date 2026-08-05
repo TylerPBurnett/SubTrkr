@@ -291,52 +291,25 @@ export async function deleteItem(id: string): Promise<void> {
 }
 
 /**
- * Deletes many items in a single statement. `.select('id')` returns the rows
- * actually removed, so a partial result (RLS mismatch, already-deleted row) is
- * detectable rather than silently reported as success.
+ * Shared spine for the batched writes below. Dedupes the ids, short-circuits
+ * before any network call on empty input, runs one user-scoped statement, and
+ * partitions the input against the rows the database actually returned — so a
+ * partial result (RLS mismatch, already-deleted row) is detectable rather than
+ * silently reported as success.
+ *
+ * `buildQuery` applies the mutation and must end in `.select('id')`; keeping it
+ * as the only difference between callers is what stops the two paths drifting
+ * apart on partial-success handling.
  */
-export async function deleteItems(ids: string[]): Promise<BulkResult> {
-  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
-  if (uniqueIds.length === 0) {
-    return emptyBulkResult();
-  }
-
-  const userId = await getUserId();
-  const { data, error } = await supabase
-    .from('items')
-    .delete()
-    .in('id', uniqueIds)
-    .eq('user_id', userId)
-    .select('id');
-
-  if (error) {
-    return {
-      succeeded: [],
-      failed: uniqueIds.map((id) => ({ id, error: error.message })),
-      skipped: [],
-    };
-  }
-
-  const deletedIds = new Set((data ?? []).map((row) => row.id as string));
-
-  return {
-    succeeded: uniqueIds.filter((id) => deletedIds.has(id)),
-    failed: uniqueIds
-      .filter((id) => !deletedIds.has(id))
-      .map((id) => ({ id, error: 'Item not found' })),
-    skipped: [],
-  };
-}
-
-/**
- * Reassigns many items to one category in a single statement. A null
- * categoryId clears the category. Structurally identical to `deleteItems`:
- * `.select('id')` returns the rows actually updated, so a partial result is
- * detectable rather than silently reported as success.
- */
-export async function updateItemsCategory(
+async function runBulkWrite(
   ids: string[],
-  categoryId: string | null,
+  buildQuery: (
+    uniqueIds: string[],
+    userId: string,
+  ) => PromiseLike<{
+    data: { id: string }[] | null;
+    error: { message: string } | null;
+  }>,
 ): Promise<BulkResult> {
   const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
   if (uniqueIds.length === 0) {
@@ -344,12 +317,7 @@ export async function updateItemsCategory(
   }
 
   const userId = await getUserId();
-  const { data, error } = await supabase
-    .from('items')
-    .update({ category_id: categoryId })
-    .in('id', uniqueIds)
-    .eq('user_id', userId)
-    .select('id');
+  const { data, error } = await buildQuery(uniqueIds, userId);
 
   if (error) {
     return {
@@ -359,13 +327,45 @@ export async function updateItemsCategory(
     };
   }
 
-  const updatedIds = new Set((data ?? []).map((row) => row.id as string));
+  const writtenIds = new Set((data ?? []).map((row) => row.id));
 
   return {
-    succeeded: uniqueIds.filter((id) => updatedIds.has(id)),
+    succeeded: uniqueIds.filter((id) => writtenIds.has(id)),
     failed: uniqueIds
-      .filter((id) => !updatedIds.has(id))
+      .filter((id) => !writtenIds.has(id))
       .map((id) => ({ id, error: 'Item not found' })),
     skipped: [],
   };
+}
+
+/**
+ * Deletes many items in a single statement.
+ */
+export async function deleteItems(ids: string[]): Promise<BulkResult> {
+  return runBulkWrite(ids, (uniqueIds, userId) =>
+    supabase
+      .from('items')
+      .delete()
+      .in('id', uniqueIds)
+      .eq('user_id', userId)
+      .select('id'),
+  );
+}
+
+/**
+ * Reassigns many items to one category in a single statement. A null
+ * categoryId clears the category.
+ */
+export async function updateItemsCategory(
+  ids: string[],
+  categoryId: string | null,
+): Promise<BulkResult> {
+  return runBulkWrite(ids, (uniqueIds, userId) =>
+    supabase
+      .from('items')
+      .update({ category_id: categoryId })
+      .in('id', uniqueIds)
+      .eq('user_id', userId)
+      .select('id'),
+  );
 }
