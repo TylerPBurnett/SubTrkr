@@ -138,6 +138,7 @@ function ItemList({
   // never slip through in the window before React re-renders the disabled
   // button. The state exists to drive that re-render.
   const bulkDeleteInFlight = useRef(false);
+  const bulkStatusInFlight = useRef(false);
   const [bulkStatusAction, setBulkStatusAction] = useState<{
     action: BulkStatusAction;
     items: ItemWithCategory[];
@@ -249,28 +250,38 @@ function ItemList({
   };
 
   const handleBulkStatusConfirm = async (data: StatusChangeData) => {
-    if (!bulkStatusAction) {
+    // Same ref latch the delete and category paths use. StatusChangeDialog does
+    // disable its buttons on `isSubmitting`, but that is React state and so only
+    // takes effect on the next render; the ref closes the frame in between.
+    if (bulkStatusInFlight.current || !bulkStatusAction) {
       return;
     }
 
-    const actionCopy = BULK_ACTION_COPY[bulkStatusAction.action];
-    const result = await onBulkStatusChange(
-      bulkStatusAction.items.map((item) => item.id),
-      data,
-      {
-        pastTense: actionCopy.pastTense,
-        failedVerb: actionCopy.failedVerb,
-        singular: labels.singular,
-        plural: labels.plural,
-      },
-      // The ids the HUD already ruled ineligible. The service only ever
-      // reports ids it attempted, so this is the only path by which the
-      // "· N skipped" suffix can reach the toast.
-      bulkStatusAction.skippedIds,
-    );
+    bulkStatusInFlight.current = true;
 
-    deselectSucceeded(result);
-    setBulkStatusAction(null);
+    const actionCopy = BULK_ACTION_COPY[bulkStatusAction.action];
+
+    try {
+      const result = await onBulkStatusChange(
+        bulkStatusAction.items.map((item) => item.id),
+        data,
+        {
+          pastTense: actionCopy.pastTense,
+          failedVerb: actionCopy.failedVerb,
+          singular: labels.singular,
+          plural: labels.plural,
+        },
+        // The ids the HUD already ruled ineligible. The service only ever
+        // reports ids it attempted, so this is the only path by which the
+        // "· N skipped" suffix can reach the toast.
+        bulkStatusAction.skippedIds,
+      );
+
+      deselectSucceeded(result);
+      setBulkStatusAction(null);
+    } finally {
+      bulkStatusInFlight.current = false;
+    }
   };
 
   // Covers every dialog that actually renders today, so Backspace can't stack a

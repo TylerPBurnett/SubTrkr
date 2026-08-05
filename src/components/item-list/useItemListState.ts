@@ -180,6 +180,13 @@ export function useItemListState({
     setSortDirection,
     setViewMode,
     handleSelectAllChange: (checked: boolean | 'indeterminate') => {
+      // Select-all has no "last clicked" row, so the anchor is cleared rather
+      // than left pointing at whatever was clicked before. A shift-click after
+      // ⌘A then falls back to selecting just its target — the already-tested
+      // no-anchor path in resolveRangeSelection — instead of extending from a
+      // stale anchor the user has no way to see.
+      setLastSelectedId(null);
+
       if (checked === true || checked === 'indeterminate') {
         setSelectedItemIds(new Set(sortedItems.map((item) => item.id)));
         return;
