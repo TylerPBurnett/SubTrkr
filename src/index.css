@@ -2,6 +2,12 @@
 @import "tw-animate-css";
 @import "tailwindcss";
 
+/* Tailwind v4 defaults `dark:` to the OS `prefers-color-scheme`. This app owns
+   its own theme (useAppTheme sets both `data-theme` and a `.dark` class), so
+   bind the variant to those instead — otherwise `dark:` utilities disagree with
+   the in-app toggle whenever the OS theme differs from it. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 /* ============================================
    SEMANTIC DESIGN TOKENS (CSS Custom Properties)
    ============================================
