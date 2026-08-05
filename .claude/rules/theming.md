@@ -25,6 +25,6 @@ Gradient: `linear-gradient(135deg, #22c55e 0%, #16a34a 100%)`
 ## Theme System
 
 - CSS custom properties defined in `src/index.css`
-- Toggled via `dark` class on `documentElement`
+- Toggled via `data-theme="light" | "dark"` on `documentElement` (`useAppTheme`); a `.dark` class is a supported alias in `index.css` but nothing sets it
 - Use `var(--text-primary)`, `var(--bg-hover)`, etc.
 - Full token reference: `docs/reference/THEMING.md`
