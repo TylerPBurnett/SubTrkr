@@ -49,6 +49,23 @@ export default function StatusChangeDialog({
   const formRef = useRef<HTMLFormElement>(null);
   const itemCategory = categories.find((category) => category.id === item.category_id);
 
+  // Bulk mode is the only case where `item` is a stand-in for a whole batch.
+  // Everything keyed off `isBulk` below swaps the single-item identity block
+  // (name + category chip, both of which would name only the first item) for a
+  // count-led header. When `bulkItems` is absent or holds a single item this is
+  // false and the header renders exactly as it always has.
+  const isBulk = Boolean(bulkItems && bulkItems.length > 1);
+  const bulkCount = bulkItems?.length ?? 0;
+  const bulkTypeLabel = (() => {
+    if (!bulkItems || bulkItems.length === 0) return 'items';
+
+    const firstType = bulkItems[0].item_type;
+    const isUniform = bulkItems.every((entry) => entry.item_type === firstType);
+    if (!isUniform) return 'items';
+
+    return firstType === 'bill' ? 'bills' : 'subscriptions';
+  })();
+
   const clampDate = (value: string, minimum: string): string => (value < minimum ? minimum : value);
 
   // The floor for date validation. In single-item mode (the default —
@@ -452,7 +469,7 @@ export default function StatusChangeDialog({
                           fontWeight: 600,
                         }}
                       >
-                        {item.name}
+                        {isBulk ? `${bulkCount} ${bulkTypeLabel}` : item.name}
                       </Dialog.Description>
                     </div>
                   </div>
@@ -467,7 +484,7 @@ export default function StatusChangeDialog({
                   </button>
                 </div>
 
-                {itemCategory && (
+                {!isBulk && itemCategory && (
                   <div
                     className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
                     style={{
@@ -496,15 +513,15 @@ export default function StatusChangeDialog({
                   </div>
                 )}
 
-                {bulkItems && bulkItems.length > 1 ? (
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                    Applies to {bulkItems.length}{' '}
-                    {bulkItems.length === 1 ? 'item' : 'items'}
-                    {skippedCount && skippedCount > 0
-                      ? ` — ${skippedCount} selected ${
-                          skippedCount === 1 ? 'item is' : 'items are'
-                        } not eligible and will be skipped.`
-                      : '.'}
+                {/*
+                  The batch count now lives in the header above, so this line
+                  only has to carry the exception: the selected items this
+                  action can't touch.
+                */}
+                {isBulk && (skippedCount ?? 0) > 0 ? (
+                  <p className="text-sm mt-4" style={{ color: 'var(--text-secondary)' }}>
+                    {skippedCount} selected {skippedCount === 1 ? 'item is' : 'items are'} not
+                    eligible and will be skipped.
                   </p>
                 ) : null}
               </div>
