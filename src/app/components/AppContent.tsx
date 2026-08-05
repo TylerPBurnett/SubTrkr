@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Category, ItemType, ItemWithCategory, StatusChangeData } from '@/types';
+import type { BulkCopy, BulkResult } from '@/services/database';
 import Dashboard from '@/components/Dashboard';
 import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -25,6 +26,22 @@ interface AppContentProps {
   onViewChange: (view: View) => void;
   onEditItem: (item: ItemWithCategory) => void;
   onDeleteItem: (id: string) => void;
+  onBulkDelete: (
+    ids: string[],
+    labels: { singular: string; plural: string },
+  ) => Promise<BulkResult>;
+  onBulkStatusChange: (
+    ids: string[],
+    data: StatusChangeData,
+    copy: BulkCopy,
+    /** selected but ineligible ids, surfaced in the toast as "· N skipped" */
+    skippedIds?: string[],
+  ) => Promise<BulkResult>;
+  onBulkCategoryChange: (
+    ids: string[],
+    categoryId: string | null,
+    labels: { singular: string; plural: string },
+  ) => Promise<BulkResult>;
   onToggleActive: (id: string) => void;
   onStatusChange: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory: (item: ItemWithCategory) => void;
@@ -34,6 +51,8 @@ interface AppContentProps {
   setUseVibrancy: (val: boolean | ((prev: boolean) => boolean)) => void;
   settingsTab: SettingsTab;
   onSettingsTabChange: (tab: SettingsTab) => void;
+  /** True while any App-level modal is open; suppresses ItemList's shortcuts. */
+  isModalOpen: boolean;
 }
 
 export function AppContent({
@@ -47,6 +66,9 @@ export function AppContent({
   onViewChange,
   onEditItem,
   onDeleteItem,
+  onBulkDelete,
+  onBulkStatusChange,
+  onBulkCategoryChange,
   onToggleActive,
   onStatusChange,
   onViewHistory,
@@ -56,6 +78,7 @@ export function AppContent({
   setUseVibrancy,
   settingsTab,
   onSettingsTabChange,
+  isModalOpen,
 }: AppContentProps) {
   const viewContent = VIEW_CONTENT[view];
 
@@ -100,10 +123,14 @@ export function AppContent({
               itemType="bill"
               onEdit={onEditItem}
               onDelete={onDeleteItem}
+              onBulkDelete={onBulkDelete}
+              onBulkStatusChange={onBulkStatusChange}
+              onBulkCategoryChange={onBulkCategoryChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
               onAddNew={() => onAddNew('bill')}
+              isModalOpen={isModalOpen}
             />
           )}
 
@@ -114,10 +141,14 @@ export function AppContent({
               itemType="subscription"
               onEdit={onEditItem}
               onDelete={onDeleteItem}
+              onBulkDelete={onBulkDelete}
+              onBulkStatusChange={onBulkStatusChange}
+              onBulkCategoryChange={onBulkCategoryChange}
               onToggleActive={onToggleActive}
               onStatusChange={onStatusChange}
               onViewHistory={onViewHistory}
               onAddNew={() => onAddNew('subscription')}
+              isModalOpen={isModalOpen}
             />
           )}
 

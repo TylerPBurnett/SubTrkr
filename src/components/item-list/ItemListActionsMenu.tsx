@@ -22,6 +22,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ItemWithCategory, StatusChangeData } from '@/types';
+import { isActionEligible } from './statusActions';
+import { useMenuOpenReporter } from './useMenuOpenReporter';
 
 interface ItemListActionsMenuProps {
   item: ItemWithCategory;
@@ -30,6 +32,11 @@ interface ItemListActionsMenuProps {
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
+  /**
+   * Fires when this menu opens or closes. The list uses it to suppress the
+   * selection shortcuts while this non-modal layer is up.
+   */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function ShortcutHint({ keys }: { keys: string }) {
@@ -50,15 +57,17 @@ export function ItemListActionsMenu({
   onToggleActive,
   onStatusChange,
   onViewHistory,
+  onOpenChange,
 }: ItemListActionsMenuProps) {
   const modKey = useMemo(() => {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     return isMac ? '⌘' : 'Ctrl+';
   }, []);
+  const reportOpen = useMenuOpenReporter(onOpenChange);
 
   return (
     <div className="relative" onClick={(event) => event.stopPropagation()}>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={reportOpen}>
         <DropdownMenuTrigger asChild>
           <button
             onClick={(event) => event.stopPropagation()}
@@ -91,107 +100,62 @@ export function ItemListActionsMenu({
             <ShortcutHint keys={`${modKey}E`} />
           </DropdownMenuItem>
 
-          {item.status === 'trial' && onStatusChange && (
-            <>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'convert')}
-                className="gap-2.5 menu-item-success"
-                style={{ letterSpacing: '-0.005em' }}
-              >
-                <Check className="w-4 h-4" />
-                Convert to Paid
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'cancel')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <XCircle className="w-4 h-4" />
-                Cancel Trial
-              </DropdownMenuItem>
-            </>
+          {isActionEligible(item.status, 'convert') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'convert')}
+              className="gap-2.5 menu-item-success"
+              style={{ letterSpacing: '-0.005em' }}
+            >
+              <Check className="w-4 h-4" />
+              Convert to Paid
+            </DropdownMenuItem>
           )}
 
-          {item.status === 'active' && onStatusChange && (
-            <>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'pause')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <Pause className="w-4 h-4" />
-                Pause
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'cancel')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <XCircle className="w-4 h-4" />
-                Cancel
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'start_trial')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <Clock3 className="w-4 h-4" />
-                Start Trial
-              </DropdownMenuItem>
-            </>
+          {isActionEligible(item.status, 'pause') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'pause')}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
+            >
+              <Pause className="w-4 h-4" />
+              Pause
+            </DropdownMenuItem>
           )}
 
-          {item.status === 'paused' && onStatusChange && (
-            <>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'resume')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <Play className="w-4 h-4" />
-                Resume
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'cancel')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <XCircle className="w-4 h-4" />
-                Cancel
-              </DropdownMenuItem>
-            </>
+          {isActionEligible(item.status, 'resume') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'resume')}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
+            >
+              <Play className="w-4 h-4" />
+              Resume
+            </DropdownMenuItem>
           )}
 
-          {item.status === 'cancelled' && onStatusChange && (
-            <>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'edit_cancellation')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <Calendar className="w-4 h-4" />
-                Edit Cancel Date
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'reactivate')}
-                className="gap-2.5 menu-item-success"
-                style={{ letterSpacing: '-0.005em' }}
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reactivate
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onStatusChange(item.id, 'archive')}
-                className="gap-2.5 menu-item"
-                style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
-              >
-                <Archive className="w-4 h-4" />
-                Archive
-              </DropdownMenuItem>
-            </>
+          {isActionEligible(item.status, 'edit_cancellation') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'edit_cancellation')}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
+            >
+              <Calendar className="w-4 h-4" />
+              Edit Cancel Date
+            </DropdownMenuItem>
           )}
 
-          {item.status === 'archived' && onStatusChange && (
+          {isActionEligible(item.status, 'cancel') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'cancel')}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
+            >
+              <XCircle className="w-4 h-4" />
+              {item.status === 'trial' ? 'Cancel Trial' : 'Cancel'}
+            </DropdownMenuItem>
+          )}
+
+          {isActionEligible(item.status, 'reactivate') && onStatusChange && (
             <DropdownMenuItem
               onClick={() => onStatusChange(item.id, 'reactivate')}
               className="gap-2.5 menu-item-success"
@@ -199,6 +163,28 @@ export function ItemListActionsMenu({
             >
               <RotateCcw className="w-4 h-4" />
               Reactivate
+            </DropdownMenuItem>
+          )}
+
+          {isActionEligible(item.status, 'archive') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'archive')}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
+            >
+              <Archive className="w-4 h-4" />
+              Archive
+            </DropdownMenuItem>
+          )}
+
+          {isActionEligible(item.status, 'start_trial') && onStatusChange && (
+            <DropdownMenuItem
+              onClick={() => onStatusChange(item.id, 'start_trial')}
+              className="gap-2.5 menu-item"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '-0.005em' }}
+            >
+              <Clock3 className="w-4 h-4" />
+              Start Trial
             </DropdownMenuItem>
           )}
 

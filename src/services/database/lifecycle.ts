@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { emptyBulkResult, type BulkResult } from './bulkResults';
 import type {
   Item,
   ItemWithCategory,
@@ -22,6 +23,7 @@ import {
 export {
   buildExecuteStatusChangeRpcParams,
   calculateNextBillingDate,
+  getBatchMinimumEffectiveDate,
   getCanonicalStatusChangeAction,
   getMinimumEffectiveDate,
   getNextBillingDateAfterResume,
@@ -93,6 +95,50 @@ export async function executeStatusChange(
   // and filters each read/write by that user_id. Passing user_id from the
   // client would be redundant and weaker than relying on the signed JWT.
   await executeStatusChangeRpc(buildExecuteStatusChangeRpcParams(item, data));
+}
+
+/**
+ * Applies one status change across many items. Each call remains individually
+ * atomic server-side; the batching win is one refetch and one toast in the UI,
+ * not fewer round trips.
+ */
+export async function executeStatusChangeForItems(
+  itemIds: string[],
+  data: StatusChangeData,
+): Promise<BulkResult> {
+  const uniqueIds = Array.from(new Set(itemIds.filter(Boolean)));
+  if (uniqueIds.length === 0) {
+    return emptyBulkResult();
+  }
+
+  const results = await Promise.allSettled(
+    uniqueIds.map((itemId) => executeStatusChange(itemId, data)),
+  );
+
+  const succeeded: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+
+  results.forEach((result, index) => {
+    const itemId = uniqueIds[index];
+    if (result.status === 'fulfilled') {
+      succeeded.push(itemId);
+      return;
+    }
+
+    failed.push({
+      id: itemId,
+      error:
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason),
+    });
+  });
+
+  if (failed.length > 0) {
+    console.error(`Failed to apply ${data.action} to ${failed.length} item(s):`, failed);
+  }
+
+  return { succeeded, failed, skipped: [] };
 }
 
 export async function getStatusHistory(itemId: string): Promise<StatusHistory[]> {

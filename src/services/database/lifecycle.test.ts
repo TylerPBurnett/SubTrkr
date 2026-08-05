@@ -4,6 +4,7 @@ import type { Item } from '@/types';
 import {
   buildExecuteStatusChangeRpcParams,
   calculateNextBillingDate,
+  getBatchMinimumEffectiveDate,
   getTargetStatus,
 } from './lifecycleHelpers';
 
@@ -120,5 +121,58 @@ describe('lifecycle helpers', () => {
     assert.equal(calculateNextBillingDate('2026-02-15', 'monthly'), '2026-03-15');
     assert.equal(calculateNextBillingDate('2026-02-15', 'quarterly'), '2026-05-15');
     assert.equal(calculateNextBillingDate('2026-02-15', 'yearly'), '2027-02-15');
+  });
+});
+
+describe('getBatchMinimumEffectiveDate', () => {
+  test('returns the latest floor across the batch', () => {
+    const items = [
+      buildItem({ id: 'a', start_date: '2025-01-10' }),
+      buildItem({ id: 'b', start_date: '2025-06-01' }),
+      buildItem({ id: 'c', start_date: '2024-03-20' }),
+    ];
+
+    assert.equal(getBatchMinimumEffectiveDate(items, 'cancel'), '2025-06-01');
+  });
+
+  test('returns the later floor for a two-item batch', () => {
+    const items = [
+      buildItem({ id: 'a', start_date: '2025-01-10' }),
+      buildItem({ id: 'b', start_date: '2025-02-10' }),
+    ];
+
+    assert.equal(getBatchMinimumEffectiveDate(items, 'cancel'), '2025-02-10');
+  });
+
+  test('returns null when no item in the batch has a floor', () => {
+    const items = [
+      buildItem({ id: 'a', start_date: '2025-01-10' }),
+      buildItem({ id: 'b', start_date: '2025-06-01' }),
+    ];
+
+    assert.equal(getBatchMinimumEffectiveDate(items, 'pause'), null);
+  });
+
+  test('returns null for an empty batch', () => {
+    assert.equal(getBatchMinimumEffectiveDate([], 'cancel'), null);
+  });
+
+  test('accounts for paused_at when resuming', () => {
+    const items = [
+      buildItem({
+        id: 'a',
+        status: 'paused',
+        start_date: '2025-01-10',
+        paused_at: '2026-03-01T12:00:00Z',
+      }),
+      buildItem({
+        id: 'b',
+        status: 'paused',
+        start_date: '2025-01-10',
+        paused_at: '2026-05-04T12:00:00Z',
+      }),
+    ];
+
+    assert.equal(getBatchMinimumEffectiveDate(items, 'resume'), '2026-05-04');
   });
 });

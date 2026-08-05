@@ -161,6 +161,26 @@ export function getMinimumEffectiveDate(
   }
 }
 
+/**
+ * The floor for a batch is the latest of every member's individual floor —
+ * anything earlier would be invalid for at least one item.
+ */
+export function getBatchMinimumEffectiveDate(
+  items: readonly Item[],
+  action: StatusChangeData['action'],
+): string | null {
+  let latest: string | null = null;
+
+  for (const item of items) {
+    const minimum = getMinimumEffectiveDate(item, action);
+    if (minimum && (!latest || minimum > latest)) {
+      latest = minimum;
+    }
+  }
+
+  return latest;
+}
+
 export function buildExecuteStatusChangeRpcParams(
   item: Item,
   data: StatusChangeData,

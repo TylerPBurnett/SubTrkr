@@ -9,6 +9,7 @@ import {
   type SortBy,
   type SortDirection,
 } from './constants';
+import { resolveRangeSelection } from './selectionRange';
 
 interface UseItemListStateOptions {
   items: ItemWithCategory[];
@@ -45,14 +46,7 @@ export function useItemListState({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set(),
   );
-
-  useEffect(() => {
-    if (viewMode !== 'grid' || selectedItemIds.size === 0) {
-      return;
-    }
-
-    setSelectedItemIds(new Set());
-  }, [selectedItemIds.size, viewMode]);
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
 
   const {
     typeFilteredItems,
@@ -157,6 +151,9 @@ export function useItemListState({
     allVisibleSelected,
     categoryLookup,
     filteredCategories,
+    // `lastSelectedId` is deliberately not returned: the range anchor is
+    // consumed by the closures below, and a consumer reading it from here
+    // would see a value one render stale relative to them.
     searchQuery,
     selectedCategory,
     selectedCount,
@@ -193,10 +190,26 @@ export function useItemListState({
     handleSelectItemChange: (
       itemId: string,
       checked: boolean | 'indeterminate',
+      options?: { extendRange?: boolean },
     ) => {
+      const shouldSelect = checked === true || checked === 'indeterminate';
+
+      if (options?.extendRange) {
+        const orderedIds = sortedItems.map((item) => item.id);
+        const span = resolveRangeSelection(orderedIds, lastSelectedId, itemId);
+
+        setSelectedItemIds((previous) => {
+          const nextSelectedIds = new Set(previous);
+          span.forEach((id) => nextSelectedIds.add(id));
+          return nextSelectedIds;
+        });
+        setLastSelectedId(itemId);
+        return;
+      }
+
       setSelectedItemIds((previous) => {
         const nextSelectedIds = new Set(previous);
-        if (checked === true || checked === 'indeterminate') {
+        if (shouldSelect) {
           nextSelectedIds.add(itemId);
         } else {
           nextSelectedIds.delete(itemId);
@@ -204,6 +217,11 @@ export function useItemListState({
 
         return nextSelectedIds;
       });
+      setLastSelectedId(itemId);
+    },
+    clearSelection: () => {
+      setSelectedItemIds(new Set());
+      setLastSelectedId(null);
     },
     clearFilters: () => {
       setSelectedCategory('all');

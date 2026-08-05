@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, useTransition } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { WifiOff } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -11,9 +12,15 @@ import type { SettingsTab } from '@/components/Settings';
 import {
   createItem,
   deleteItem,
+  deleteItems,
   executeStatusChange,
+  executeStatusChangeForItems,
+  summarizeBulkResult,
   toggleItemActive,
   updateItem,
+  updateItemsCategory,
+  type BulkCopy,
+  type BulkResult,
 } from '@/services/database';
 import {
   getUpdaterStateSnapshot,
@@ -233,6 +240,128 @@ function App() {
     }
   }, [reloadItems]);
 
+  /**
+   * The single spine every bulk action runs through: one mutation, one refetch,
+   * one toast — the whole point of the bulk path. Never call this in a loop.
+   *
+   * Three invariants it owns so no caller has to:
+   * - the service call is wrapped, so a hard throw (no session, network) folds
+   *   every id into `failed` instead of escaping;
+   * - the refetch is wrapped too, so a stale list can never suppress the
+   *   summary toast (the mutation already committed — reporting it is the
+   *   truthful outcome, and the next realtime tick will resync the list);
+   * - it never rejects, so the callers (ItemList's delete/category confirm and
+   *   StatusChangeDialog's submit) can't mistake a refetch failure for a
+   *   mutation failure and show contradictory copy.
+   *
+   * `skippedIds` are ids the caller filtered out as ineligible before ever
+   * attempting them; they are merged in so the toast can report `· N skipped`.
+   */
+  const runBulkOperation = useCallback(
+    async (
+      ids: string[],
+      copy: BulkCopy,
+      operation: (batchIds: string[]) => Promise<BulkResult>,
+      skippedIds: string[] = [],
+    ): Promise<BulkResult> => {
+      let result: BulkResult;
+
+      try {
+        result = await operation(ids);
+      } catch (error) {
+        // The services fold row-level errors into `failed`, so reaching here
+        // means the call itself blew up. Report every id as failed so nothing
+        // is cleared from the selection.
+        console.error(`Failed to ${copy.failedVerb} items:`, error);
+        result = {
+          succeeded: [],
+          failed: ids.map((id) => ({
+            id,
+            error: error instanceof Error ? error.message : String(error),
+          })),
+          skipped: [],
+        };
+      }
+
+      if (skippedIds.length > 0) {
+        result = {
+          ...result,
+          skipped: [...result.skipped, ...skippedIds],
+        };
+      }
+
+      try {
+        await reloadItems();
+      } catch (error) {
+        console.error('Failed to refresh items after bulk operation:', error);
+      }
+
+      const summary = summarizeBulkResult(result, copy);
+
+      if (summary) {
+        if (summary.tone === 'success') {
+          toast.success(summary.message);
+        } else {
+          toast.error(summary.message);
+        }
+      }
+
+      return result;
+    },
+    [reloadItems],
+  );
+
+  const handleBulkDelete = useCallback(
+    (ids: string[], labels: { singular: string; plural: string }) =>
+      runBulkOperation(
+        ids,
+        {
+          pastTense: 'Deleted',
+          failedVerb: 'delete',
+          singular: labels.singular,
+          plural: labels.plural,
+        },
+        deleteItems,
+      ),
+    [runBulkOperation],
+  );
+
+  const handleBulkStatusChange = useCallback(
+    (
+      ids: string[],
+      data: StatusChangeData,
+      copy: BulkCopy,
+      skippedIds?: string[],
+    ) =>
+      runBulkOperation(
+        ids,
+        copy,
+        (batchIds) => executeStatusChangeForItems(batchIds, data),
+        skippedIds,
+      ),
+    [runBulkOperation],
+  );
+
+  // `categoryId: null` clears the category for the whole batch.
+  const handleBulkCategoryChange = useCallback(
+    (
+      ids: string[],
+      categoryId: string | null,
+      labels: { singular: string; plural: string },
+    ) =>
+      runBulkOperation(
+        ids,
+        {
+          pastTense: 'Moved',
+          failedVerb: 'update',
+          singular: labels.singular,
+          plural: labels.plural,
+        },
+        (batchIds) => updateItemsCategory(batchIds, categoryId),
+      ),
+    [runBulkOperation],
+  );
+
   const handleToggleActive = useCallback(async (id: string) => {
     try {
       await toggleItemActive(id);
@@ -374,6 +503,9 @@ function App() {
           onViewChange={handleViewChange}
           onEditItem={handleEdit}
           onDeleteItem={handleDeleteItem}
+          onBulkDelete={handleBulkDelete}
+          onBulkStatusChange={handleBulkStatusChange}
+          onBulkCategoryChange={handleBulkCategoryChange}
           onToggleActive={handleToggleActive}
           onStatusChange={handleStatusChange}
           onViewHistory={handleViewHistory}
@@ -383,6 +515,12 @@ function App() {
           setUseVibrancy={setUseVibrancy}
           settingsTab={settingsTab}
           onSettingsTabChange={setSettingsTab}
+          isModalOpen={Boolean(
+            showForm ||
+              statusChangeDialog ||
+              historyDialogItem ||
+              showPasswordRecovery,
+          )}
         />
       </div>
 
@@ -435,7 +573,16 @@ function App() {
 function AppWithErrorBoundary() {
   return (
     <ErrorBoundary>
-      <App />
+      {/*
+        Above every animated surface (the selection HUD, the grid/table
+        AnimatePresence transitions, dialogs). framer-motion drives its
+        transitions as inline transform/opacity, which the
+        `prefers-reduced-motion` blocks in index.css cannot reach — this is the
+        only place that honours the OS setting for them.
+      */}
+      <MotionConfig reducedMotion="user">
+        <App />
+      </MotionConfig>
     </ErrorBoundary>
   );
 }

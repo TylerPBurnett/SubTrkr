@@ -15,10 +15,16 @@ interface ItemListTableViewProps {
   onDeleteClick: (item: ItemWithCategory) => void;
   onEdit: (item: ItemWithCategory) => void;
   onSelectAllChange: (checked: boolean | 'indeterminate') => void;
-  onSelectItemChange: (itemId: string, checked: boolean | 'indeterminate') => void;
+  onSelectItemChange: (
+    itemId: string,
+    checked: boolean | 'indeterminate',
+    options?: { extendRange?: boolean },
+  ) => void;
   onToggleActive: (id: string) => void;
   onStatusChange?: (itemId: string, action: StatusChangeData['action']) => void;
   onViewHistory?: (item: ItemWithCategory) => void;
+  /** Reports a row's actions menu opening/closing, so the list can gate its shortcuts. */
+  onActionsMenuOpenChange?: (open: boolean) => void;
   selectedItemIds: Set<string>;
   someVisibleSelected: boolean;
 }
@@ -34,6 +40,7 @@ export function ItemListTableView({
   onToggleActive,
   onStatusChange,
   onViewHistory,
+  onActionsMenuOpenChange,
   selectedItemIds,
   someVisibleSelected,
 }: ItemListTableViewProps) {
@@ -109,7 +116,21 @@ export function ItemListTableView({
                       transition: 'all 0.15s var(--ease-out-expo)',
                       position: 'relative',
                     }}
-                    onClick={() => onEdit(item)}
+                    onClick={(event) => {
+                      if (event.metaKey || event.ctrlKey) {
+                        event.preventDefault();
+                        onSelectItemChange(item.id, !selectedItemIds.has(item.id));
+                        return;
+                      }
+
+                      if (event.shiftKey) {
+                        event.preventDefault();
+                        onSelectItemChange(item.id, true, { extendRange: true });
+                        return;
+                      }
+
+                      onEdit(item);
+                    }}
                     onMouseEnter={(event) => {
                       event.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                       if (item.status === 'active') {
@@ -126,7 +147,13 @@ export function ItemListTableView({
                         checked={selectedItemIds.has(item.id)}
                         onCheckedChange={(checked) => onSelectItemChange(item.id, checked)}
                         aria-label={`Select ${item.name}`}
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (event.shiftKey) {
+                            event.preventDefault();
+                            onSelectItemChange(item.id, true, { extendRange: true });
+                          }
+                        }}
                       />
                     </td>
                     <td className="px-5 py-4">
@@ -215,6 +242,7 @@ export function ItemListTableView({
                         onToggleActive={onToggleActive}
                         onStatusChange={onStatusChange}
                         onViewHistory={onViewHistory}
+                        onOpenChange={onActionsMenuOpenChange}
                       />
                     </td>
                   </motion.tr>
