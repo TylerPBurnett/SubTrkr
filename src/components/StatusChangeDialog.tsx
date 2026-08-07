@@ -52,16 +52,21 @@ export default function StatusChangeDialog({
   // Bulk mode is the only case where `item` is a stand-in for a whole batch.
   // Everything keyed off `isBulk` below swaps the single-item identity block
   // (name + category chip, both of which would name only the first item) for a
-  // count-led header. When `bulkItems` is absent or holds a single item this is
-  // false and the header renders exactly as it always has.
-  const isBulk = Boolean(bulkItems && bulkItems.length > 1);
+  // count-led header. Presence of `bulkItems` is the gate, not its length: a
+  // bulk action that narrowed to a single eligible item still has to disclose
+  // the ones it is skipping, and gating on `> 1` silently dropped that warning.
+  // The per-item flow from the row menu passes no `bulkItems` at all, so it is
+  // untouched.
+  const isBulk = Boolean(bulkItems && bulkItems.length > 0);
   const bulkCount = bulkItems?.length ?? 0;
   const bulkTypeLabel = (() => {
     if (!bulkItems || bulkItems.length === 0) return 'items';
 
     const firstType = bulkItems[0].item_type;
     const isUniform = bulkItems.every((entry) => entry.item_type === firstType);
-    if (!isUniform) return 'items';
+    if (!isUniform) return bulkCount === 1 ? 'item' : 'items';
+
+    if (bulkCount === 1) return firstType === 'bill' ? 'bill' : 'subscription';
 
     return firstType === 'bill' ? 'bills' : 'subscriptions';
   })();
