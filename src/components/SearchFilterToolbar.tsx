@@ -120,10 +120,9 @@ export default function SearchFilterToolbar({
       <div className="flex flex-wrap items-center gap-2">
         {/* Unified Search + Filter + View Toggle Container */}
         <div
-          className="flex flex-1 min-w-0 items-center h-9 rounded-lg border-2 overflow-hidden transition-all duration-200"
+          className="search-shell flex flex-1 min-w-0 items-center h-9 rounded-lg border-2 overflow-hidden transition-all duration-200"
           style={{
             backgroundColor: "var(--bg-input)",
-            borderColor: "var(--border-default)",
           }}
         >
           {/* Search Icon */}
