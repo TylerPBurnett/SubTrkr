@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { CreditCard, Plus, Receipt, Search } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -139,6 +139,17 @@ function ItemList({
   // button. The state exists to drive that re-render.
   const bulkDeleteInFlight = useRef(false);
   const bulkStatusInFlight = useRef(false);
+
+  // The delete confirmation renders on `bulkDeleteConfirmOpen && selectedCount
+  // > 0`, so a background reload that prunes the selection to empty hides the
+  // dialog without clearing the flag. Left latched it would keep Cmd+A, Escape
+  // and Backspace disabled through the keyboard guard, and would pop the stale
+  // confirmation back open the moment anything was selected again.
+  useEffect(() => {
+    if (selectedCount === 0) {
+      setBulkDeleteConfirmOpen(false);
+    }
+  }, [selectedCount]);
   const [bulkStatusAction, setBulkStatusAction] = useState<{
     action: BulkStatusAction;
     items: ItemWithCategory[];

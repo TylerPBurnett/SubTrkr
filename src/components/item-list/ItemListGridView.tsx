@@ -98,7 +98,9 @@ export function ItemListGridView({
           >
             <div
               className={`absolute top-2.5 left-2.5 z-10 p-[3px] rounded-[7px] transition-opacity ${
-                hasSelection ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                hasSelection
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
               }`}
               style={{
                 backgroundColor: 'color-mix(in srgb, var(--bg-base) 70%, transparent)',
