@@ -387,6 +387,37 @@ textarea {
   outline-offset: 2px;
 }
 
+/*
+  The search + filter + view-toggle shell is one composite control that clips
+  its children (`overflow-hidden`, for the rounded corners). The global ring
+  above sits 2px *outside* whatever it decorates, so inside the shell its top
+  and bottom get clipped and only two vertical slivers survive at the ends —
+  which is what the focused search field used to render.
+
+  Note the Tailwind `focus-visible:outline-none` utilities on these elements
+  cannot suppress it: Tailwind v4 emits utilities inside a cascade layer, and
+  unlayered rules like the one above win over layered ones no matter their
+  specificity. These rules are unlayered too, so they land.
+
+  So the shell carries the focus affordance for the text input, and the inner
+  buttons swap the clipped outline for an inset ring that can't be cut off.
+*/
+.search-shell {
+  border-color: var(--border-default);
+}
+
+.search-shell:focus-within {
+  border-color: var(--brand-primary);
+}
+
+.search-shell :is(input, button):focus-visible {
+  outline: none;
+}
+
+.search-shell button:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--brand-primary);
+}
+
 /* ============================================
    COMPONENT CLASSES
    ============================================ */
