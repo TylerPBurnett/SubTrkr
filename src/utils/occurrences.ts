@@ -43,7 +43,10 @@ export function occurrenceAt(anchor: Date, cycle: BillingCycle, n: number): Date
  * instead of distance from the anchor — a 2005 anchor must not cost 250
  * iterations per item per render.
  *
- * Padded by one index each way to absorb month-end clamping.
+ * Padded by one index each way as a safety margin. The padding is not
+ * currently load-bearing — `addMonths`/`addYears` clamp only the day and
+ * never roll the month, so the index-to-month map is already exact — but
+ * the extra indices are filtered by the range check below and cost nothing.
  */
 export function occurrenceIndexBounds(
   anchor: Date,

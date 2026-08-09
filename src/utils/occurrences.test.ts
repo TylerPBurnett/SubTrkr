@@ -85,6 +85,11 @@ describe('occurrenceIndexBounds', () => {
         rangeStart: parseLocalDate('2025-03-10'),
         rangeEnd: parseLocalDate('2025-06-15'),
       },
+      {
+        anchor: parseLocalDate('2024-02-29'),
+        rangeStart: parseLocalDate('2026-12-20'),
+        rangeEnd: parseLocalDate('2027-01-10'),
+      },
     ];
 
     for (const { anchor, rangeStart, rangeEnd } of testCases) {
