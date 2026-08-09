@@ -1482,6 +1482,7 @@ Deliverable: a working month calendar with real data, paging, and a lens switche
 Create `src/components/calendar/MonthGrid.tsx`:
 
 ```tsx
+import { useMemo } from 'react';
 import { isSameDay, isToday } from 'date-fns';
 import type { Category } from '@/types';
 import { formatISODate } from '@/utils/dates';
@@ -1511,9 +1512,20 @@ export default function MonthGrid({
   focusedDate,
   onSelect,
 }: MonthGridProps) {
+  // Chunked into weeks because `role="gridcell"` is only valid ARIA with
+  // `role="row"` ancestry inside `role="grid"`. Each row is its own 7-column
+  // grid, so the visual result is identical to one flat 7-column grid.
+  const weeks = useMemo(() => {
+    const rows: Date[][] = [];
+    for (let index = 0; index < gridDays.length; index += 7) {
+      rows.push(gridDays.slice(index, index + 7));
+    }
+    return rows;
+  }, [gridDays]);
+
   return (
     <div>
-      <div className="calendar-grid" style={{ marginBottom: 6 }}>
+      <div className="calendar-grid" style={{ marginBottom: 6, padding: '0 3px' }}>
         {WEEKDAYS.map((weekday) => (
           <div
             key={weekday}
@@ -1530,25 +1542,34 @@ export default function MonthGrid({
         ))}
       </div>
 
-      <div className="calendar-grid" role="grid" aria-label="Month view">
-        {gridDays.map((day) => {
-          const isoDate = formatISODate(day);
-          const occurrences = occurrencesByDay.get(isoDate) ?? [];
+      <div
+        role="grid"
+        aria-label="Month view"
+        className="flex flex-col gap-[3px] rounded-xl p-[3px]"
+        style={{ background: 'var(--bg-surface)' }}
+      >
+        {weeks.map((week) => (
+          <div key={formatISODate(week[0])} role="row" className="calendar-grid">
+            {week.map((day) => {
+              const isoDate = formatISODate(day);
+              const occurrences = occurrencesByDay.get(isoDate) ?? [];
 
-          return (
-            <DayCell
-              key={isoDate}
-              date={day}
-              occurrences={occurrences}
-              summary={summariseDay(occurrences, categoryLookup)}
-              isToday={isToday(day)}
-              isSelected={isSameDay(day, selectedDate)}
-              isFocused={isSameDay(day, focusedDate)}
-              isOutsideRange={day < rangeStart || day > rangeEnd}
-              onSelect={onSelect}
-            />
-          );
-        })}
+              return (
+                <DayCell
+                  key={isoDate}
+                  date={day}
+                  occurrences={occurrences}
+                  summary={summariseDay(occurrences, categoryLookup)}
+                  isToday={isToday(day)}
+                  isSelected={isSameDay(day, selectedDate)}
+                  isFocused={isSameDay(day, focusedDate)}
+                  isOutsideRange={day < rangeStart || day > rangeEnd}
+                  onSelect={onSelect}
+                />
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
