@@ -41,11 +41,15 @@ export default function MonthGrid({
 
   return (
     <div>
-      <div className="calendar-grid" style={{ marginBottom: 6, padding: '0 3px' }}>
+      <div
+        role="row"
+        className="calendar-grid"
+        style={{ marginBottom: 6, padding: '0 3px' }}
+      >
         {WEEKDAYS.map((weekday) => (
           <div
             key={weekday}
-            aria-hidden="true"
+            role="columnheader"
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 11,

@@ -124,6 +124,7 @@ export function AppContent({
                   items={items}
                   categories={categories}
                   onEdit={onEditItem}
+                  isModalOpen={isModalOpen}
                 />
               </Suspense>
             </ErrorBoundary>
