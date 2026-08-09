@@ -14,6 +14,8 @@ interface DayCellProps {
   isOutsideRange: boolean;
   isFocused: boolean;
   onSelect: (date: Date) => void;
+  /** Only move real DOM focus once the user has deliberately navigated. */
+  shouldFocus: boolean;
 }
 
 /** State outranks category, so overdue and trial-end override the accent. */
@@ -32,6 +34,7 @@ function DayCell({
   isOutsideRange,
   isFocused,
   onSelect,
+  shouldFocus,
 }: DayCellProps) {
   const accent = resolveAccent(summary);
   const visible = occurrences.slice(0, MAX_VISIBLE_LOGOS);
@@ -40,19 +43,16 @@ function DayCell({
   const buttonRef = useRef<HTMLButtonElement>(null);
   // Roving tabindex only moves the tabIndex value on its own — without this,
   // real DOM focus (and what a screen reader announces) never follows the
-  // arrow keys. The `hasMountedRef` guard skips the very first effect run so
-  // landing on the calendar view doesn't yank focus into the grid before the
-  // user has interacted with it.
-  const hasMountedRef = useRef(false);
+  // arrow keys. `shouldFocus` comes from CalendarView and is only true once
+  // the user has deliberately navigated (arrow keys, a day click, "today",
+  // or paging) — that keeps landing on the Calendar view from yanking focus
+  // into the grid, and survives cells remounting when paging past a range
+  // edge, since the flag lives above the grid rather than on the cell.
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
-    if (isFocused && buttonRef.current !== document.activeElement) {
-      buttonRef.current?.focus();
-    }
-  }, [isFocused]);
+    if (!shouldFocus || !isFocused) return;
+    if (buttonRef.current === document.activeElement) return;
+    buttonRef.current?.focus();
+  }, [shouldFocus, isFocused]);
 
   const label =
     summary.count === 0

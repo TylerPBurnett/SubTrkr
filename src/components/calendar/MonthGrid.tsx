@@ -28,6 +28,8 @@ interface MonthGridProps {
   selectedDate: Date;
   focusedDate: Date;
   onSelect: (date: Date) => void;
+  /** Only move real DOM focus once the user has deliberately navigated. */
+  shouldFocus: boolean;
 }
 
 export default function MonthGrid({
@@ -39,6 +41,7 @@ export default function MonthGrid({
   selectedDate,
   focusedDate,
   onSelect,
+  shouldFocus,
 }: MonthGridProps) {
   // Chunked into weeks because `role="gridcell"` is only valid ARIA with
   // `role="row"` ancestry inside `role="grid"`. Each row is its own 7-column
@@ -110,6 +113,7 @@ export default function MonthGrid({
                   isFocused={isSameDay(day, focusedDate)}
                   isOutsideRange={day < rangeStart || day > rangeEnd}
                   onSelect={onSelect}
+                  shouldFocus={shouldFocus}
                 />
               );
             })}

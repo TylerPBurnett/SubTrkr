@@ -45,6 +45,10 @@ export default function CalendarView({
   const [anchor, setAnchor] = useState<Date>(() => getToday());
   const [selectedDate, setSelectedDate] = useState<Date>(() => getToday());
   const [filters, setFilters] = useState<OccurrenceFilters>({});
+  // False until the user deliberately moves the selection (arrow keys,
+  // clicking a day, "today", or paging). Landing on the Calendar view, or
+  // just switching lens/filters, must not steal focus into the grid.
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   const range = useMemo(() => getCalendarRange(lens, anchor), [lens, anchor]);
   const gridDays = useMemo(
@@ -97,6 +101,7 @@ export default function CalendarView({
   // inline arrow here would hand all 42 cells a fresh prop every render.
   const selectDate = useCallback(
     (date: Date) => {
+      setHasNavigated(true);
       setSelectedDate(date);
       // Selecting outside the visible range pages the view and keeps the
       // selection, so arrow keys walk off the edge naturally.
@@ -111,8 +116,12 @@ export default function CalendarView({
     selectedDate,
     onSelectDate: selectDate,
     onLensChange: setLens,
-    onPage: (direction) => setAnchor((current) => shiftAnchor(lens, current, direction)),
+    onPage: (direction) => {
+      setHasNavigated(true);
+      setAnchor((current) => shiftAnchor(lens, current, direction));
+    },
     onToday: () => {
+      setHasNavigated(true);
       const today = getToday();
       setAnchor(today);
       setSelectedDate(today);
@@ -166,6 +175,7 @@ export default function CalendarView({
           selectedDate={selectedDate}
           focusedDate={selectedDate}
           onSelect={selectDate}
+          shouldFocus={hasNavigated}
         />
         <CashFlowStrip gridDays={gridDays} occurrencesByDay={occurrencesByDay} />
       </div>
