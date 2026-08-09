@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { addMonths, subMonths } from 'date-fns';
 import type { ItemWithCategory } from '@/types';
-import { parseLocalDate } from './dates';
+import { formatISODate, getToday, parseLocalDate } from './dates';
 import { occurrenceAt, occurrenceIndexBounds, projectOccurrences } from './occurrences';
 
 const iso = (d: Date) =>
@@ -181,13 +182,17 @@ describe('projectOccurrences', () => {
 
   test('a paused window suppresses only the occurrences inside it', () => {
     const result = projectOccurrences(
-      [item({ status: 'paused', paused_at: '2026-03-01', paused_until: '2026-06-01' })],
+      [item({ status: 'paused', paused_at: '2026-03-13', paused_until: '2026-06-13' })],
       H1, H2,
     );
+    // paused_at is inclusive: occurrence ON pause start is excluded
     assert.ok(!dates(result).includes('2026-03-13'));
-    assert.ok(!dates(result).includes('2026-05-13'));
-    assert.ok(dates(result).includes('2026-02-13'));
+    // paused_until is exclusive: occurrence ON pause end is included
     assert.ok(dates(result).includes('2026-06-13'));
+    // mid-window occurrence is excluded
+    assert.ok(!dates(result).includes('2026-05-13'));
+    // pre-window occurrence is included
+    assert.ok(dates(result).includes('2026-02-13'));
   });
 
   test('an indefinite pause suppresses everything after paused_at', () => {
@@ -200,9 +205,13 @@ describe('projectOccurrences', () => {
 
   test('cancellation keeps history and drops the future', () => {
     const result = projectOccurrences(
-      [item({ status: 'cancelled', cancellation_date: '2026-04-20' })],
+      [item({ status: 'cancelled', cancellation_date: '2026-04-13' })],
       H1, H2,
     );
+    // cancellation_date is inclusive: occurrence ON cancel date is included
+    assert.ok(dates(result).includes('2026-04-13'));
+    // occurrence after cancel date is excluded
+    assert.ok(!dates(result).includes('2026-05-13'));
     assert.deepEqual(dates(result), ['2026-01-13', '2026-02-13', '2026-03-13', '2026-04-13']);
   });
 
@@ -233,5 +242,53 @@ describe('projectOccurrences', () => {
       parseLocalDate('2026-08-31'),
     );
     assert.deepEqual(dates(result), ['2026-08-13', '2026-08-20']);
+  });
+
+  test('isPast reflects whether occurrence date is before today', () => {
+    const today = getToday();
+    const pastDate = subMonths(today, 3);
+    const futureDate = addMonths(today, 3);
+
+    const pastResult = projectOccurrences(
+      [item({ next_billing_date: formatISODate(pastDate) })],
+      subMonths(today, 4),
+      today,
+    );
+    const futureResult = projectOccurrences(
+      [item({ next_billing_date: formatISODate(futureDate) })],
+      today,
+      addMonths(today, 4),
+    );
+
+    assert.ok(pastResult.length > 0, 'should find past occurrence');
+    assert.ok(pastResult[0].isPast, 'past occurrence should have isPast=true');
+
+    assert.ok(futureResult.length > 0, 'should find future occurrence');
+    assert.ok(!futureResult[0].isPast, 'future occurrence should have isPast=false');
+  });
+
+  test('isOverdue is true for past active charges, false for cancelled/past', () => {
+    const today = getToday();
+    const pastDate = subMonths(today, 2);
+
+    const activeResult = projectOccurrences(
+      [item({ status: 'active', next_billing_date: formatISODate(pastDate) })],
+      subMonths(today, 3),
+      today,
+    );
+    const cancelledResult = projectOccurrences(
+      [item({ status: 'cancelled', next_billing_date: formatISODate(pastDate), cancellation_date: formatISODate(pastDate) })],
+      subMonths(today, 3),
+      today,
+    );
+
+    const activeCharges = activeResult.filter((o) => o.kind === 'charge');
+    const cancelledCharges = cancelledResult.filter((o) => o.kind === 'charge');
+
+    assert.ok(activeCharges.length > 0, 'should find active charge');
+    assert.ok(activeCharges[0].isOverdue, 'past active charge should be overdue');
+
+    assert.ok(cancelledCharges.length > 0, 'should find cancelled charge');
+    assert.ok(!cancelledCharges[0].isOverdue, 'past cancelled charge should not be overdue');
   });
 });
