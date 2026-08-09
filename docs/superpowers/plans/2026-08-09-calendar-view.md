@@ -2341,6 +2341,15 @@ interface YearGridProps {
   onSelectDay: (date: Date) => void;
 }
 
+/** Seven-day slices, so each row can carry `role="row"`. */
+function chunkWeeks(days: Date[]): Date[][] {
+  const rows: Date[][] = [];
+  for (let index = 0; index < days.length; index += 7) {
+    rows.push(days.slice(index, index + 7));
+  }
+  return rows;
+}
+
 /** Quantised into 4 bands — a continuous ramp reads as mush at this size. */
 function intensityFor(total: number, peak: number): number {
   if (total <= 0 || peak <= 0) return 0;
@@ -2411,39 +2420,52 @@ export default function YearGrid({
             </span>
           </button>
 
+          {/*
+            Chunked into weeks for the same reason MonthGrid is: `role="gridcell"`
+            is invalid ARIA without `role="row"` ancestry inside `role="grid"`.
+            Browsers drop the invalid role entirely, so the cells stop being cells.
+          */}
           <div
             role="grid"
             aria-label={format(first, 'MMMM yyyy')}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
           >
-            {days.map((day) => {
-              const isoDate = formatISODate(day);
-              const dayTotal = day.getMonth() === month ? (dayTotals.get(isoDate) ?? 0) : 0;
-              const intensity = intensityFor(dayTotal, peak);
+            {chunkWeeks(days).map((week) => (
+              <div
+                key={formatISODate(week[0])}
+                role="row"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}
+              >
+                {week.map((day) => {
+                  const isoDate = formatISODate(day);
+                  const dayTotal = day.getMonth() === month ? (dayTotals.get(isoDate) ?? 0) : 0;
+                  const intensity = intensityFor(dayTotal, peak);
 
-              return (
-                <button
-                  key={isoDate}
-                  type="button"
-                  role="gridcell"
-                  aria-label={
-                    dayTotal > 0
-                      ? `${day.toDateString()} — ${formatCurrency(dayTotal)}`
-                      : day.toDateString()
-                  }
-                  onClick={() => onSelectDay(day)}
-                  style={{
-                    aspectRatio: '1',
-                    borderRadius: 2,
-                    background:
-                      intensity > 0
-                        ? `color-mix(in srgb, var(--brand-primary) ${Math.round(intensity * 100)}%, transparent)`
-                        : 'var(--bg-hover)',
-                    opacity: day.getMonth() === month ? 1 : 0.25,
-                  }}
-                />
-              );
-            })}
+                  return (
+                    <button
+                      key={isoDate}
+                      type="button"
+                      role="gridcell"
+                      aria-label={
+                        dayTotal > 0
+                          ? `${day.toDateString()} — ${formatCurrency(dayTotal)}`
+                          : day.toDateString()
+                      }
+                      onClick={() => onSelectDay(day)}
+                      style={{
+                        aspectRatio: '1',
+                        borderRadius: 2,
+                        background:
+                          intensity > 0
+                            ? `color-mix(in srgb, var(--brand-primary) ${Math.round(intensity * 100)}%, transparent)`
+                            : 'var(--bg-hover)',
+                        opacity: day.getMonth() === month ? 1 : 0.25,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       ))}
