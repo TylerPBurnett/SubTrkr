@@ -17,6 +17,7 @@ import CashFlowStrip from './CashFlowStrip';
 import DayInspector from './DayInspector';
 import MonthGrid from './MonthGrid';
 import WeekGrid from './WeekGrid';
+import YearGrid from './YearGrid';
 
 interface CalendarViewProps {
   items: ItemWithCategory[];
@@ -83,6 +84,24 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
   }, [items]);
 
   const renderLens = () => {
+    if (lens === 'year') {
+      return (
+        <YearGrid
+          year={anchor.getFullYear()}
+          occurrencesByDay={occurrencesByDay}
+          onSelectMonth={(date) => {
+            setAnchor(date);
+            setLens('month');
+          }}
+          onSelectDay={(date) => {
+            setAnchor(date);
+            setSelectedDate(date);
+            setLens('month');
+          }}
+        />
+      );
+    }
+
     if (lens === 'week') {
       return (
         <WeekGrid
@@ -107,9 +126,7 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
           focusedDate={selectedDate}
           onSelect={setSelectedDate}
         />
-        {lens === 'month' && (
-          <CashFlowStrip gridDays={gridDays} occurrencesByDay={occurrencesByDay} />
-        )}
+        <CashFlowStrip gridDays={gridDays} occurrencesByDay={occurrencesByDay} />
       </div>
     );
   };
