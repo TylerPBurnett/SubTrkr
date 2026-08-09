@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
+import { addDays } from 'date-fns';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemWithCategory } from '@/types';
 import { createCategoryLookup } from '@/utils/categories';
-import { getToday } from '@/utils/dates';
+import { formatISODate, getToday } from '@/utils/dates';
 import { groupByDay, projectOccurrences } from '@/utils/occurrences';
 import {
   buildGridDays,
@@ -12,6 +13,7 @@ import {
   shiftAnchor,
   type CalendarLens,
 } from './calendarRange';
+import DayInspector from './DayInspector';
 import MonthGrid from './MonthGrid';
 
 interface CalendarViewProps {
@@ -26,7 +28,7 @@ const LENS_TABS: Array<{ id: CalendarLens; label: string }> = [
   { id: 'year', label: 'Year' },
 ];
 
-export default function CalendarView({ items, categories }: CalendarViewProps) {
+export default function CalendarView({ items, categories, onEdit }: CalendarViewProps) {
   const [lens, setLens] = useState<CalendarLens>('month');
   const [anchor, setAnchor] = useState<Date>(() => getToday());
   const [selectedDate, setSelectedDate] = useState<Date>(() => getToday());
@@ -45,6 +47,38 @@ export default function CalendarView({ items, categories }: CalendarViewProps) {
     [items, range.gridStart, range.gridEnd],
   );
   const occurrencesByDay = useMemo(() => groupByDay(occurrences), [occurrences]);
+
+  const [railOpen, setRailOpen] = useState(true);
+  const [railFits, setRailFits] = useState(() => window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const onResize = () => setRailFits(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const showRail = railOpen && railFits;
+
+  // "August" means August, so headline totals use the range bounds even
+  // though the engine ran over the padded grid.
+  const rangeOccurrences = useMemo(
+    () =>
+      occurrences.filter(
+        (occurrence) =>
+          occurrence.date >= range.rangeStart && occurrence.date <= range.rangeEnd,
+      ),
+    [occurrences, range.rangeStart, range.rangeEnd],
+  );
+
+  const selectedOccurrences = useMemo(
+    () => occurrencesByDay.get(formatISODate(selectedDate)) ?? [],
+    [occurrencesByDay, selectedDate],
+  );
+
+  const upcoming = useMemo(() => {
+    const today = getToday();
+    return projectOccurrences(items, today, addDays(today, 90)).slice(0, 5);
+  }, [items]);
 
   const renderLens = () => (
     <MonthGrid
@@ -103,10 +137,41 @@ export default function CalendarView({ items, categories }: CalendarViewProps) {
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+
+          {railFits && (
+            <button
+              type="button"
+              aria-label={showRail ? 'Hide details' : 'Show details'}
+              aria-pressed={showRail}
+              className="nav-item rounded-lg p-1.5"
+              onClick={() => setRailOpen((open) => !open)}
+            >
+              <PanelRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {renderLens()}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: showRail ? 'minmax(0, 1fr) 280px' : 'minmax(0, 1fr)',
+          gap: 16,
+          alignItems: 'start',
+        }}
+      >
+        {renderLens()}
+
+        {showRail && (
+          <DayInspector
+            selectedDate={selectedDate}
+            selectedOccurrences={selectedOccurrences}
+            rangeOccurrences={rangeOccurrences}
+            upcoming={upcoming}
+            onEdit={onEdit}
+          />
+        )}
+      </div>
     </div>
   );
 }
