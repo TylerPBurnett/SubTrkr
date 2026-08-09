@@ -34,10 +34,15 @@ describe('getCalendarRange', () => {
   });
 
   test('the month grid always holds whole weeks', () => {
-    for (const iso of ['2026-02-13', '2026-08-13', '2027-05-01']) {
+    const cases = [
+      { iso: '2026-02-13', expectedDays: 28 }, // Sunday start, 28-day month: 4 weeks
+      { iso: '2026-08-13', expectedDays: 42 }, // Saturday start, 31-day month: 6 weeks
+      { iso: '2027-05-01', expectedDays: 42 }, // Thursday start, 30-day month: 6 weeks
+    ];
+    for (const { iso, expectedDays } of cases) {
       const range = getCalendarRange('month', parseLocalDate(iso));
       const days = buildGridDays(range.gridStart, range.gridEnd);
-      assert.equal(days.length % 7, 0, `expected whole weeks for ${iso}`);
+      assert.equal(days.length, expectedDays, `expected ${expectedDays} days for ${iso}, got ${days.length}`);
     }
   });
 });
@@ -67,6 +72,13 @@ describe('formatRangeTitle', () => {
     assert.equal(
       formatRangeTitle('week', parseLocalDate('2026-08-31')),
       'Aug 30 – Sep 5, 2026',
+    );
+  });
+
+  test('a week spanning two years includes year on both sides', () => {
+    assert.equal(
+      formatRangeTitle('week', parseLocalDate('2026-12-30')),
+      'Dec 27, 2026 – Jan 2, 2027',
     );
   });
 });

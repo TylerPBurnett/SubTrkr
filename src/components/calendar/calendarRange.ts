@@ -67,8 +67,15 @@ export function formatRangeTitle(lens: CalendarLens, anchor: Date): string {
 
   const start = startOfWeek(anchor, WEEK_OPTIONS);
   const end = endOfWeek(anchor, WEEK_OPTIONS);
-  const tail = isSameMonth(start, end) ? format(end, 'd, yyyy') : format(end, 'MMM d, yyyy');
+  const sameYear = start.getFullYear() === end.getFullYear();
 
+  if (!sameYear) {
+    // Different years: include year on both sides
+    return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`;
+  }
+
+  // Same year: year only on end side
+  const tail = isSameMonth(start, end) ? format(end, 'd, yyyy') : format(end, 'MMM d, yyyy');
   return `${format(start, 'MMM d')} – ${tail}`;
 }
 
