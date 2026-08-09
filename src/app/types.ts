@@ -1,5 +1,6 @@
 export type View =
   | 'dashboard'
+  | 'calendar'
   | 'bills'
   | 'subscriptions'
   | 'analytics'

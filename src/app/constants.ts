@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarDays,
   CreditCard,
   LayoutDashboard,
   Receipt,
@@ -15,6 +16,11 @@ export const VIEW_CONTENT: Record<
     label: 'Overview',
     title: 'Dashboard',
     description: 'Your spending overview at a glance',
+  },
+  calendar: {
+    label: 'Planning',
+    title: 'Calendar',
+    description: 'Your bills and subscriptions across time',
   },
   bills: {
     label: 'Utilities',
@@ -44,6 +50,7 @@ export const NAV_ITEMS: Array<{
   icon: LucideIcon;
 }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
   { id: 'bills', label: 'Bills', icon: Receipt },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },

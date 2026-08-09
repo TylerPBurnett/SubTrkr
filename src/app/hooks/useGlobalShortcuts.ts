@@ -69,10 +69,11 @@ export function useGlobalShortcuts({
         return;
       }
 
-      if (mod && event.key >= '1' && event.key <= '5') {
+      if (mod && event.key >= '1' && event.key <= '6') {
         event.preventDefault();
         const views: View[] = [
           'dashboard',
+          'calendar',
           'subscriptions',
           'bills',
           'analytics',

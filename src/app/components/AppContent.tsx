@@ -14,6 +14,7 @@ import type { View } from '../types';
 
 const Analytics = lazy(() => import('@/components/Analytics'));
 const Settings = lazy(() => import('@/components/Settings'));
+const CalendarView = lazy(() => import('@/components/calendar/CalendarView'));
 
 interface AppContentProps {
   session: Session;
@@ -114,6 +115,18 @@ export function AppContent({
               onViewAll={() => onViewChange('subscriptions')}
               onAddNew={() => onAddNew('subscription')}
             />
+          )}
+
+          {view === 'calendar' && (
+            <ErrorBoundary>
+              <Suspense fallback={<LazyComponentFallback />}>
+                <CalendarView
+                  items={items}
+                  categories={categories}
+                  onEdit={onEditItem}
+                />
+              </Suspense>
+            </ErrorBoundary>
           )}
 
           {view === 'bills' && (
