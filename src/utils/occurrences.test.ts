@@ -69,6 +69,7 @@ describe('occurrenceIndexBounds', () => {
   });
 
   test('padding absorbs month-end clamping across multiple cases', () => {
+    const CYCLES = ['weekly', 'monthly', 'quarterly', 'yearly'] as const;
     const testCases = [
       {
         anchor: parseLocalDate('2026-01-31'),
@@ -86,19 +87,23 @@ describe('occurrenceIndexBounds', () => {
         rangeEnd: parseLocalDate('2025-06-15'),
       },
       {
-        anchor: parseLocalDate('2024-02-29'),
-        rangeStart: parseLocalDate('2026-12-20'),
-        rangeEnd: parseLocalDate('2027-01-10'),
+        anchor: parseLocalDate('2024-12-31'),
+        rangeStart: parseLocalDate('2026-12-01'),
+        rangeEnd: parseLocalDate('2027-01-15'),
       },
     ];
 
+    const matchesPerCycle = new Map<string, number>();
+
     for (const { anchor, rangeStart, rangeEnd } of testCases) {
-      for (const cycle of ['weekly', 'monthly', 'quarterly', 'yearly'] as const) {
+      for (const cycle of CYCLES) {
         const naive: string[] = [];
         for (let n = -2000; n <= 2000; n += 1) {
           const date = occurrenceAt(anchor, cycle, n);
           if (date >= rangeStart && date <= rangeEnd) naive.push(iso(date));
         }
+
+        matchesPerCycle.set(cycle, (matchesPerCycle.get(cycle) ?? 0) + naive.length);
 
         const { lo, hi } = occurrenceIndexBounds(anchor, cycle, rangeStart, rangeEnd);
         const solved: string[] = [];
@@ -113,6 +118,13 @@ describe('occurrenceIndexBounds', () => {
           `anchor ${iso(anchor)}, range ${iso(rangeStart)}..${iso(rangeEnd)}, cycle ${cycle}`,
         );
       }
+    }
+
+    for (const cycle of CYCLES) {
+      assert.ok(
+        (matchesPerCycle.get(cycle) ?? 0) > 0,
+        `no test case produces a ${cycle} occurrence — the equivalence assertion is vacuous for this cycle`,
+      );
     }
   });
 });
