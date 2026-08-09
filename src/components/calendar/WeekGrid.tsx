@@ -21,25 +21,26 @@ export default function WeekGrid({
   onEdit,
 }: WeekGridProps) {
   return (
-    <div className="calendar-grid" role="grid" aria-label="Week view">
-      {gridDays.map((day) => {
-        const isoDate = formatISODate(day);
-        const occurrences = occurrencesByDay.get(isoDate) ?? [];
-        const selected = isSameDay(day, selectedDate);
+    <div role="grid" aria-label="Week view">
+      <div className="calendar-grid" role="row">
+        {gridDays.map((day) => {
+          const isoDate = formatISODate(day);
+          const occurrences = occurrencesByDay.get(isoDate) ?? [];
+          const selected = isSameDay(day, selectedDate);
 
-        return (
-          <div
-            key={isoDate}
-            role="gridcell"
-            aria-selected={selected}
-            className="calendar-day"
-            style={{
-              minHeight: 420,
-              boxShadow: selected
-                ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--brand-primary) 45%, transparent)'
-                : undefined,
-            }}
-          >
+          return (
+            <div
+              key={isoDate}
+              role="gridcell"
+              aria-selected={selected}
+              className="calendar-day"
+              style={{
+                minHeight: 420,
+                boxShadow: selected
+                  ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--brand-primary) 45%, transparent)'
+                  : undefined,
+              }}
+            >
             <button
               type="button"
               onClick={() => onSelect(day)}
@@ -124,9 +125,10 @@ export default function WeekGrid({
                 </button>
               ))}
             </div>
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
