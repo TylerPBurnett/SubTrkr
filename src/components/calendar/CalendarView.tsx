@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { addDays } from 'date-fns';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemWithCategory } from '@/types';
@@ -49,6 +50,20 @@ export default function CalendarView({
   // clicking a day, "today", or paging). Landing on the Calendar view, or
   // just switching lens/filters, must not steal focus into the grid.
   const [hasNavigated, setHasNavigated] = useState(false);
+  // Which way the lens region should slide: 1 for forward/next, -1 for
+  // back/previous. Read by the AnimatePresence transition below.
+  const [direction, setDirection] = useState<-1 | 1>(1);
+
+  // Single path for both chevron clicks and keyboard paging so the slide
+  // direction and focus-follows-selection behaviour stay in sync between
+  // mouse and keyboard. Mirrors the `hasNavigated` set that Task 13's inline
+  // `onPage` callback used to do, since paging counts as deliberate
+  // navigation just like arrow keys or clicking a day.
+  const page = (next: -1 | 1) => {
+    setHasNavigated(true);
+    setDirection(next);
+    setAnchor((current) => shiftAnchor(lens, current, next));
+  };
 
   const range = useMemo(() => getCalendarRange(lens, anchor), [lens, anchor]);
   const gridDays = useMemo(
@@ -116,10 +131,7 @@ export default function CalendarView({
     selectedDate,
     onSelectDate: selectDate,
     onLensChange: setLens,
-    onPage: (direction) => {
-      setHasNavigated(true);
-      setAnchor((current) => shiftAnchor(lens, current, direction));
-    },
+    onPage: page,
     onToday: () => {
       setHasNavigated(true);
       const today = getToday();
@@ -203,7 +215,7 @@ export default function CalendarView({
             type="button"
             aria-label="Previous"
             className="nav-item rounded-lg p-1.5"
-            onClick={() => setAnchor((current) => shiftAnchor(lens, current, -1))}
+            onClick={() => page(-1)}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -222,7 +234,7 @@ export default function CalendarView({
             type="button"
             aria-label="Next"
             className="nav-item rounded-lg p-1.5"
-            onClick={() => setAnchor((current) => shiftAnchor(lens, current, 1))}
+            onClick={() => page(1)}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -255,17 +267,36 @@ export default function CalendarView({
           alignItems: 'start',
         }}
       >
-        {renderLens()}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`${lens}-${formatRangeTitle(lens, anchor)}`}
+            initial={{ opacity: 0, x: direction * 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -8 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+          >
+            {renderLens()}
+          </motion.div>
+        </AnimatePresence>
 
-        {showRail && (
-          <DayInspector
-            selectedDate={selectedDate}
-            selectedOccurrences={selectedOccurrences}
-            rangeOccurrences={rangeOccurrences}
-            upcoming={upcoming}
-            onEdit={onEdit}
-          />
-        )}
+        <AnimatePresence initial={false}>
+          {showRail && (
+            <motion.div
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 12 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
+              <DayInspector
+                selectedDate={selectedDate}
+                selectedOccurrences={selectedOccurrences}
+                rangeOccurrences={rangeOccurrences}
+                upcoming={upcoming}
+                onEdit={onEdit}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
