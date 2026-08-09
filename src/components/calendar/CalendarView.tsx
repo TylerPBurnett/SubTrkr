@@ -13,6 +13,7 @@ import {
   shiftAnchor,
   type CalendarLens,
 } from './calendarRange';
+import CashFlowStrip from './CashFlowStrip';
 import DayInspector from './DayInspector';
 import MonthGrid from './MonthGrid';
 
@@ -81,16 +82,21 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
   }, [items]);
 
   const renderLens = () => (
-    <MonthGrid
-      gridDays={gridDays}
-      occurrencesByDay={occurrencesByDay}
-      categoryLookup={categoryLookup}
-      rangeStart={range.rangeStart}
-      rangeEnd={range.rangeEnd}
-      selectedDate={selectedDate}
-      focusedDate={selectedDate}
-      onSelect={setSelectedDate}
-    />
+    <div className="flex flex-col gap-2">
+      <MonthGrid
+        gridDays={gridDays}
+        occurrencesByDay={occurrencesByDay}
+        categoryLookup={categoryLookup}
+        rangeStart={range.rangeStart}
+        rangeEnd={range.rangeEnd}
+        selectedDate={selectedDate}
+        focusedDate={selectedDate}
+        onSelect={setSelectedDate}
+      />
+      {lens === 'month' && (
+        <CashFlowStrip gridDays={gridDays} occurrencesByDay={occurrencesByDay} />
+      )}
+    </div>
   );
 
   return (
