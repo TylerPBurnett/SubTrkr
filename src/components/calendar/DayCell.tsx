@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import ServiceLogo from '@/components/ui/ServiceLogo';
 import { formatCurrency } from '@/utils/currency';
 import type { DaySummary, Occurrence } from '@/utils/occurrences';
@@ -37,6 +37,23 @@ function DayCell({
   const visible = occurrences.slice(0, MAX_VISIBLE_LOGOS);
   const overflow = occurrences.length - visible.length;
 
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  // Roving tabindex only moves the tabIndex value on its own — without this,
+  // real DOM focus (and what a screen reader announces) never follows the
+  // arrow keys. The `hasMountedRef` guard skips the very first effect run so
+  // landing on the calendar view doesn't yank focus into the grid before the
+  // user has interacted with it.
+  const hasMountedRef = useRef(false);
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    if (isFocused && buttonRef.current !== document.activeElement) {
+      buttonRef.current?.focus();
+    }
+  }, [isFocused]);
+
   const label =
     summary.count === 0
       ? `${date.toDateString()} — nothing due`
@@ -44,6 +61,7 @@ function DayCell({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       role="gridcell"
       aria-selected={isSelected}

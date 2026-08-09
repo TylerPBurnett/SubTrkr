@@ -2,10 +2,22 @@ import { useMemo } from 'react';
 import { isSameDay, isToday } from 'date-fns';
 import type { Category } from '@/types';
 import { formatISODate } from '@/utils/dates';
-import { summariseDay, type Occurrence } from '@/utils/occurrences';
+import { summariseDay, type DaySummary, type Occurrence } from '@/utils/occurrences';
 import DayCell from './DayCell';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Shared references for empty days so `DayCell`'s React.memo doesn't see a
+// fresh array/object prop on every render — most cells have no occurrences,
+// and selectedDate changes on every arrow keypress.
+const NO_OCCURRENCES: Occurrence[] = [];
+const EMPTY_SUMMARY: DaySummary = {
+  total: 0,
+  count: 0,
+  accentColor: null,
+  hasOverdue: false,
+  hasTrialEnd: false,
+};
 
 interface MonthGridProps {
   gridDays: Date[];
@@ -38,6 +50,18 @@ export default function MonthGrid({
     }
     return rows;
   }, [gridDays]);
+
+  // Computed once per occurrences/category change rather than inline per
+  // cell, so DayCell's memo sees a stable object for days that didn't
+  // change instead of a brand-new one on every render (e.g. every arrow
+  // keypress, which only changes selectedDate).
+  const summaryByDate = useMemo(() => {
+    const map = new Map<string, DaySummary>();
+    occurrencesByDay.forEach((occurrences, isoDate) => {
+      map.set(isoDate, summariseDay(occurrences, categoryLookup));
+    });
+    return map;
+  }, [occurrencesByDay, categoryLookup]);
 
   return (
     <div>
@@ -72,14 +96,15 @@ export default function MonthGrid({
           <div key={formatISODate(week[0])} role="row" className="calendar-grid">
             {week.map((day) => {
               const isoDate = formatISODate(day);
-              const occurrences = occurrencesByDay.get(isoDate) ?? [];
+              const occurrences = occurrencesByDay.get(isoDate) ?? NO_OCCURRENCES;
+              const summary = summaryByDate.get(isoDate) ?? EMPTY_SUMMARY;
 
               return (
                 <DayCell
                   key={isoDate}
                   date={day}
                   occurrences={occurrences}
-                  summary={summariseDay(occurrences, categoryLookup)}
+                  summary={summary}
                   isToday={isToday(day)}
                   isSelected={isSameDay(day, selectedDate)}
                   isFocused={isSameDay(day, focusedDate)}
