@@ -16,6 +16,7 @@ import {
 import CashFlowStrip from './CashFlowStrip';
 import DayInspector from './DayInspector';
 import MonthGrid from './MonthGrid';
+import WeekGrid from './WeekGrid';
 
 interface CalendarViewProps {
   items: ItemWithCategory[];
@@ -81,23 +82,37 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
     return projectOccurrences(items, today, addDays(today, 90)).slice(0, 5);
   }, [items]);
 
-  const renderLens = () => (
-    <div className="flex flex-col gap-2">
-      <MonthGrid
-        gridDays={gridDays}
-        occurrencesByDay={occurrencesByDay}
-        categoryLookup={categoryLookup}
-        rangeStart={range.rangeStart}
-        rangeEnd={range.rangeEnd}
-        selectedDate={selectedDate}
-        focusedDate={selectedDate}
-        onSelect={setSelectedDate}
-      />
-      {lens === 'month' && (
-        <CashFlowStrip gridDays={gridDays} occurrencesByDay={occurrencesByDay} />
-      )}
-    </div>
-  );
+  const renderLens = () => {
+    if (lens === 'week') {
+      return (
+        <WeekGrid
+          gridDays={gridDays}
+          occurrencesByDay={occurrencesByDay}
+          selectedDate={selectedDate}
+          onSelect={setSelectedDate}
+          onEdit={onEdit}
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        <MonthGrid
+          gridDays={gridDays}
+          occurrencesByDay={occurrencesByDay}
+          categoryLookup={categoryLookup}
+          rangeStart={range.rangeStart}
+          rangeEnd={range.rangeEnd}
+          selectedDate={selectedDate}
+          focusedDate={selectedDate}
+          onSelect={setSelectedDate}
+        />
+        {lens === 'month' && (
+          <CashFlowStrip gridDays={gridDays} occurrencesByDay={occurrencesByDay} />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
