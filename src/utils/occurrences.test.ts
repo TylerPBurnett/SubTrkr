@@ -67,4 +67,47 @@ describe('occurrenceIndexBounds', () => {
     );
     assert.ok(hi - lo <= 4, `expected a tight span, got ${hi - lo}`);
   });
+
+  test('padding absorbs month-end clamping across multiple cases', () => {
+    const testCases = [
+      {
+        anchor: parseLocalDate('2026-01-31'),
+        rangeStart: parseLocalDate('2026-02-20'),
+        rangeEnd: parseLocalDate('2026-03-10'),
+      },
+      {
+        anchor: parseLocalDate('2019-03-31'),
+        rangeStart: parseLocalDate('2019-01-15'),
+        rangeEnd: parseLocalDate('2019-05-20'),
+      },
+      {
+        anchor: parseLocalDate('2025-04-30'),
+        rangeStart: parseLocalDate('2025-03-10'),
+        rangeEnd: parseLocalDate('2025-06-15'),
+      },
+    ];
+
+    for (const { anchor, rangeStart, rangeEnd } of testCases) {
+      for (const cycle of ['weekly', 'monthly', 'quarterly', 'yearly'] as const) {
+        const naive: string[] = [];
+        for (let n = -2000; n <= 2000; n += 1) {
+          const date = occurrenceAt(anchor, cycle, n);
+          if (date >= rangeStart && date <= rangeEnd) naive.push(iso(date));
+        }
+
+        const { lo, hi } = occurrenceIndexBounds(anchor, cycle, rangeStart, rangeEnd);
+        const solved: string[] = [];
+        for (let n = lo; n <= hi; n += 1) {
+          const date = occurrenceAt(anchor, cycle, n);
+          if (date >= rangeStart && date <= rangeEnd) solved.push(iso(date));
+        }
+
+        assert.deepEqual(
+          solved,
+          naive,
+          `anchor ${iso(anchor)}, range ${iso(rangeStart)}..${iso(rangeEnd)}, cycle ${cycle}`,
+        );
+      }
+    }
+  });
 });
