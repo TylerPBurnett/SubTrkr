@@ -86,7 +86,7 @@ export function groupByDay(occurrences: Occurrence[]): Map<string, Occurrence[]>
 | `CalendarView.tsx` | Shell. Owns lens, anchor date, selected day, filters, rail visibility. Runs the one `useMemo` over `projectOccurrences`. |
 | `calendarRange.ts` | Pure range math: lens + anchor date → `{ rangeStart, rangeEnd, gridStart, gridEnd }`. |
 
-**Range versus grid.** `rangeStart`/`rangeEnd` bound the period the lens is *about* (the calendar month); `gridStart`/`gridEnd` bound what is *drawn* (week-padded, so the leading and trailing rows include adjacent-month days). The engine is always called with the **grid** bounds, because those padded days must render their icons. Every headline total — the rail summary, the year-view month totals — is then filtered back to the **range** bounds, so "August" means August. The cash-flow strip is the deliberate exception: its bars total grid rows, because a bar sitting under a row must describe that row. The strip's bars therefore sum to slightly more than the rail's month total in most months, which is correct and not a defect.
+**Range versus grid.** `rangeStart`/`rangeEnd` bound the period the lens is *about* (the calendar month); `gridStart`/`gridEnd` bound what is *drawn* (week-padded, so the leading and trailing rows include adjacent-month days). The engine is always called with the **grid** bounds, because those padded days must render their icons. Every headline total — the rail summary, the year-view month totals — is then filtered back to the **range** bounds, so "August" means August. The cash-flow strip is the deliberate exception: a bar labelled with a week's dates must total that whole week, including its adjacent-month days. The strip's bars therefore sum to slightly more than the rail's month total in most months, which is correct and not a defect.
 | `useCalendarNavigation.ts` | Keyboard handling, selection movement, paging. |
 | `MonthGrid.tsx` | 7-column grid, 5–6 week rows. |
 | `WeekGrid.tsx` | 7 tall day columns. |
@@ -209,7 +209,9 @@ Auto-hides when the main panel drops below 1024px.
 
 ### Cash-flow strip
 
-A 32px strip beneath the month grid: **one bar per rendered grid row**, column-aligned with the rows above it, so a bar always means exactly the week drawn beside it. Rows are the grid's own weeks, which means leading and trailing rows include adjacent-month days — the bar totals what that row actually shows, not what the calendar month contains. Height is relative to the heaviest row; each bar is labelled with its total in `--font-mono`. Hidden in week and year lenses.
+A 32px strip beneath the month grid: **one bar per grid week**, read left to right as a timeline of the month — first week through last. Weeks are the grid's own rows, so the first and last include adjacent-month days; each bar totals the week it represents, not the slice of it that falls inside the calendar month. Height is relative to the heaviest week; each bar is labelled with its total in `--font-mono` and its date span underneath. Hidden in week and year lenses.
+
+The bars are a horizontal timeline, not a per-row gutter — grid rows stack vertically and nothing beneath the grid can align with them.
 
 ### Filter bar
 
