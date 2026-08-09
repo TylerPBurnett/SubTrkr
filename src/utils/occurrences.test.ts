@@ -11,6 +11,7 @@ import {
   projectOccurrences,
   summariseDay,
   sumOccurrences,
+  type Occurrence,
 } from './occurrences';
 import { createCategoryLookup } from './categories';
 
@@ -325,6 +326,30 @@ describe('filters', () => {
     );
   });
 
+  test('paused items are included by default and excluded when includePaused is false', () => {
+    const itemsWithPaused = [
+      item({ id: 'paused-item', status: 'paused', paused_at: '2026-03-13', paused_until: '2026-06-13' }),
+    ];
+    const defaultResult = projectOccurrences(itemsWithPaused, H1, H2);
+    assert.ok(defaultResult.length > 0, 'paused item should produce occurrences by default');
+    assert.ok(defaultResult.some((o) => o.item.id === 'paused-item'));
+
+    const excludedResult = projectOccurrences(itemsWithPaused, H1, H2, { includePaused: false });
+    assert.ok(!excludedResult.some((o) => o.item.id === 'paused-item'));
+  });
+
+  test('cancelled items are included by default and excluded when includeCancelled is false', () => {
+    const itemsWithCancelled = [
+      item({ id: 'cancelled-item', status: 'cancelled', cancellation_date: '2026-04-13' }),
+    ];
+    const defaultResult = projectOccurrences(itemsWithCancelled, H1, H2);
+    assert.ok(defaultResult.length > 0, 'cancelled item should produce occurrences by default');
+    assert.ok(defaultResult.some((o) => o.item.id === 'cancelled-item'));
+
+    const excludedResult = projectOccurrences(itemsWithCancelled, H1, H2, { includeCancelled: false });
+    assert.ok(!excludedResult.some((o) => o.item.id === 'cancelled-item'));
+  });
+
   test('itemType narrows to one kind', () => {
     const result = projectOccurrences(items, H1, H2, { itemType: 'bill' });
     assert.ok(result.every((o) => o.item.item_type === 'bill'));
@@ -372,14 +397,31 @@ describe('day folding', () => {
 
   test('summariseDay takes its accent from the largest charge', () => {
     const lookup = createCategoryLookup([category('cat-a', '#111111'), category('cat-b', '#222222')]);
-    const occurrences = projectOccurrences(
-      [
-        item({ id: 'small', amount: 5, category_id: 'cat-a' }),
-        item({ id: 'big', amount: 50, category_id: 'cat-b' }),
-      ],
-      parseLocalDate('2026-08-01'),
-      parseLocalDate('2026-08-31'),
-    );
+    const testDate = parseLocalDate('2026-08-13');
+
+    // Construct occurrences directly with largest LAST to prove it finds by amount, not position
+    const occurrences: Occurrence[] = [
+      {
+        id: 'small:2026-08-13:charge',
+        item: item({ id: 'small', amount: 5, category_id: 'cat-a' }),
+        date: testDate,
+        isoDate: '2026-08-13',
+        amount: 5,
+        kind: 'charge',
+        isPast: false,
+        isOverdue: false,
+      },
+      {
+        id: 'big:2026-08-13:charge',
+        item: item({ id: 'big', amount: 50, category_id: 'cat-b' }),
+        date: testDate,
+        isoDate: '2026-08-13',
+        amount: 50,
+        kind: 'charge',
+        isPast: false,
+        isOverdue: false,
+      },
+    ];
 
     const summary = summariseDay(occurrences, lookup);
     assert.equal(summary.accentColor, '#222222');
@@ -392,5 +434,58 @@ describe('day folding', () => {
     assert.equal(summary.accentColor, null);
     assert.equal(summary.count, 0);
     assert.equal(summary.total, 0);
+  });
+
+  test('summariseDay reports hasOverdue for past active charges', () => {
+    const today = getToday();
+    const pastDate = subMonths(today, 2);
+    const occurrences = projectOccurrences(
+      [item({ status: 'active', next_billing_date: formatISODate(pastDate) })],
+      subMonths(today, 3),
+      today,
+    ).filter((o) => o.kind === 'charge');
+
+    assert.ok(occurrences.length > 0, 'should have at least one overdue charge');
+    const summary = summariseDay(occurrences, createCategoryLookup([]));
+    assert.equal(summary.hasOverdue, true);
+  });
+
+  test('summariseDay reports hasTrialEnd for trial-end occurrences', () => {
+    const trialEndDate = parseLocalDate('2026-03-13');
+    const occurrences: Occurrence[] = [
+      {
+        id: 'trial:2026-03-13:trial-end',
+        item: item({ id: 'trial-item', status: 'trial', trial_end_date: '2026-03-13', start_date: '2026-01-13' }),
+        date: trialEndDate,
+        isoDate: '2026-03-13',
+        amount: 0,
+        kind: 'trial-end',
+        isPast: false,
+        isOverdue: false,
+      },
+    ];
+
+    const summary = summariseDay(occurrences, createCategoryLookup([]));
+    assert.equal(summary.hasTrialEnd, true);
+  });
+
+  test('summariseDay uses accentColor fallback when no charges exist', () => {
+    const trialEndDate = parseLocalDate('2026-03-13');
+    const occurrences: Occurrence[] = [
+      {
+        id: 'trial:2026-03-13:trial-end',
+        item: item({ id: 'trial-item', status: 'trial', trial_end_date: '2026-03-13', start_date: '2026-01-13' }),
+        date: trialEndDate,
+        isoDate: '2026-03-13',
+        amount: 0,
+        kind: 'trial-end',
+        isPast: false,
+        isOverdue: false,
+      },
+    ];
+
+    const summary = summariseDay(occurrences, createCategoryLookup([]));
+    // Should fall back to UNCATEGORIZED_CATEGORY_COLOR since there are no charges
+    assert.equal(summary.accentColor, '#6b7280');
   });
 });
