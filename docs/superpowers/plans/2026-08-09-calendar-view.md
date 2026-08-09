@@ -269,7 +269,9 @@ Turn items into occurrences, honouring pause windows, cancellation cutoffs, tria
 
 **Interfaces:**
 - Consumes: `occurrenceAt`, `occurrenceIndexBounds` from Task 1.
-- Produces: types `OccurrenceKind`, `Occurrence`, `ItemSchedule`; functions `getItemSchedule(item: ItemWithCategory): ItemSchedule | null` and `projectOccurrences(items: ItemWithCategory[], rangeStart: Date, rangeEnd: Date, filters?: OccurrenceFilters): Occurrence[]`. `OccurrenceFilters` lands in Task 3 — declare it here as an empty-optional type and fill it in then.
+- Produces: types `OccurrenceKind`, `Occurrence`, `ItemSchedule`; functions `getItemSchedule(item: ItemWithCategory): ItemSchedule | null` and `projectOccurrences(items: ItemWithCategory[], rangeStart: Date, rangeEnd: Date): Occurrence[]`.
+
+**Do not add a filters parameter in this task.** Task 3 widens the signature to `projectOccurrences(items, rangeStart, rangeEnd, filters?: OccurrenceFilters)`. Scaffolding it early would mean shipping an empty interface and a no-op predicate — dead code that earns a review finding for no benefit.
 
 **Why `next_billing_date` is the anchor:** existing helpers anchor on `start_date`, which is right for *computing* a next date. It is wrong here. If a user hand-edits `next_billing_date` it leaves the `start_date` lattice, and a `start_date`-anchored calendar would disagree with the "next due" date shown in Dashboard and ItemList. Anchoring on `next_billing_date` keeps the surfaces consistent by construction.
 
@@ -426,9 +428,6 @@ export interface Occurrence {
   isOverdue: boolean;
 }
 
-/** Filled in by Task 3. */
-export interface OccurrenceFilters {}
-
 export interface ItemSchedule {
   anchor: Date;
   cycle: BillingCycle;
@@ -532,14 +531,11 @@ export function projectOccurrences(
   items: ItemWithCategory[],
   rangeStart: Date,
   rangeEnd: Date,
-  filters: OccurrenceFilters = {},
 ): Occurrence[] {
   const today = getToday();
   const result: Occurrence[] = [];
 
   for (const item of items) {
-    if (!passesFilters(item, filters)) continue;
-
     const schedule = getItemSchedule(item);
     if (!schedule) continue;
 
@@ -567,14 +563,6 @@ export function projectOccurrences(
     if (byAmount !== 0) return byAmount;
     return a.item.name.localeCompare(b.item.name);
   });
-}
-```
-
-Add a placeholder `passesFilters` just above `projectOccurrences` — Task 3 replaces its body:
-
-```ts
-function passesFilters(_item: ItemWithCategory, _filters: OccurrenceFilters): boolean {
-  return true;
 }
 ```
 
@@ -745,7 +733,7 @@ import type { Category, ItemType, ItemWithCategory } from '@/types';
 import { UNCATEGORIZED_CATEGORY_COLOR, resolveItemCategoryDisplay } from './categories';
 ```
 
-Replace the placeholder `OccurrenceFilters` and `passesFilters` with:
+Add the filter type and predicate. Neither exists yet — Task 2 deliberately left them out rather than shipping an empty scaffold:
 
 ```ts
 /**
@@ -787,6 +775,25 @@ function passesFilters(item: ItemWithCategory, filters: OccurrenceFilters): bool
 
   return true;
 }
+```
+
+Then widen `projectOccurrences` to accept them — add the fourth parameter and the guard at the top of the item loop:
+
+```ts
+export function projectOccurrences(
+  items: ItemWithCategory[],
+  rangeStart: Date,
+  rangeEnd: Date,
+  filters: OccurrenceFilters = {},
+): Occurrence[] {
+  const today = getToday();
+  const result: Occurrence[] = [];
+
+  for (const item of items) {
+    if (!passesFilters(item, filters)) continue;
+
+    const schedule = getItemSchedule(item);
+    // ...the rest of the loop body from Task 2 is unchanged
 ```
 
 Append the folds:
