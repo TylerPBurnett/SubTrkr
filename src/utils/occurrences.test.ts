@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import type { ItemWithCategory } from '@/types';
 import { parseLocalDate } from './dates';
-import { occurrenceAt, occurrenceIndexBounds } from './occurrences';
+import { occurrenceAt, occurrenceIndexBounds, projectOccurrences } from './occurrences';
 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -126,5 +127,111 @@ describe('occurrenceIndexBounds', () => {
         `no test case produces a ${cycle} occurrence — the equivalence assertion is vacuous for this cycle`,
       );
     }
+  });
+});
+
+function item(overrides: Partial<ItemWithCategory> = {}): ItemWithCategory {
+  return {
+    id: 'item-1',
+    name: 'Netflix',
+    amount: 22.99,
+    currency: 'USD',
+    billing_cycle: 'monthly',
+    category_id: null,
+    next_billing_date: '2026-08-13',
+    start_date: '2026-01-13',
+    notes: null,
+    url: null,
+    logo_url: null,
+    is_active: true,
+    status: 'active',
+    paused_at: null,
+    paused_until: null,
+    cancelled_at: null,
+    cancellation_date: null,
+    archived_at: null,
+    trial_started_at: null,
+    trial_end_date: null,
+    reminder_days: 3,
+    item_type: 'subscription',
+    created_at: '2026-01-13T00:00:00Z',
+    updated_at: '2026-01-13T00:00:00Z',
+    ...overrides,
+  };
+}
+
+const dates = (occurrences: { isoDate: string }[]) => occurrences.map((o) => o.isoDate);
+
+const H1 = parseLocalDate('2026-01-01');
+const H2 = parseLocalDate('2026-12-31');
+
+describe('projectOccurrences', () => {
+  test('projects a monthly item across a year from its anchor', () => {
+    const result = projectOccurrences([item()], H1, H2);
+    assert.equal(result.length, 12);
+    assert.equal(result[0].isoDate, '2026-01-13');
+    assert.equal(result[11].isoDate, '2026-12-13');
+    assert.equal(result[0].amount, 22.99);
+  });
+
+  test('never projects before start_date', () => {
+    const result = projectOccurrences([item({ start_date: '2026-06-13' })], H1, H2);
+    assert.deepEqual(dates(result).slice(0, 2), ['2026-06-13', '2026-07-13']);
+  });
+
+  test('a paused window suppresses only the occurrences inside it', () => {
+    const result = projectOccurrences(
+      [item({ status: 'paused', paused_at: '2026-03-01', paused_until: '2026-06-01' })],
+      H1, H2,
+    );
+    assert.ok(!dates(result).includes('2026-03-13'));
+    assert.ok(!dates(result).includes('2026-05-13'));
+    assert.ok(dates(result).includes('2026-02-13'));
+    assert.ok(dates(result).includes('2026-06-13'));
+  });
+
+  test('an indefinite pause suppresses everything after paused_at', () => {
+    const result = projectOccurrences(
+      [item({ status: 'paused', paused_at: '2026-03-01', paused_until: null })],
+      H1, H2,
+    );
+    assert.deepEqual(dates(result), ['2026-01-13', '2026-02-13']);
+  });
+
+  test('cancellation keeps history and drops the future', () => {
+    const result = projectOccurrences(
+      [item({ status: 'cancelled', cancellation_date: '2026-04-20' })],
+      H1, H2,
+    );
+    assert.deepEqual(dates(result), ['2026-01-13', '2026-02-13', '2026-03-13', '2026-04-13']);
+  });
+
+  test('a trial emits a trial-end marker and no charge before it', () => {
+    const result = projectOccurrences(
+      [item({ status: 'trial', trial_end_date: '2026-03-13', start_date: '2026-01-13' })],
+      H1, H2,
+    );
+    const marker = result.filter((o) => o.kind === 'trial-end');
+    assert.equal(marker.length, 1);
+    assert.equal(marker[0].isoDate, '2026-03-13');
+    assert.equal(marker[0].amount, 0);
+
+    const charges = result.filter((o) => o.kind === 'charge');
+    assert.ok(!dates(charges).includes('2026-02-13'));
+    assert.ok(dates(charges).includes('2026-04-13'));
+  });
+
+  test('an item with no next_billing_date is skipped rather than throwing', () => {
+    const result = projectOccurrences([item({ next_billing_date: '' })], H1, H2);
+    assert.deepEqual(result, []);
+  });
+
+  test('results are sorted by date', () => {
+    const result = projectOccurrences(
+      [item({ id: 'b', next_billing_date: '2026-08-20' }), item({ id: 'a' })],
+      parseLocalDate('2026-08-01'),
+      parseLocalDate('2026-08-31'),
+    );
+    assert.deepEqual(dates(result), ['2026-08-13', '2026-08-20']);
   });
 });
