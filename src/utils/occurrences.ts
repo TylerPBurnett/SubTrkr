@@ -6,7 +6,8 @@ import {
   differenceInCalendarMonths,
   differenceInCalendarYears,
 } from 'date-fns';
-import type { BillingCycle, ItemWithCategory } from '@/types';
+import type { BillingCycle, Category, ItemType, ItemWithCategory } from '@/types';
+import { UNCATEGORIZED_CATEGORY_COLOR, resolveItemCategoryDisplay } from './categories';
 import { formatISODate, getToday, parseLocalDate } from './dates';
 
 /**
@@ -114,6 +115,29 @@ export interface ItemSchedule {
   trialEnd: Date | null;
 }
 
+/**
+ * Stands in for `category_id === null` so "uncategorised" can be selected
+ * and deselected like any other category. Without it, uncategorised items
+ * silently vanish the moment any category filter is applied.
+ */
+export const UNCATEGORIZED_FILTER_ID = '__uncategorized__';
+
+export interface OccurrenceFilters {
+  itemType?: ItemType | 'all';
+  /**
+   * null means no category filter at all. A non-null array filters to
+   * those ids; items with a null `category_id` match only when the array
+   * contains UNCATEGORIZED_FILTER_ID.
+   */
+  categoryIds?: string[] | null;
+  /** default true */
+  includePaused?: boolean;
+  /** default true */
+  includeCancelled?: boolean;
+  /** default false */
+  includeArchived?: boolean;
+}
+
 function parseOrNull(value: string | null | undefined): Date | null {
   if (!value) return null;
   const parsed = parseLocalDate(value);
@@ -173,6 +197,23 @@ function inRange(date: Date, start: Date, end: Date): boolean {
   return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
 }
 
+function passesFilters(item: ItemWithCategory, filters: OccurrenceFilters): boolean {
+  if (filters.itemType && filters.itemType !== 'all' && item.item_type !== filters.itemType) {
+    return false;
+  }
+
+  if (filters.categoryIds) {
+    const key = item.category_id ?? UNCATEGORIZED_FILTER_ID;
+    if (!filters.categoryIds.includes(key)) return false;
+  }
+
+  if (item.status === 'paused' && filters.includePaused === false) return false;
+  if (item.status === 'cancelled' && filters.includeCancelled === false) return false;
+  if (item.status === 'archived' && filters.includeArchived !== true) return false;
+
+  return true;
+}
+
 function buildOccurrence(
   item: ItemWithCategory,
   date: Date,
@@ -203,11 +244,14 @@ export function projectOccurrences(
   items: ItemWithCategory[],
   rangeStart: Date,
   rangeEnd: Date,
+  filters: OccurrenceFilters = {},
 ): Occurrence[] {
   const today = getToday();
   const result: Occurrence[] = [];
 
   for (const item of items) {
+    if (!passesFilters(item, filters)) continue;
+
     const schedule = getItemSchedule(item);
     if (!schedule) continue;
 
@@ -235,4 +279,59 @@ export function projectOccurrences(
     if (byAmount !== 0) return byAmount;
     return a.item.name.localeCompare(b.item.name);
   });
+}
+
+export interface DaySummary {
+  total: number;
+  count: number;
+  /** category colour of the largest charge; null when the day is empty */
+  accentColor: string | null;
+  hasOverdue: boolean;
+  hasTrialEnd: boolean;
+}
+
+export function groupByDay(occurrences: Occurrence[]): Map<string, Occurrence[]> {
+  const grouped = new Map<string, Occurrence[]>();
+
+  for (const occurrence of occurrences) {
+    const bucket = grouped.get(occurrence.isoDate);
+    if (bucket) bucket.push(occurrence);
+    else grouped.set(occurrence.isoDate, [occurrence]);
+  }
+
+  return grouped;
+}
+
+export function sumOccurrences(occurrences: Occurrence[]): number {
+  return occurrences.reduce((total, occurrence) => total + occurrence.amount, 0);
+}
+
+/**
+ * Everything DayCell needs, so the component derives nothing itself.
+ * The accent follows the largest charge — a single hue reads faster than
+ * a blend, and the biggest charge is the one worth flagging.
+ */
+export function summariseDay(
+  occurrences: Occurrence[],
+  categoryLookup: ReadonlyMap<string, Category>,
+): DaySummary {
+  if (occurrences.length === 0) {
+    return { total: 0, count: 0, accentColor: null, hasOverdue: false, hasTrialEnd: false };
+  }
+
+  const charges = occurrences.filter((occurrence) => occurrence.kind === 'charge');
+  const largest = charges.reduce<Occurrence | null>(
+    (best, occurrence) => (!best || occurrence.amount > best.amount ? occurrence : best),
+    null,
+  );
+
+  return {
+    total: sumOccurrences(occurrences),
+    count: occurrences.length,
+    accentColor: largest
+      ? resolveItemCategoryDisplay(largest.item, categoryLookup).color
+      : UNCATEGORIZED_CATEGORY_COLOR,
+    hasOverdue: occurrences.some((occurrence) => occurrence.isOverdue),
+    hasTrialEnd: occurrences.some((occurrence) => occurrence.kind === 'trial-end'),
+  };
 }

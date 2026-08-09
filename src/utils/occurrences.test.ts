@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { addMonths, subMonths } from 'date-fns';
-import type { ItemWithCategory } from '@/types';
+import type { Category, ItemWithCategory } from '@/types';
 import { formatISODate, getToday, parseLocalDate } from './dates';
-import { occurrenceAt, occurrenceIndexBounds, projectOccurrences } from './occurrences';
+import {
+  UNCATEGORIZED_FILTER_ID,
+  groupByDay,
+  occurrenceAt,
+  occurrenceIndexBounds,
+  projectOccurrences,
+  summariseDay,
+  sumOccurrences,
+} from './occurrences';
+import { createCategoryLookup } from './categories';
 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -290,5 +299,98 @@ describe('projectOccurrences', () => {
 
     assert.ok(cancelledCharges.length > 0, 'should find cancelled charge');
     assert.ok(!cancelledCharges[0].isOverdue, 'past cancelled charge should not be overdue');
+  });
+});
+
+const category = (id: string, color: string): Category => ({
+  id,
+  name: `Category ${id}`,
+  color,
+  icon: null,
+  category_type: 'subscription',
+  created_at: '2026-01-01T00:00:00Z',
+});
+
+describe('filters', () => {
+  const items = [
+    item({ id: 'sub', item_type: 'subscription', category_id: 'cat-a' }),
+    item({ id: 'bill', item_type: 'bill', category_id: null }),
+    item({ id: 'gone', status: 'archived', archived_at: '2026-06-01' }),
+  ];
+
+  test('archived items are excluded by default and opt-in only', () => {
+    assert.ok(!projectOccurrences(items, H1, H2).some((o) => o.item.id === 'gone'));
+    assert.ok(
+      projectOccurrences(items, H1, H2, { includeArchived: true }).some((o) => o.item.id === 'gone'),
+    );
+  });
+
+  test('itemType narrows to one kind', () => {
+    const result = projectOccurrences(items, H1, H2, { itemType: 'bill' });
+    assert.ok(result.every((o) => o.item.item_type === 'bill'));
+    assert.ok(result.length > 0);
+  });
+
+  test('an uncategorised item matches only via the sentinel', () => {
+    const withoutSentinel = projectOccurrences(items, H1, H2, { categoryIds: ['cat-a'] });
+    assert.ok(!withoutSentinel.some((o) => o.item.id === 'bill'));
+
+    const withSentinel = projectOccurrences(items, H1, H2, {
+      categoryIds: ['cat-a', UNCATEGORIZED_FILTER_ID],
+    });
+    assert.ok(withSentinel.some((o) => o.item.id === 'bill'));
+  });
+
+  test('a null categoryIds applies no category filter', () => {
+    const result = projectOccurrences(items, H1, H2, { categoryIds: null });
+    assert.ok(result.some((o) => o.item.id === 'bill'));
+    assert.ok(result.some((o) => o.item.id === 'sub'));
+  });
+});
+
+describe('day folding', () => {
+  test('groupByDay keys by ISO date and preserves order', () => {
+    const grouped = groupByDay(
+      projectOccurrences(
+        [item({ id: 'a' }), item({ id: 'b', amount: 5, next_billing_date: '2026-08-13' })],
+        parseLocalDate('2026-08-01'),
+        parseLocalDate('2026-08-31'),
+      ),
+    );
+    assert.equal(grouped.get('2026-08-13')?.length, 2);
+    assert.equal(grouped.get('2026-08-13')?.[0].item.id, 'a');
+  });
+
+  test('sumOccurrences totals amounts', () => {
+    const occurrences = projectOccurrences(
+      [item({ id: 'a', amount: 10 }), item({ id: 'b', amount: 2.5 })],
+      parseLocalDate('2026-08-01'),
+      parseLocalDate('2026-08-31'),
+    );
+    assert.equal(sumOccurrences(occurrences), 12.5);
+  });
+
+  test('summariseDay takes its accent from the largest charge', () => {
+    const lookup = createCategoryLookup([category('cat-a', '#111111'), category('cat-b', '#222222')]);
+    const occurrences = projectOccurrences(
+      [
+        item({ id: 'small', amount: 5, category_id: 'cat-a' }),
+        item({ id: 'big', amount: 50, category_id: 'cat-b' }),
+      ],
+      parseLocalDate('2026-08-01'),
+      parseLocalDate('2026-08-31'),
+    );
+
+    const summary = summariseDay(occurrences, lookup);
+    assert.equal(summary.accentColor, '#222222');
+    assert.equal(summary.count, 2);
+    assert.equal(summary.total, 55);
+  });
+
+  test('summariseDay reports an empty day', () => {
+    const summary = summariseDay([], createCategoryLookup([]));
+    assert.equal(summary.accentColor, null);
+    assert.equal(summary.count, 0);
+    assert.equal(summary.total, 0);
   });
 });
