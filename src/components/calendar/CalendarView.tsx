@@ -5,7 +5,7 @@ import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemWithCategory } from '@/types';
 import { createCategoryLookup } from '@/utils/categories';
 import { formatISODate, getToday } from '@/utils/dates';
-import { groupByDay, projectOccurrences } from '@/utils/occurrences';
+import { groupByDay, projectOccurrences, type OccurrenceFilters } from '@/utils/occurrences';
 import {
   buildGridDays,
   formatRangeTitle,
@@ -13,6 +13,7 @@ import {
   shiftAnchor,
   type CalendarLens,
 } from './calendarRange';
+import CalendarFilterBar from './CalendarFilterBar';
 import CashFlowStrip from './CashFlowStrip';
 import DayInspector from './DayInspector';
 import MonthGrid from './MonthGrid';
@@ -35,6 +36,7 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
   const [lens, setLens] = useState<CalendarLens>('month');
   const [anchor, setAnchor] = useState<Date>(() => getToday());
   const [selectedDate, setSelectedDate] = useState<Date>(() => getToday());
+  const [filters, setFilters] = useState<OccurrenceFilters>({});
 
   const range = useMemo(() => getCalendarRange(lens, anchor), [lens, anchor]);
   const gridDays = useMemo(
@@ -46,8 +48,8 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
   // Projected over the GRID bounds so padded adjacent-month days render
   // their icons. Headline totals filter back to the range bounds.
   const occurrences = useMemo(
-    () => projectOccurrences(items, range.gridStart, range.gridEnd),
-    [items, range.gridStart, range.gridEnd],
+    () => projectOccurrences(items, range.gridStart, range.gridEnd, filters),
+    [items, range.gridStart, range.gridEnd, filters],
   );
   const occurrencesByDay = useMemo(() => groupByDay(occurrences), [occurrences]);
 
@@ -80,8 +82,8 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
 
   const upcoming = useMemo(() => {
     const today = getToday();
-    return projectOccurrences(items, today, addDays(today, 90)).slice(0, 5);
-  }, [items]);
+    return projectOccurrences(items, today, addDays(today, 90), filters).slice(0, 5);
+  }, [items, filters]);
 
   const renderLens = () => {
     if (lens === 'year') {
@@ -189,6 +191,12 @@ export default function CalendarView({ items, categories, onEdit }: CalendarView
           )}
         </div>
       </div>
+
+      <CalendarFilterBar
+        categories={categories}
+        filters={filters}
+        onChange={setFilters}
+      />
 
       <div
         style={{
