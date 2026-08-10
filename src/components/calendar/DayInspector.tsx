@@ -64,7 +64,11 @@ export default function DayInspector({
   upcoming,
   onEdit,
 }: DayInspectorProps) {
-  const remaining = rangeOccurrences.filter((occurrence) => !occurrence.isPast).length;
+  // Trial-end markers ride along in `rangeOccurrences` but carry no amount —
+  // counting them as "charges" overstates what's actually billed. Both
+  // numbers here need to describe the same filtered set.
+  const chargeOccurrences = rangeOccurrences.filter((occurrence) => occurrence.kind === 'charge');
+  const remaining = chargeOccurrences.filter((occurrence) => !occurrence.isPast).length;
 
   return (
     <div className="flex flex-col gap-2">
@@ -83,13 +87,15 @@ export default function DayInspector({
           {formatCurrency(sumOccurrences(rangeOccurrences), { display: 'summary' })}
         </p>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-          {rangeOccurrences.length} charges · {remaining} remaining
+          {chargeOccurrences.length} charges · {remaining} remaining
         </p>
       </div>
 
       <div className="card flex-1" style={{ padding: 14 }}>
         <p className="label-wide">
-          {selectedOccurrences.length > 0 ? format(selectedDate, 'EEE, MMM d') : 'Next up'}
+          {selectedOccurrences.length > 0
+            ? format(selectedDate, 'EEE, MMM d')
+            : 'Next up from today'}
         </p>
 
         <div style={{ marginTop: 8 }}>

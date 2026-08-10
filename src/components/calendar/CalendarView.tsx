@@ -167,6 +167,7 @@ export default function CalendarView({
             setLens('month');
           }}
           onSelectDay={(date) => {
+            setHasNavigated(true);
             setAnchor(date);
             setSelectedDate(date);
             setLens('month');
