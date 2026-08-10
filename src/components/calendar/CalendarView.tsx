@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { addDays } from 'date-fns';
+import EmptyState from '@/components/ui/EmptyState';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemWithCategory } from '@/types';
 import { createCategoryLookup } from '@/utils/categories';
@@ -204,6 +205,16 @@ export default function CalendarView({
     );
   };
 
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={CalendarDays}
+        title="Nothing to schedule yet"
+        description="Add a subscription or bill and it will show up on the day it is due."
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -308,6 +319,12 @@ export default function CalendarView({
           )}
         </AnimatePresence>
       </div>
+
+      {rangeOccurrences.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center' }}>
+          Nothing due in this period.
+        </p>
+      )}
     </div>
   );
 }

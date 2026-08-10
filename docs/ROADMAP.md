@@ -89,12 +89,9 @@ See `docs/SUPABASE_BACKEND_WORKFLOW.md` and `docs/reference/SUPABASE_BACKEND_SOU
 
 ### 4. Calendar View Workspace
 
-- Add a dedicated calendar entry to the sidebar that turns the main workspace into a calendar-first view instead of a list/detail screen.
-- Support weekly, monthly, zoomed-out, and yearly lenses so recurring items can be scanned at different planning horizons.
-- Prefer a clean frontend-first implementation using the existing item schedule fields (`start_date`, `next_billing_date`, `billing_cycle`, lifecycle dates) before introducing any new backend tables or precomputed occurrences.
-- Revisit backend work only if the first pass needs persisted occurrence snapshots, calendar-specific settings sync, or heavier projection queries that do not fit the current client model cleanly.
+Shipped 2026-08-09 — a dedicated sidebar calendar view with week, month, and year lenses, a collapsible day inspector rail, a cash-flow strip, filters, and full keyboard navigation, built frontend-first on the existing item schedule fields with no backend changes.
 
-See `docs/plans/CALENDAR_VIEW_PLAN.md`.
+See `docs/superpowers/plans/2026-08-09-calendar-view.md`.
 
 ### 5. Notification Quality-of-Life Backlog
 
