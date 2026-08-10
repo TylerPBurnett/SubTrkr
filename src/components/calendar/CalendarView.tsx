@@ -257,6 +257,12 @@ export default function CalendarView({
         </h3>
 
         <div className="flex items-center gap-2">
+          <CalendarFilterBar
+            categories={categories}
+            filters={filters}
+            onChange={setFilters}
+          />
+
           <SegmentedControl tabs={LENS_TABS} activeTab={lens} onTabChange={changeLens} />
 
           <button
@@ -300,12 +306,6 @@ export default function CalendarView({
           )}
         </div>
       </div>
-
-      <CalendarFilterBar
-        categories={categories}
-        filters={filters}
-        onChange={setFilters}
-      />
 
       <div
         style={{
