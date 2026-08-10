@@ -15,7 +15,7 @@ import {
   shiftAnchor,
   type CalendarLens,
 } from './calendarRange';
-import CalendarFilterBar from './CalendarFilterBar';
+import CalendarFilterBar, { describeCalendarFilters } from './CalendarFilterBar';
 import CashFlowStrip from './CashFlowStrip';
 import DayInspector from './DayInspector';
 import MonthGrid from './MonthGrid';
@@ -85,6 +85,13 @@ export default function CalendarView({
       setAnchor(selectedDate);
     },
     [selectedDate],
+  );
+
+  // Rendered beside the range title rather than inside the filter button, so
+  // the toolbar does not reflow every time a filter changes.
+  const filterSummary = useMemo(
+    () => describeCalendarFilters(filters, categories),
+    [filters, categories],
   );
 
   const range = useMemo(() => getCalendarRange(lens, anchor), [lens, anchor]);
@@ -245,16 +252,27 @@ export default function CalendarView({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
-        <h3
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 20,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-          }}
-        >
-          {formatRangeTitle(lens, anchor)}
-        </h3>
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h3
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 20,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {formatRangeTitle(lens, anchor)}
+          </h3>
+          {filterSummary.length > 0 && (
+            <p
+              className="truncate"
+              style={{ fontSize: 12, color: 'var(--text-secondary)' }}
+            >
+              · {filterSummary.join(', ')}
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <CalendarFilterBar

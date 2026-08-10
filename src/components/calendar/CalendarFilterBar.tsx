@@ -1,10 +1,10 @@
-import { Filter, X } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Check, Filter } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemType } from '@/types';
 import { UNCATEGORIZED_FILTER_ID, type OccurrenceFilters } from '@/utils/occurrences';
 
@@ -14,10 +14,12 @@ interface CalendarFilterBarProps {
   onChange: (filters: OccurrenceFilters) => void;
 }
 
-const TYPES: Array<{ id: ItemType | 'all'; label: string }> = [
-  { id: 'all', label: 'All items' },
-  { id: 'subscription', label: 'Subscriptions' },
+type TypeTab = ItemType | 'all';
+
+const TYPE_TABS: Array<{ id: TypeTab; label: string }> = [
+  { id: 'all', label: 'All' },
   { id: 'bill', label: 'Bills' },
+  { id: 'subscription', label: 'Subs' },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,9 +30,9 @@ const TYPE_LABELS: Record<string, string> = {
 /**
  * Every filter defaults to "on", so a control that highlights what is selected
  * is fully lit at rest and says nothing. These describe what has been narrowed
- * away instead, which is empty until the user actually filters something.
+ * away instead, which stays empty until the user actually filters something.
  */
-function describeFilters(
+export function describeCalendarFilters(
   filters: OccurrenceFilters,
   categories: Category[],
 ): string[] {
@@ -53,17 +55,10 @@ function describeFilters(
   return parts;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="label-wide"
-      style={{ marginBottom: 8, color: 'var(--text-secondary)' }}
-    >
-      {children}
-    </p>
-  );
-}
-
+/**
+ * A macOS-style menu row: a checkmark in a fixed gutter, the whole row as the
+ * hit target. No checkbox square — the context already says it is clickable.
+ */
 function CheckRow({
   checked,
   label,
@@ -78,11 +73,10 @@ function CheckRow({
   return (
     <button
       type="button"
-      role="checkbox"
+      role="menuitemcheckbox"
       aria-checked={checked}
       onClick={onToggle}
-      className="w-full flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors"
-      style={{ background: 'transparent' }}
+      className="w-full flex items-center gap-1.5 px-2.5 py-1 text-left transition-colors"
       onMouseEnter={(event) => {
         event.currentTarget.style.background = 'var(--bg-hover)';
       }}
@@ -90,7 +84,13 @@ function CheckRow({
         event.currentTarget.style.background = 'transparent';
       }}
     >
-      <Checkbox checked={checked} tabIndex={-1} aria-hidden="true" />
+      <span
+        aria-hidden="true"
+        className="flex items-center shrink-0"
+        style={{ width: 16, color: 'var(--brand-text)' }}
+      >
+        {checked && <Check className="w-3.5 h-3.5" strokeWidth={2.5} />}
+      </span>
       {swatch && (
         <span
           aria-hidden="true"
@@ -100,12 +100,16 @@ function CheckRow({
             borderRadius: 999,
             background: swatch,
             flexShrink: 0,
+            marginRight: 2,
           }}
         />
       )}
       <span
         className="truncate"
-        style={{ fontSize: 13, color: 'var(--text-primary)' }}
+        style={{
+          fontSize: 12.5,
+          color: checked ? 'var(--text-primary)' : 'var(--text-secondary)',
+        }}
       >
         {label}
       </span>
@@ -119,8 +123,12 @@ export default function CalendarFilterBar({
   onChange,
 }: CalendarFilterBarProps) {
   const selected = filters.categoryIds;
-  const summary = describeFilters(filters, categories);
-  const isFiltered = summary.length > 0;
+
+  // Counts narrowed GROUPS, not individual boxes, so deselecting six
+  // categories reads as 1 rather than climbing to 6. The full detail lives
+  // beside the range title.
+  const activeCount = describeCalendarFilters(filters, categories).length;
+  const isFiltered = activeCount > 0;
 
   const everyCategoryId = [
     ...categories.map((category) => category.id),
@@ -141,143 +149,115 @@ export default function CalendarFilterBar({
 
   const isCategoryChecked = (id: string) => !selected || selected.includes(id);
 
-  const clearFilters = () => onChange({});
-
   return (
     <Popover>
-      <div className="flex items-center">
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={isFiltered ? `Filters: ${summary.join(', ')}` : 'Filter'}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors"
-            style={{
-              fontSize: 12,
-              border: `1px solid ${isFiltered ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-              background: isFiltered ? 'var(--brand-primary-light)' : 'transparent',
-              color: isFiltered ? 'var(--brand-text)' : 'var(--text-secondary)',
-              borderTopRightRadius: isFiltered ? 0 : undefined,
-              borderBottomRightRadius: isFiltered ? 0 : undefined,
-              borderRightWidth: isFiltered ? 0 : 1,
-            }}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            {isFiltered ? summary.join(' · ') : 'Filter'}
-          </button>
-        </PopoverTrigger>
-
-        {isFiltered && (
-          <button
-            type="button"
-            aria-label="Clear filters"
-            onClick={clearFilters}
-            className="flex items-center rounded-lg px-1.5 py-1.5 transition-colors"
-            style={{
-              border: '1px solid var(--brand-primary)',
-              borderTopLeftRadius: 0,
-              borderBottomLeftRadius: 0,
-              background: 'var(--brand-primary-light)',
-              color: 'var(--brand-text)',
-              alignSelf: 'stretch',
-            }}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={
+            isFiltered
+              ? `Filter — ${describeCalendarFilters(filters, categories).join(', ')}`
+              : 'Filter'
+          }
+          className="flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors"
+          style={{
+            border: `1px solid ${isFiltered ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+            background: isFiltered ? 'var(--brand-primary-light)' : 'transparent',
+            color: isFiltered ? 'var(--brand-text)' : 'var(--text-secondary)',
+          }}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          {isFiltered && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+              {activeCount}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
 
       <PopoverContent
         align="end"
-        className="w-64 p-0"
+        className="w-56 p-0 overflow-hidden"
         style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
         }}
       >
-        <div className="p-3" style={{ borderBottom: '1px solid var(--border-default)' }}>
-          <SectionLabel>Show</SectionLabel>
-          <div className="flex flex-col gap-0.5">
-            {TYPES.map((type) => (
-              <CheckRow
-                key={type.id}
-                label={type.label}
-                checked={(filters.itemType ?? 'all') === type.id}
-                onToggle={() => onChange({ ...filters, itemType: type.id })}
-              />
-            ))}
-          </div>
+        <div className="p-2">
+          <SegmentedControl
+            tabs={TYPE_TABS}
+            activeTab={(filters.itemType ?? 'all') as TypeTab}
+            onTabChange={(id) => onChange({ ...filters, itemType: id })}
+          />
         </div>
 
         <div
-          className="p-3"
-          style={{ borderBottom: '1px solid var(--border-default)' }}
+          className="py-1 overflow-y-auto"
+          style={{ borderTop: '1px solid var(--border-default)', maxHeight: 176 }}
         >
-          <SectionLabel>Categories</SectionLabel>
-          <div
-            className="flex flex-col gap-0.5 overflow-y-auto"
-            style={{ maxHeight: 168 }}
-          >
-            {categories.map((category) => (
-              <CheckRow
-                key={category.id}
-                label={category.name}
-                swatch={category.color}
-                checked={isCategoryChecked(category.id)}
-                onToggle={() => toggleCategory(category.id)}
-              />
-            ))}
+          {categories.map((category) => (
             <CheckRow
-              label="Uncategorized"
-              checked={isCategoryChecked(UNCATEGORIZED_FILTER_ID)}
-              onToggle={() => toggleCategory(UNCATEGORIZED_FILTER_ID)}
+              key={category.id}
+              label={category.name}
+              swatch={category.color}
+              checked={isCategoryChecked(category.id)}
+              onToggle={() => toggleCategory(category.id)}
             />
-          </div>
+          ))}
+          <CheckRow
+            label="Uncategorized"
+            checked={isCategoryChecked(UNCATEGORIZED_FILTER_ID)}
+            onToggle={() => toggleCategory(UNCATEGORIZED_FILTER_ID)}
+          />
         </div>
 
-        <div className="p-3">
-          <SectionLabel>Include</SectionLabel>
-          <div className="flex flex-col gap-0.5">
-            <CheckRow
-              label="Paused"
-              checked={filters.includePaused !== false}
-              onToggle={() =>
-                onChange({ ...filters, includePaused: filters.includePaused === false })
-              }
-            />
-            <CheckRow
-              label="Cancelled"
-              checked={filters.includeCancelled !== false}
-              onToggle={() =>
-                onChange({
-                  ...filters,
-                  includeCancelled: filters.includeCancelled === false,
-                })
-              }
-            />
-            <CheckRow
-              label="Archived"
-              checked={filters.includeArchived === true}
-              onToggle={() =>
-                onChange({ ...filters, includeArchived: filters.includeArchived !== true })
-              }
-            />
-          </div>
+        <div className="py-1" style={{ borderTop: '1px solid var(--border-default)' }}>
+          <CheckRow
+            label="Paused"
+            checked={filters.includePaused !== false}
+            onToggle={() =>
+              onChange({ ...filters, includePaused: filters.includePaused === false })
+            }
+          />
+          <CheckRow
+            label="Cancelled"
+            checked={filters.includeCancelled !== false}
+            onToggle={() =>
+              onChange({
+                ...filters,
+                includeCancelled: filters.includeCancelled === false,
+              })
+            }
+          />
+          <CheckRow
+            label="Archived"
+            checked={filters.includeArchived === true}
+            onToggle={() =>
+              onChange({ ...filters, includeArchived: filters.includeArchived !== true })
+            }
+          />
+        </div>
 
-          {isFiltered && (
+        {isFiltered && (
+          <div className="py-1" style={{ borderTop: '1px solid var(--border-default)' }}>
             <button
               type="button"
-              onClick={clearFilters}
-              className="w-full mt-2 rounded-md py-1.5 transition-colors"
-              style={{
-                fontSize: 12,
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border-default)',
+              onClick={() => onChange({})}
+              className="w-full flex items-center gap-1.5 px-2.5 py-1 text-left transition-colors"
+              onMouseEnter={(event) => {
+                event.currentTarget.style.background = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = 'transparent';
               }}
             >
-              Clear filters
+              <span aria-hidden="true" style={{ width: 16, flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                Clear filters
+              </span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
