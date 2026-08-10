@@ -57,13 +57,17 @@ export function useItemFilters({
   }, [typeFilteredItems, searchQuery, selectedCategoryIds, showActives, showTrials, showPaused, showCancelled]);
 
   // Count how many filters are active
+  // Counts deviations from the DEFAULT state, not "on" toggles. `showCancelled`
+  // defaults to false, so counting `!showCancelled` made the count 1 at rest —
+  // harmless while nothing rendered it, but it pins the trigger permanently lit
+  // and a badge that is always on tells you nothing.
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedCategoryIds) count++;
     if (!showActives) count++;
     if (!showTrials) count++;
     if (!showPaused) count++;
-    if (!showCancelled) count++;
+    if (showCancelled) count++;
     return count;
   }, [selectedCategoryIds, showActives, showTrials, showPaused, showCancelled]);
 
