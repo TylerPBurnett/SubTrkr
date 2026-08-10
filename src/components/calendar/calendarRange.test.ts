@@ -4,6 +4,7 @@ import { formatISODate, parseLocalDate } from '@/utils/dates';
 import {
   buildGridDays,
   formatRangeTitle,
+  formatWeekLabel,
   getCalendarRange,
   shiftAnchor,
 } from './calendarRange';
@@ -80,5 +81,22 @@ describe('formatRangeTitle', () => {
       formatRangeTitle('week', parseLocalDate('2026-12-30')),
       'Dec 27, 2026 – Jan 2, 2027',
     );
+  });
+});
+
+describe('formatWeekLabel', () => {
+  test('a week within one month uses the short tail, no year', () => {
+    const { rangeStart, rangeEnd } = getCalendarRange('week', parseLocalDate('2026-08-13'));
+    assert.equal(formatWeekLabel(rangeStart, rangeEnd), 'Aug 9 – 15');
+  });
+
+  test('a week spanning two months names both, no year', () => {
+    const { rangeStart, rangeEnd } = getCalendarRange('week', parseLocalDate('2026-08-31'));
+    assert.equal(formatWeekLabel(rangeStart, rangeEnd), 'Aug 30 – Sep 5');
+  });
+
+  test('a week spanning two years includes year on both sides', () => {
+    const { rangeStart, rangeEnd } = getCalendarRange('week', parseLocalDate('2026-12-30'));
+    assert.equal(formatWeekLabel(rangeStart, rangeEnd), 'Dec 27, 2026 – Jan 2, 2027');
   });
 });

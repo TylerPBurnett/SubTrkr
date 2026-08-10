@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { format, isSameMonth } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
 import { formatISODate } from '@/utils/dates';
 import { sumOccurrences, type Occurrence } from '@/utils/occurrences';
+import { formatWeekLabel } from './calendarRange';
 
 interface CashFlowStripProps {
   gridDays: Date[];
@@ -17,19 +17,12 @@ export default function CashFlowStrip({ gridDays, occurrencesByDay }: CashFlowSt
       const week = gridDays.slice(index, index + 7);
       if (week.length === 0) continue;
 
-      const first = week[0];
-      const last = week[week.length - 1];
-      // Mirrors formatRangeTitle's approach: only drop the month on the end
-      // date when both days share one — otherwise "Aug 30 – 5" reads as
-      // though the week never left August.
-      const tail = isSameMonth(first, last) ? format(last, 'd') : format(last, 'MMM d');
-
       result.push({
         total: week.reduce(
           (total, day) => total + sumOccurrences(occurrencesByDay.get(formatISODate(day)) ?? []),
           0,
         ),
-        label: `${format(first, 'MMM d')} – ${tail}`,
+        label: formatWeekLabel(week[0], week[week.length - 1]),
       });
     }
 

@@ -79,6 +79,30 @@ export function formatRangeTitle(lens: CalendarLens, anchor: Date): string {
   return `${format(start, 'MMM d')} – ${tail}`;
 }
 
+/**
+ * Compact label for a single week, used by the cash-flow strip. Same
+ * three-branch structure as `formatRangeTitle`'s week case, but without a
+ * year on the same-year branches — the strip already sits under a header
+ * that states the year, so it only needs one when the week itself crosses
+ * into a different year.
+ */
+export function formatWeekLabel(start: Date, end: Date): string {
+  const sameYear = start.getFullYear() === end.getFullYear();
+
+  if (!sameYear) {
+    // Different years: include year on both sides
+    return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`;
+  }
+
+  if (isSameMonth(start, end)) {
+    // Same month: short tail, no repeated month or year
+    return `${format(start, 'MMM d')} – ${format(end, 'd')}`;
+  }
+
+  // Different month, same year: month on both sides, no year
+  return `${format(start, 'MMM d')} – ${format(end, 'MMM d')}`;
+}
+
 /** Every day from gridStart to gridEnd inclusive, in order. */
 export function buildGridDays(gridStart: Date, gridEnd: Date): Date[] {
   const days: Date[] = [];

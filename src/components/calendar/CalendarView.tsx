@@ -163,7 +163,12 @@ export default function CalendarView({
           year={anchor.getFullYear()}
           occurrencesByDay={occurrencesByDay}
           onSelectMonth={(date) => {
+            // `date` is already the 1st of the target month (see
+            // YearGrid's `first`), so it's guaranteed to exist in the
+            // month grid we're about to land on.
+            setHasNavigated(true);
             setAnchor(date);
+            setSelectedDate(date);
             setLens('month');
           }}
           onSelectDay={(date) => {
