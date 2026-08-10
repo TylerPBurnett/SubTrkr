@@ -15,33 +15,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   FilterCheckRow,
   FilterCountBadge,
 } from "@/components/ui/FilterMenu";
+import { UNCATEGORIZED_FILTER_ID } from "@/utils/categories";
 import type { Category } from "@/types";
-
-// Refined select item styles
-const selectItemStyles = `
-  .refined-select-item[data-highlighted] {
-    background-color: var(--accent-green-muted) !important;
-    color: var(--text-primary) !important;
-  }
-  .refined-select-item[data-state="checked"] {
-    background-color: var(--accent-green-muted) !important;
-    color: var(--accent-green) !important;
-  }
-  .refined-select-item[data-state="checked"] svg {
-    color: var(--accent-green) !important;
-    opacity: 0.8;
-  }
-`;
 
 interface SearchFilterToolbarProps {
   // Search
@@ -49,10 +27,10 @@ interface SearchFilterToolbarProps {
   onSearchChange: (query: string) => void;
   searchPlaceholder?: string;
 
-  // Category filter
+  // Category filter — null means no category filter at all
   categories: Category[];
-  selectedCategory: string;
-  onCategoryChange: (categoryId: string) => void;
+  selectedCategoryIds: string[] | null;
+  onCategoryIdsChange: (categoryIds: string[] | null) => void;
 
   // Status filters
   showActives: boolean;
@@ -92,8 +70,8 @@ export default function SearchFilterToolbar({
   onSearchChange,
   searchPlaceholder = "Search...",
   categories,
-  selectedCategory,
-  onCategoryChange,
+  selectedCategoryIds,
+  onCategoryIdsChange,
   showActives,
   onShowActivesChange,
   showTrials,
@@ -117,10 +95,29 @@ export default function SearchFilterToolbar({
   const selectedSortLabel =
     sortOptions.find((option) => option.value === sortBy)?.label || "Default";
 
+  const everyCategoryId = [
+    ...categories.map((category) => category.id),
+    UNCATEGORIZED_FILTER_ID,
+  ];
+
+  const isCategoryChecked = (id: string) =>
+    !selectedCategoryIds || selectedCategoryIds.includes(id);
+
+  // Collapses back to null once everything is selected, so "all selected" and
+  // "no filter" are the same state rather than two that behave differently.
+  const toggleCategory = (id: string) => {
+    const current = selectedCategoryIds ?? everyCategoryId;
+    const next = current.includes(id)
+      ? current.filter((value) => value !== id)
+      : [...current, id];
+
+    onCategoryIdsChange(
+      next.length === everyCategoryId.length ? null : next,
+    );
+  };
+
   return (
-    <>
-      <style>{selectItemStyles}</style>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
         {/* Unified Search + Filter + View Toggle Container */}
         <div
           className="search-shell flex flex-1 min-w-0 items-center h-9 rounded-lg border-2 overflow-hidden transition-all duration-200"
@@ -239,68 +236,36 @@ export default function SearchFilterToolbar({
               </div>
 
               <div className="p-3.5 space-y-4">
-                {/* Category Select */}
-                <div className="space-y-2">
+                {/* Categories */}
+                <div>
                   <label
-                    className="block text-[11px] font-medium"
+                    className="block text-[11px] font-medium mb-1.5"
                     style={{
                       color: "var(--text-muted)",
                       letterSpacing: "0.01em",
                     }}
                   >
-                    Category
+                    Categories
                   </label>
-                  <Select
-                    value={selectedCategory}
-                    onValueChange={onCategoryChange}
+                  <div
+                    className="-mx-1.5 overflow-y-auto"
+                    style={{ maxHeight: 176 }}
                   >
-                    <SelectTrigger
-                      className="h-8 text-[13px]"
-                      style={{
-                        backgroundColor: "var(--bg-input)",
-                        borderColor: "var(--border-default)",
-                        color: "var(--text-primary)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      <SelectValue placeholder="All Categories" />
-                    </SelectTrigger>
-                    <SelectContent
-                      className="min-w-[240px]"
-                      style={{
-                        backgroundColor: "var(--bg-surface)",
-                        borderColor: "var(--border-strong)",
-                        boxShadow:
-                          "0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong)",
-                        borderRadius: "8px",
-                        padding: "4px",
-                      }}
-                    >
-                      <SelectItem
-                        value="all"
-                        className="refined-select-item text-[13px] font-medium rounded-md px-2.5 py-1.5 mb-0.5 focus:bg-transparent"
-                        style={{
-                          color: "var(--text-secondary)",
-                          letterSpacing: "-0.005em",
-                        }}
-                      >
-                        All Categories
-                      </SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem
-                          key={cat.id}
-                          value={cat.id}
-                          className="refined-select-item text-[13px] font-medium rounded-md px-2.5 py-1.5 mb-0.5 focus:bg-transparent"
-                          style={{
-                            color: "var(--text-secondary)",
-                            letterSpacing: "-0.005em",
-                          }}
-                        >
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {categories.map((cat) => (
+                      <FilterCheckRow
+                        key={cat.id}
+                        label={cat.name}
+                        swatch={cat.color}
+                        checked={isCategoryChecked(cat.id)}
+                        onToggle={() => toggleCategory(cat.id)}
+                      />
+                    ))}
+                    <FilterCheckRow
+                      label="Uncategorized"
+                      checked={isCategoryChecked(UNCATEGORIZED_FILTER_ID)}
+                      onToggle={() => toggleCategory(UNCATEGORIZED_FILTER_ID)}
+                    />
+                  </div>
                 </div>
 
                 {/* Subtle Divider */}
@@ -651,7 +616,6 @@ export default function SearchFilterToolbar({
 
         {/* Extensibility slot for bulk actions */}
         {children}
-      </div>
-    </>
+    </div>
   );
 }

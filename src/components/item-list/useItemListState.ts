@@ -23,7 +23,9 @@ export function useItemListState({
   itemType,
 }: UseItemListStateOptions) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // null means no category filter at all; an array filters to those ids, with
+  // UNCATEGORIZED_FILTER_ID standing in for items that have no category.
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[] | null>(null);
   const [showActives, setShowActives] = useState(true);
   const [showTrials, setShowTrials] = useState(true);
   const [showPaused, setShowPaused] = useState(true);
@@ -56,7 +58,7 @@ export function useItemListState({
     items,
     itemType,
     searchQuery,
-    selectedCategory,
+    selectedCategoryIds,
     showActives,
     showTrials,
     showPaused,
@@ -155,7 +157,7 @@ export function useItemListState({
     // consumed by the closures below, and a consumer reading it from here
     // would see a value one render stale relative to them.
     searchQuery,
-    selectedCategory,
+    selectedCategoryIds,
     selectedCount,
     selectedItemIds,
     selectedVisibleItems,
@@ -170,7 +172,7 @@ export function useItemListState({
     typeFilteredItems,
     viewMode,
     setSearchQuery,
-    setSelectedCategory,
+    setSelectedCategoryIds,
     setSelectedItemIds,
     setShowActives,
     setShowCancelled,
@@ -231,7 +233,7 @@ export function useItemListState({
       setLastSelectedId(null);
     },
     clearFilters: () => {
-      setSelectedCategory('all');
+      setSelectedCategoryIds(null);
       setShowActives(true);
       setShowTrials(true);
       setShowPaused(true);

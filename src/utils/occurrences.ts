@@ -7,7 +7,11 @@ import {
   differenceInCalendarYears,
 } from 'date-fns';
 import type { BillingCycle, Category, ItemType, ItemWithCategory } from '@/types';
-import { UNCATEGORIZED_CATEGORY_COLOR, resolveItemCategoryDisplay } from './categories';
+import {
+  UNCATEGORIZED_CATEGORY_COLOR,
+  UNCATEGORIZED_FILTER_ID,
+  resolveItemCategoryDisplay,
+} from './categories';
 import { formatISODate, getToday, parseLocalDate } from './dates';
 
 /**
@@ -115,12 +119,7 @@ export interface ItemSchedule {
   trialEnd: Date | null;
 }
 
-/**
- * Stands in for `category_id === null` so "uncategorised" can be selected
- * and deselected like any other category. Without it, uncategorised items
- * silently vanish the moment any category filter is applied.
- */
-export const UNCATEGORIZED_FILTER_ID = '__uncategorized__';
+export { UNCATEGORIZED_FILTER_ID } from './categories';
 
 export interface OccurrenceFilters {
   itemType?: ItemType | 'all';

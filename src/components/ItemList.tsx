@@ -99,12 +99,12 @@ function ItemList({
     handleSelectAllChange,
     handleSelectItemChange,
     searchQuery,
-    selectedCategory,
+    selectedCategoryIds,
     selectedCount,
     selectedItemIds,
     selectedVisibleItems,
     setSearchQuery,
-    setSelectedCategory,
+    setSelectedCategoryIds,
     setSelectedItemIds,
     setShowActives,
     setShowCancelled,
@@ -330,8 +330,8 @@ function ItemList({
         onSearchChange={setSearchQuery}
         searchPlaceholder={`Search ${labels.plural}...`}
         categories={filteredCategories}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        selectedCategoryIds={selectedCategoryIds}
+        onCategoryIdsChange={setSelectedCategoryIds}
         showActives={showActives}
         onShowActivesChange={setShowActives}
         showTrials={showTrials}

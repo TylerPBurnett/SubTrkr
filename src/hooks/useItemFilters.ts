@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import type { ItemWithCategory, ItemType } from '@/types';
+import { UNCATEGORIZED_FILTER_ID } from '@/utils/categories';
 
 interface UseItemFiltersParams {
   items: ItemWithCategory[];
   itemType?: ItemType;
   searchQuery: string;
-  selectedCategory: string;
+  selectedCategoryIds: string[] | null;
   showActives: boolean;
   showTrials: boolean;
   showPaused: boolean;
@@ -26,7 +27,7 @@ export function useItemFilters({
   items,
   itemType,
   searchQuery,
-  selectedCategory,
+  selectedCategoryIds,
   showActives,
   showTrials,
   showPaused,
@@ -43,7 +44,8 @@ export function useItemFilters({
       const matchesSearch =
         !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory =
-        selectedCategory === 'all' || item.category_id === selectedCategory;
+        !selectedCategoryIds ||
+        selectedCategoryIds.includes(item.category_id ?? UNCATEGORIZED_FILTER_ID);
       const matchesStatus =
         (item.status === 'active' && showActives) ||
         (item.status === 'trial' && showTrials) ||
@@ -52,18 +54,18 @@ export function useItemFilters({
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [typeFilteredItems, searchQuery, selectedCategory, showActives, showTrials, showPaused, showCancelled]);
+  }, [typeFilteredItems, searchQuery, selectedCategoryIds, showActives, showTrials, showPaused, showCancelled]);
 
   // Count how many filters are active
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (selectedCategory !== 'all') count++;
+    if (selectedCategoryIds) count++;
     if (!showActives) count++;
     if (!showTrials) count++;
     if (!showPaused) count++;
     if (!showCancelled) count++;
     return count;
-  }, [selectedCategory, showActives, showTrials, showPaused, showCancelled]);
+  }, [selectedCategoryIds, showActives, showTrials, showPaused, showCancelled]);
 
   return {
     typeFilteredItems,

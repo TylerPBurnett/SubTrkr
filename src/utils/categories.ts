@@ -3,6 +3,14 @@ import type { Category } from '@/types';
 export const UNCATEGORIZED_CATEGORY_NAME = 'Uncategorized';
 export const UNCATEGORIZED_CATEGORY_COLOR = '#6b7280';
 
+/**
+ * Stands in for `category_id === null` in any multi-select category filter, so
+ * "uncategorised" can be selected and deselected like a real category. Without
+ * it, uncategorised items silently vanish the moment any category filter is
+ * applied.
+ */
+export const UNCATEGORIZED_FILTER_ID = '__uncategorized__';
+
 export interface ItemCategoryDisplay {
   id: string | null;
   name: string;
