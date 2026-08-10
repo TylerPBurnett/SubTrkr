@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
+import { endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
 import { formatISODate } from '@/utils/dates';
 import { sumOccurrences, type Occurrence } from '@/utils/occurrences';
@@ -10,6 +10,7 @@ const INTENSITY_STEPS = [0.25, 0.5, 0.75, 1];
 
 interface YearGridProps {
   year: number;
+  selectedDate: Date;
   occurrencesByDay: Map<string, Occurrence[]>;
   onSelectMonth: (date: Date) => void;
   onSelectDay: (date: Date) => void;
@@ -34,6 +35,7 @@ function intensityFor(total: number, peak: number): number {
 
 export default function YearGrid({
   year,
+  selectedDate,
   occurrencesByDay,
   onSelectMonth,
   onSelectDay,
@@ -46,7 +48,32 @@ export default function YearGrid({
     return totals;
   }, [occurrencesByDay]);
 
-  const peak = useMemo(() => Math.max(0, ...dayTotals.values()), [dayTotals]);
+  // `dayTotals` is built from `occurrencesByDay`, which spans the padded
+  // grid — late December of the prior year through early January of the
+  // next — not just the displayed year. Without filtering, a heavy day
+  // just outside the year could set the intensity scale for all twelve
+  // months. The spec wants "the year's heaviest day", so only days that
+  // actually belong to `year` are eligible.
+  const peak = useMemo(() => {
+    let max = 0;
+    dayTotals.forEach((total, isoDate) => {
+      if (!isoDate.startsWith(`${year}-`)) return;
+      if (total > max) max = total;
+    });
+    return max;
+  }, [dayTotals, year]);
+
+  // Roving tabindex across the whole year: exactly one day square is a tab
+  // stop, matching the pattern MonthGrid uses (previously every one of the
+  // ~504 day squares had its own tab stop, and the grid had no selection
+  // indicator at all). Target the selection when it falls inside the
+  // displayed year; otherwise fall back to Jan 1 so there is always exactly
+  // one, even if the selection lives in a different year than the one
+  // currently shown.
+  const focusTarget = useMemo(
+    () => (selectedDate.getFullYear() === year ? selectedDate : new Date(year, 0, 1)),
+    [selectedDate, year],
+  );
 
   const months = useMemo(
     () =>
@@ -112,19 +139,28 @@ export default function YearGrid({
               >
                 {week.map((day) => {
                   const isoDate = formatISODate(day);
-                  const dayTotal = day.getMonth() === month ? (dayTotals.get(isoDate) ?? 0) : 0;
+                  const isOwnMonth = day.getMonth() === month;
+                  const dayTotal = isOwnMonth ? (dayTotals.get(isoDate) ?? 0) : 0;
                   const intensity = intensityFor(dayTotal, peak);
+                  // Padding days (the greyed-out lead/trail from adjacent
+                  // months) are excluded so the same calendar date, which
+                  // also renders as an "own month" cell elsewhere in the
+                  // year, isn't selected/focusable twice.
+                  const isSelected = isOwnMonth && isSameDay(day, selectedDate);
+                  const isFocusTarget = isOwnMonth && isSameDay(day, focusTarget);
 
                   return (
                     <button
                       key={isoDate}
                       type="button"
                       role="gridcell"
+                      aria-selected={isSelected}
                       aria-label={
                         dayTotal > 0
                           ? `${day.toDateString()} — ${formatCurrency(dayTotal)}`
                           : day.toDateString()
                       }
+                      tabIndex={isFocusTarget ? 0 : -1}
                       onClick={() => onSelectDay(day)}
                       style={{
                         aspectRatio: '1',
@@ -133,7 +169,10 @@ export default function YearGrid({
                           intensity > 0
                             ? `color-mix(in srgb, var(--brand-primary) ${Math.round(intensity * 100)}%, transparent)`
                             : 'var(--bg-hover)',
-                        opacity: day.getMonth() === month ? 1 : 0.25,
+                        opacity: isOwnMonth ? 1 : 0.25,
+                        boxShadow: isSelected
+                          ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--brand-primary) 45%, transparent)'
+                          : undefined,
                       }}
                     />
                   );

@@ -61,11 +61,31 @@ export default function CalendarView({
   // whatever was clicked, so pulling focus into a day cell on top of that
   // would be an unwanted jump. Only keyboard navigation can strand focus,
   // which is what `hasNavigated`/focus-follows-selection exists to prevent.
+  //
+  // The selection moves by the same unit as the anchor, unconditionally —
+  // not just on keyboard paging. Without this, paging leaves `selectedDate`
+  // behind in the old range: no cell in the new grid matches it, so the
+  // grid loses its roving tab stop, remounted cells can't recover DOM
+  // focus, and a subsequent arrow key re-anchors backward (computed from
+  // the stale selection), undoing the page it just did.
   const page = (next: -1 | 1, fromKeyboard = false) => {
     if (fromKeyboard) setHasNavigated(true);
     setDirection(next);
     setAnchor((current) => shiftAnchor(lens, current, next));
+    setSelectedDate((current) => shiftAnchor(lens, current, next));
   };
+
+  // Lens changes re-anchor to the current selection so the new lens opens
+  // on a range that actually contains it — switching lens must not strand
+  // the selection outside the newly visible range the same way paging
+  // could.
+  const changeLens = useCallback(
+    (next: CalendarLens) => {
+      setLens(next);
+      setAnchor(selectedDate);
+    },
+    [selectedDate],
+  );
 
   const range = useMemo(() => getCalendarRange(lens, anchor), [lens, anchor]);
   const gridDays = useMemo(
@@ -141,7 +161,7 @@ export default function CalendarView({
     lens,
     selectedDate,
     onSelectDate: selectDate,
-    onLensChange: setLens,
+    onLensChange: changeLens,
     onPage: (dir) => page(dir, true),
     onToday: () => {
       setHasNavigated(true);
@@ -161,6 +181,7 @@ export default function CalendarView({
       return (
         <YearGrid
           year={anchor.getFullYear()}
+          selectedDate={selectedDate}
           occurrencesByDay={occurrencesByDay}
           onSelectMonth={(date) => {
             // `date` is already the 1st of the target month (see
@@ -236,7 +257,7 @@ export default function CalendarView({
         </h3>
 
         <div className="flex items-center gap-2">
-          <SegmentedControl tabs={LENS_TABS} activeTab={lens} onTabChange={setLens} />
+          <SegmentedControl tabs={LENS_TABS} activeTab={lens} onTabChange={changeLens} />
 
           <button
             type="button"

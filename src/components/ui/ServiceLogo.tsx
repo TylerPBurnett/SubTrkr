@@ -4,20 +4,25 @@ import type { ItemType } from '../../types';
 interface ServiceLogoProps {
   logoUrl: string | null;
   name: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
   itemType?: ItemType;
   categoryName?: string;
   categoryColor?: string;
 }
 
+// `xs` exists only for the calendar day cell, which needs a smaller stack
+// than any other caller of this component. Do not change `sm`/`md`/`lg` —
+// other callers (Dashboard, Analytics, item lists, forms) depend on them.
 const sizeMap = {
+  xs: 22,
   sm: 32,
   md: 40,
   lg: 56,
 };
 
 const letterSizeMap = {
+  xs: 10,
   sm: 14,
   md: 18,
   lg: 24,

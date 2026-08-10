@@ -425,14 +425,14 @@ describe('day folding', () => {
 
     const summary = summariseDay(occurrences, lookup);
     assert.equal(summary.accentColor, '#222222');
-    assert.equal(summary.count, 2);
+    assert.equal(summary.chargeCount, 2);
     assert.equal(summary.total, 55);
   });
 
   test('summariseDay reports an empty day', () => {
     const summary = summariseDay([], createCategoryLookup([]));
     assert.equal(summary.accentColor, null);
-    assert.equal(summary.count, 0);
+    assert.equal(summary.chargeCount, 0);
     assert.equal(summary.total, 0);
   });
 
@@ -466,6 +466,45 @@ describe('day folding', () => {
     ];
 
     const summary = summariseDay(occurrences, createCategoryLookup([]));
+    assert.equal(summary.hasTrialEnd, true);
+  });
+
+  test('summariseDay chargeCount excludes trial-end markers on a day with both', () => {
+    const testDate = parseLocalDate('2026-03-13');
+    const occurrences: Occurrence[] = [
+      {
+        id: 'charge-item:2026-03-13:charge',
+        item: item({ id: 'charge-item', amount: 12 }),
+        date: testDate,
+        isoDate: '2026-03-13',
+        amount: 12,
+        kind: 'charge',
+        isPast: false,
+        isOverdue: false,
+      },
+      {
+        id: 'trial-item:2026-03-13:trial-end',
+        item: item({
+          id: 'trial-item',
+          status: 'trial',
+          trial_end_date: '2026-03-13',
+          start_date: '2026-01-13',
+        }),
+        date: testDate,
+        isoDate: '2026-03-13',
+        amount: 0,
+        kind: 'trial-end',
+        isPast: false,
+        isOverdue: false,
+      },
+    ];
+
+    const summary = summariseDay(occurrences, createCategoryLookup([]));
+    // A trial-end marker carries amount 0 and is not a charge — it must not
+    // inflate chargeCount, or a day with one real charge plus a trial
+    // ending would misreport "2 charges".
+    assert.equal(summary.chargeCount, 1);
+    assert.equal(summary.total, 12);
     assert.equal(summary.hasTrialEnd, true);
   });
 

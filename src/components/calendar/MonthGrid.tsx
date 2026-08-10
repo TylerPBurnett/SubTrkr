@@ -13,7 +13,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const NO_OCCURRENCES: Occurrence[] = [];
 const EMPTY_SUMMARY: DaySummary = {
   total: 0,
-  count: 0,
+  chargeCount: 0,
   accentColor: null,
   hasOverdue: false,
   hasTrialEnd: false,
@@ -66,35 +66,58 @@ export default function MonthGrid({
     return map;
   }, [occurrencesByDay, categoryLookup]);
 
+  // Belt-and-braces: `focusedDate` normally tracks the selection, but a
+  // caller can page the visible range without moving the selection (or hand
+  // us a date from a different lens entirely). If `focusedDate` isn't one of
+  // this grid's days, no cell would get `tabIndex={0}` and the whole grid
+  // would drop out of the tab order. Fall back to the first day inside the
+  // displayed range so exactly one cell is always reachable by keyboard.
+  const effectiveFocusedDate = useMemo(() => {
+    if (gridDays.some((day) => isSameDay(day, focusedDate))) return focusedDate;
+    return (
+      gridDays.find(
+        (day) => day.getTime() >= rangeStart.getTime() && day.getTime() <= rangeEnd.getTime(),
+      ) ??
+      gridDays[0] ??
+      focusedDate
+    );
+  }, [gridDays, focusedDate, rangeStart, rangeEnd]);
+
   return (
     <div>
-      <div
-        role="row"
-        className="calendar-grid"
-        style={{ marginBottom: 6, padding: '0 3px' }}
-      >
-        {WEEKDAYS.map((weekday) => (
-          <div
-            key={weekday}
-            role="columnheader"
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              textAlign: 'center',
-            }}
-          >
-            {weekday}
-          </div>
-        ))}
-      </div>
-
+      {/*
+        The header row lives inside the `role="grid"` container as its first
+        row — `role="row"` is only valid ARIA with `grid`/`table`/`rowgroup`
+        ancestry, and it was previously a sibling of the grid, so browsers
+        dropped the role entirely and screen readers got no column labels.
+        It reuses `.calendar-grid` (the same 7-column track as the week
+        rows) so columns still align, and skips the grid container's own
+        left/right inset since it now inherits it via `p-[3px]` instead of
+        applying it a second time.
+      */}
       <div
         role="grid"
         aria-label="Month view"
         className="flex flex-col gap-[3px] rounded-xl p-[3px]"
         style={{ background: 'var(--bg-surface)' }}
       >
+        <div role="row" className="calendar-grid" style={{ marginBottom: 3 }}>
+          {WEEKDAYS.map((weekday) => (
+            <div
+              key={weekday}
+              role="columnheader"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: 'var(--text-muted)',
+                textAlign: 'center',
+              }}
+            >
+              {weekday}
+            </div>
+          ))}
+        </div>
+
         {weeks.map((week) => (
           <div key={formatISODate(week[0])} role="row" className="calendar-grid">
             {week.map((day) => {
@@ -110,7 +133,7 @@ export default function MonthGrid({
                   summary={summary}
                   isToday={isToday(day)}
                   isSelected={isSameDay(day, selectedDate)}
-                  isFocused={isSameDay(day, focusedDate)}
+                  isFocused={isSameDay(day, effectiveFocusedDate)}
                   isOutsideRange={day < rangeStart || day > rangeEnd}
                   onSelect={onSelect}
                   shouldFocus={shouldFocus}

@@ -283,7 +283,12 @@ export function projectOccurrences(
 
 export interface DaySummary {
   total: number;
-  count: number;
+  /**
+   * Charge-kind occurrences only — a trial-end marker carries `amount: 0`
+   * and is not a charge, so it must not inflate this count (it would make
+   * a trial-only day report "1 charge, $0.00").
+   */
+  chargeCount: number;
   /** category colour of the largest charge; null when the day is empty */
   accentColor: string | null;
   hasOverdue: boolean;
@@ -316,7 +321,7 @@ export function summariseDay(
   categoryLookup: ReadonlyMap<string, Category>,
 ): DaySummary {
   if (occurrences.length === 0) {
-    return { total: 0, count: 0, accentColor: null, hasOverdue: false, hasTrialEnd: false };
+    return { total: 0, chargeCount: 0, accentColor: null, hasOverdue: false, hasTrialEnd: false };
   }
 
   const charges = occurrences.filter((occurrence) => occurrence.kind === 'charge');
@@ -327,7 +332,7 @@ export function summariseDay(
 
   return {
     total: sumOccurrences(occurrences),
-    count: occurrences.length,
+    chargeCount: charges.length,
     accentColor: largest
       ? resolveItemCategoryDisplay(largest.item, categoryLookup).color
       : UNCATEGORIZED_CATEGORY_COLOR,
