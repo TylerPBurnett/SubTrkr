@@ -98,29 +98,59 @@ export default function WeekGrid({
                     borderRadius: 0,
                   }}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  {/*
+                    Logo and amount share the top line so the name gets the
+                    full card width beneath them. Side by side, a 22px logo
+                    plus gaps left the name ~41px in a 117px column, which
+                    truncated "The Wall Street Journal" to a few characters —
+                    in the one lens that exists to show names in full.
+                  */}
+                  <div className="flex items-center justify-between gap-1.5">
                     <ServiceLogo
                       logoUrl={occurrence.item.logo_url}
                       name={occurrence.item.name}
-                      size="sm"
+                      size="xs"
                     />
                     <span
-                      className="truncate"
-                      style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 11,
+                        color: occurrence.isOverdue
+                          ? 'var(--accent-red)'
+                          : 'var(--text-secondary)',
+                      }}
                     >
-                      {occurrence.item.name}
+                      {occurrence.kind === 'trial-end'
+                        ? 'Trial'
+                        : formatCurrency(occurrence.amount, {
+                            currency: occurrence.item.currency,
+                          })}
                     </span>
                   </div>
                   <span
                     style={{
+                      fontSize: 12,
+                      lineHeight: 1.3,
+                      color: 'var(--text-primary)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {occurrence.item.name}
+                  </span>
+                  <span
+                    style={{
                       fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
-                      color: 'var(--text-secondary)',
+                      fontSize: 10,
+                      color: 'var(--text-muted)',
                     }}
                   >
                     {occurrence.kind === 'trial-end'
                       ? 'Trial ends'
-                      : formatCurrency(occurrence.amount, { currency: occurrence.item.currency })}
+                      : occurrence.item.billing_cycle}
                   </span>
                 </button>
               ))}

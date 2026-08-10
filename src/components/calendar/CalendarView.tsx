@@ -189,6 +189,7 @@ export default function CalendarView({
         <YearGrid
           year={anchor.getFullYear()}
           selectedDate={selectedDate}
+          shouldFocus={hasNavigated}
           occurrencesByDay={occurrencesByDay}
           onSelectMonth={(date) => {
             // `date` is already the 1st of the target month (see

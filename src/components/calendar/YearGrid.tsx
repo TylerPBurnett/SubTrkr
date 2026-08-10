@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
 import { formatISODate } from '@/utils/dates';
@@ -11,6 +11,8 @@ const INTENSITY_STEPS = [0.25, 0.5, 0.75, 1];
 interface YearGridProps {
   year: number;
   selectedDate: Date;
+  /** True once the user has deliberately navigated; gates focus movement. */
+  shouldFocus: boolean;
   occurrencesByDay: Map<string, Occurrence[]>;
   onSelectMonth: (date: Date) => void;
   onSelectDay: (date: Date) => void;
@@ -36,6 +38,7 @@ function intensityFor(total: number, peak: number): number {
 export default function YearGrid({
   year,
   selectedDate,
+  shouldFocus,
   occurrencesByDay,
   onSelectMonth,
   onSelectDay,
@@ -74,6 +77,19 @@ export default function YearGrid({
     () => (selectedDate.getFullYear() === year ? selectedDate : new Date(year, 0, 1)),
     [selectedDate, year],
   );
+
+  // A roving tabindex moves which cell is tabbable, but assistive tech only
+  // announces a cell when DOM focus actually lands on it. Without this the
+  // ring moved and the screen reader stayed silent — the same half-fix the
+  // month grid shipped before DayCell got its focus effect.
+  const focusRef = useRef<HTMLButtonElement | null>(null);
+  const focusTargetIso = formatISODate(focusTarget);
+
+  useEffect(() => {
+    if (!shouldFocus) return;
+    if (focusRef.current === document.activeElement) return;
+    focusRef.current?.focus();
+  }, [shouldFocus, focusTargetIso]);
 
   const months = useMemo(
     () =>
@@ -152,13 +168,14 @@ export default function YearGrid({
                   return (
                     <button
                       key={isoDate}
+                      ref={isFocusTarget ? focusRef : undefined}
                       type="button"
                       role="gridcell"
                       aria-selected={isSelected}
                       aria-label={
                         dayTotal > 0
-                          ? `${day.toDateString()} — ${formatCurrency(dayTotal)}`
-                          : day.toDateString()
+                          ? `${format(day, 'MMMM d, yyyy')} — ${formatCurrency(dayTotal)}`
+                          : format(day, 'MMMM d, yyyy')
                       }
                       tabIndex={isFocusTarget ? 0 : -1}
                       onClick={() => onSelectDay(day)}
