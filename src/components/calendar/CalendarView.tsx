@@ -55,12 +55,13 @@ export default function CalendarView({
   const [direction, setDirection] = useState<-1 | 1>(1);
 
   // Single path for both chevron clicks and keyboard paging so the slide
-  // direction and focus-follows-selection behaviour stay in sync between
-  // mouse and keyboard. Mirrors the `hasNavigated` set that Task 13's inline
-  // `onPage` callback used to do, since paging counts as deliberate
-  // navigation just like arrow keys or clicking a day.
-  const page = (next: -1 | 1) => {
-    setHasNavigated(true);
+  // direction stays in sync between mouse and keyboard. `hasNavigated` is
+  // only set for keyboard paging: a mouse click already moves focus to
+  // whatever was clicked, so pulling focus into a day cell on top of that
+  // would be an unwanted jump. Only keyboard navigation can strand focus,
+  // which is what `hasNavigated`/focus-follows-selection exists to prevent.
+  const page = (next: -1 | 1, fromKeyboard = false) => {
+    if (fromKeyboard) setHasNavigated(true);
     setDirection(next);
     setAnchor((current) => shiftAnchor(lens, current, next));
   };
@@ -119,8 +120,17 @@ export default function CalendarView({
       setHasNavigated(true);
       setSelectedDate(date);
       // Selecting outside the visible range pages the view and keeps the
-      // selection, so arrow keys walk off the edge naturally.
-      if (date < range.rangeStart || date > range.rangeEnd) setAnchor(date);
+      // selection, so arrow keys walk off the edge naturally. Set direction
+      // from the same comparison so the slide animates the right way
+      // instead of replaying whatever a previous chevron/keyboard page left
+      // behind.
+      if (date > range.rangeEnd) {
+        setDirection(1);
+        setAnchor(date);
+      } else if (date < range.rangeStart) {
+        setDirection(-1);
+        setAnchor(date);
+      }
     },
     [range.rangeStart, range.rangeEnd],
   );
@@ -131,7 +141,7 @@ export default function CalendarView({
     selectedDate,
     onSelectDate: selectDate,
     onLensChange: setLens,
-    onPage: page,
+    onPage: (dir) => page(dir, true),
     onToday: () => {
       setHasNavigated(true);
       const today = getToday();
