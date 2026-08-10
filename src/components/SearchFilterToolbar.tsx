@@ -21,7 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  FilterCheckRow,
+  FilterCountBadge,
+} from "@/components/ui/FilterMenu";
 import type { Category } from "@/types";
 
 // Refined select item styles
@@ -171,20 +174,38 @@ export default function SearchFilterToolbar({
           <Popover>
             <PopoverTrigger asChild>
               <button
-                className="flex items-center justify-center px-3 h-full transition-colors focus:outline-none focus-visible:outline-none"
+                aria-label={
+                  activeFilterCount > 0
+                    ? `Filter ${filterLabel} — ${activeFilterCount} active`
+                    : `Filter ${filterLabel}`
+                }
+                className="flex items-center justify-center gap-1 px-3 h-full transition-colors focus:outline-none focus-visible:outline-none"
                 style={{
-                  color: "var(--text-secondary)",
-                  backgroundColor: "transparent",
+                  // An active filter has to be visible from outside the
+                  // popover, or narrowed results read as missing data.
+                  color:
+                    activeFilterCount > 0
+                      ? "var(--brand-text)"
+                      : "var(--text-secondary)",
+                  backgroundColor:
+                    activeFilterCount > 0
+                      ? "var(--brand-primary-light)"
+                      : "transparent",
                   boxShadow: "none",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "var(--text-primary)";
+                  if (activeFilterCount === 0) {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "var(--text-secondary)";
+                  if (activeFilterCount === 0) {
+                    e.currentTarget.style.color = "var(--text-secondary)";
+                  }
                 }}
               >
                 <Filter className="size-4" />
+                <FilterCountBadge count={activeFilterCount} />
               </button>
             </PopoverTrigger>
 
@@ -291,10 +312,10 @@ export default function SearchFilterToolbar({
                   }}
                 />
 
-                {/* Status Checkboxes */}
-                <div className="space-y-2">
+                {/* Status rows */}
+                <div>
                   <label
-                    className="block text-[11px] font-medium mb-2.5"
+                    className="block text-[11px] font-medium mb-1.5"
                     style={{
                       color: "var(--text-muted)",
                       letterSpacing: "0.01em",
@@ -302,131 +323,27 @@ export default function SearchFilterToolbar({
                   >
                     Visibility
                   </label>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="show-actives"
-                      className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
-                      style={{
-                        transition: "background-color 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          "var(--bg-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      <Checkbox
-                        id="show-actives"
-                        checked={showActives}
-                        onCheckedChange={(checked) =>
-                          onShowActivesChange(checked as boolean)
-                        }
-                      />
-                      <span
-                        className="text-[13px] font-medium transition-colors flex-1"
-                        style={{
-                          color: "var(--text-secondary)",
-                          letterSpacing: "-0.005em",
-                        }}
-                      >
-                        Show actives
-                      </span>
-                    </label>
-                    <label
-                      htmlFor="show-trials"
-                      className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
-                      style={{
-                        transition: "background-color 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          "var(--bg-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      <Checkbox
-                        id="show-trials"
-                        checked={showTrials}
-                        onCheckedChange={(checked) =>
-                          onShowTrialsChange(checked as boolean)
-                        }
-                      />
-                      <span
-                        className="text-[13px] font-medium transition-colors flex-1"
-                        style={{
-                          color: "var(--text-secondary)",
-                          letterSpacing: "-0.005em",
-                        }}
-                      >
-                        Show trials
-                      </span>
-                    </label>
-                    <label
-                      htmlFor="show-paused"
-                      className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
-                      style={{
-                        transition: "background-color 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          "var(--bg-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      <Checkbox
-                        id="show-paused"
-                        checked={showPaused}
-                        onCheckedChange={(checked) =>
-                          onShowPausedChange(checked as boolean)
-                        }
-                      />
-                      <span
-                        className="text-[13px] font-medium transition-colors flex-1"
-                        style={{
-                          color: "var(--text-secondary)",
-                          letterSpacing: "-0.005em",
-                        }}
-                      >
-                        Show paused
-                      </span>
-                    </label>
-                    <label
-                      htmlFor="show-cancelled"
-                      className="flex items-center gap-2.5 cursor-pointer group py-0.5 px-1 -mx-1 rounded-md transition-colors"
-                      style={{
-                        transition: "background-color 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          "var(--bg-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      <Checkbox
-                        id="show-cancelled"
-                        checked={showCancelled}
-                        onCheckedChange={(checked) =>
-                          onShowCancelledChange(checked as boolean)
-                        }
-                      />
-                      <span
-                        className="text-[13px] font-medium transition-colors flex-1"
-                        style={{
-                          color: "var(--text-secondary)",
-                          letterSpacing: "-0.005em",
-                        }}
-                      >
-                        Show cancelled
-                      </span>
-                    </label>
+                  <div className="-mx-1.5">
+                    <FilterCheckRow
+                      label="Show actives"
+                      checked={showActives}
+                      onToggle={() => onShowActivesChange(!showActives)}
+                    />
+                    <FilterCheckRow
+                      label="Show trials"
+                      checked={showTrials}
+                      onToggle={() => onShowTrialsChange(!showTrials)}
+                    />
+                    <FilterCheckRow
+                      label="Show paused"
+                      checked={showPaused}
+                      onToggle={() => onShowPausedChange(!showPaused)}
+                    />
+                    <FilterCheckRow
+                      label="Show cancelled"
+                      checked={showCancelled}
+                      onToggle={() => onShowCancelledChange(!showCancelled)}
+                    />
                   </div>
                 </div>
               </div>
