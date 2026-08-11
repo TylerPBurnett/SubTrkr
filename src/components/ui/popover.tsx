@@ -27,8 +27,24 @@ function PopoverContent({
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
+        /*
+          `pointer-events-auto` is load-bearing, not defensive. A Radix modal
+          Dialog sets `pointer-events: none` on <body> and re-enables it only
+          inside its own Content. This popover portals to <body>, OUTSIDE that
+          subtree, so it inherits `none` — it renders perfectly and is entirely
+          inert. That is what made every DatePicker in `ItemForm` (a
+          `Dialog.Root`) open a calendar no click could reach: the popover was
+          absent from `elementsFromPoint` altogether, not merely behind
+          something. A child may re-enable pointer events under a `none`
+          ancestor, which is why setting it here is enough.
+
+          `z-[80]` puts it above every dialog — see `dialogLayers.ts`. That is a
+          separate correctness fix, not the one above: at z-50 this tied with
+          `ItemForm` and lost on DOM order, and sat outright below the z-60 and
+          z-70 dialogs.
+        */
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-xl border p-4 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)] outline-hidden",
+          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[80] pointer-events-auto w-72 origin-(--radix-popover-content-transform-origin) rounded-xl border p-4 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)] outline-hidden",
           className
         )}
         {...props}
