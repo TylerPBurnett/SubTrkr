@@ -36,12 +36,19 @@ cannot see it. Do not try; use the browser.
    assistive tech announced nothing. `YearGrid` now takes `shouldFocus` and
    focuses its target. Labels also read `November 26, 2026` rather than
    `Thu Nov 26 2026`.
-4. **Trial-end days — still unverified on screen, and here is why.** No item in
-   the dataset has a `trial_end_date`; the one `trial`-status item (GitHub)
-   leaves the field empty, which the form calls an "ongoing trial". The engine
-   therefore emits no `trial-end` occurrence at all, so the branch cannot be
-   exercised by looking. The `WeekGrid` half of it is fixed in code (below);
-   seeing it requires setting a trial end date on an item first.
+4. **Trial-end days — unverified on screen by explicit decision (2026-08-11).**
+   No item in the dataset has a `trial_end_date`; the one `trial`-status item
+   (GitHub) leaves the field empty, which the form calls an "ongoing trial".
+   The engine therefore emits no `trial-end` occurrence at all, so the branch
+   cannot be exercised by looking.
+
+   For a while it could not even be set: every DatePicker in the item form was
+   inert (see the `pointer-events` fix in `ui/popover.tsx`). That is fixed, so
+   the field works now — but the owner chose to merge without this check
+   rather than seed the data for it. The underlying engine behaviour is
+   covered by `occurrences.test.ts`; what remains unseen is the JSX branch in
+   `WeekGrid` and `DayCell` that reads the charge count. Set a trial end date
+   on any item and it becomes checkable in one minute.
 5. **Week lens — was broken, now fixed.** Names were being truncated to 41px in
    117px columns, so "The Wall Street Journal" showed a few characters in the
    one lens that exists to show names in full. The card was restructured: logo

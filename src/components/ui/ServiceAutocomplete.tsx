@@ -36,6 +36,20 @@ export default function ServiceAutocomplete({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justSelectedRef = useRef(false);
+  /**
+   * True once the user has typed into the field themselves.
+   *
+   * A value that arrived from props is already the answer — the name of the
+   * item being edited, or a service just picked from this very list. Searching
+   * for it offers the selected name as a suggestion for itself, which is no
+   * information at all, and the dropdown that carries it pushes the rest of
+   * the form down. Worse, the effect below runs on mount, so opening the edit
+   * form made a suggestion list appear on its own about 150ms later, before
+   * the user touched anything.
+   *
+   * Suggestions are for a name being composed, so only composition arms them.
+   */
+  const hasUserEditedRef = useRef(false);
 
   // Debounced search
   const search = useCallback((query: string) => {
@@ -51,12 +65,13 @@ export default function ServiceAutocomplete({
     }, 150);
   }, [itemType]);
 
-  // Search when value changes (skip if we just selected a service)
+  // Search when the user changes the value — not when it merely arrives.
   useEffect(() => {
     if (justSelectedRef.current) {
       justSelectedRef.current = false;
       return;
     }
+    if (!hasUserEditedRef.current) return;
     search(value);
   }, [value, search]);
 
@@ -87,11 +102,16 @@ export default function ServiceAutocomplete({
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    hasUserEditedRef.current = true;
     onChange(e.target.value);
   };
 
   const handleSelect = (service: KnownService) => {
     justSelectedRef.current = true;
+    // Picking a service commits a name, so the field is back to holding an
+    // answer rather than a query. Without this, clicking away and back would
+    // reopen the list on the name that was just chosen from it.
+    hasUserEditedRef.current = false;
     onServiceSelect(service);
     setIsOpen(false);
     setSuggestions([]);
@@ -150,7 +170,10 @@ export default function ServiceAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (suggestions.length > 0 && value.length > 0) {
+            // Clicking into a field that already holds the committed name is
+            // not a request for suggestions — it is usually a request to fix a
+            // typo in it. Reopening the list there covers the fields below.
+            if (hasUserEditedRef.current && suggestions.length > 0 && value.length > 0) {
               setIsOpen(true);
             }
           }}
