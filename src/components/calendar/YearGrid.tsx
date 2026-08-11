@@ -3,9 +3,8 @@ import { endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek } f
 import { formatCurrency } from '@/utils/currency';
 import { formatISODate } from '@/utils/dates';
 import { sumOccurrences, type Occurrence } from '@/utils/occurrences';
-import { buildGridDays } from './calendarRange';
+import { buildGridDays, chunkWeeks, WEEK_OPTIONS } from './calendarRange';
 
-const WEEK_OPTIONS = { weekStartsOn: 0 } as const;
 const INTENSITY_STEPS = [0.25, 0.5, 0.75, 1];
 
 interface YearGridProps {
@@ -16,15 +15,6 @@ interface YearGridProps {
   occurrencesByDay: Map<string, Occurrence[]>;
   onSelectMonth: (date: Date) => void;
   onSelectDay: (date: Date) => void;
-}
-
-/** Seven-day slices, so each row can carry `role="row"`. */
-function chunkWeeks(days: Date[]): Date[][] {
-  const rows: Date[][] = [];
-  for (let index = 0; index < days.length; index += 7) {
-    rows.push(days.slice(index, index + 7));
-  }
-  return rows;
 }
 
 /** Quantised into 4 bands — a continuous ramp reads as mush at this size. */

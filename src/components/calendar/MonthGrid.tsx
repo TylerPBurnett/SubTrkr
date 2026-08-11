@@ -3,6 +3,7 @@ import { isSameDay, isToday } from 'date-fns';
 import type { Category } from '@/types';
 import { formatISODate } from '@/utils/dates';
 import { summariseDay, type DaySummary, type Occurrence } from '@/utils/occurrences';
+import { chunkWeeks } from './calendarRange';
 import DayCell from './DayCell';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -46,13 +47,7 @@ export default function MonthGrid({
   // Chunked into weeks because `role="gridcell"` is only valid ARIA with
   // `role="row"` ancestry inside `role="grid"`. Each row is its own 7-column
   // grid, so the visual result is identical to one flat 7-column grid.
-  const weeks = useMemo(() => {
-    const rows: Date[][] = [];
-    for (let index = 0; index < gridDays.length; index += 7) {
-      rows.push(gridDays.slice(index, index + 7));
-    }
-    return rows;
-  }, [gridDays]);
+  const weeks = useMemo(() => chunkWeeks(gridDays), [gridDays]);
 
   // Computed once per occurrences/category change rather than inline per
   // cell, so DayCell's memo sees a stable object for days that didn't

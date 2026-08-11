@@ -27,6 +27,15 @@ export default function WeekGrid({
           const isoDate = formatISODate(day);
           const occurrences = occurrencesByDay.get(isoDate) ?? [];
           const selected = isSameDay(day, selectedDate);
+          // A trial-end marker carries `amount: 0`, so a day holding nothing
+          // but trial ends summed to 0 and rendered a confident "$0.00" — a
+          // day with no money moving, reported as a day costing nothing.
+          // `DayCell` gates on the same count; this is a separate code path
+          // that had kept the original `occurrences.length` test.
+          const chargeCount = occurrences.reduce(
+            (count, occurrence) => count + (occurrence.kind === 'charge' ? 1 : 0),
+            0,
+          );
 
           return (
             <div
@@ -66,7 +75,7 @@ export default function WeekGrid({
               >
                 {day.getDate()}
               </p>
-              {occurrences.length > 0 && (
+              {chargeCount > 0 ? (
                 <p
                   style={{
                     fontFamily: 'var(--font-mono)',
@@ -76,6 +85,18 @@ export default function WeekGrid({
                 >
                   {formatCurrency(sumOccurrences(occurrences), { display: 'summary' })}
                 </p>
+              ) : (
+                occurrences.length > 0 && (
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 11,
+                      color: 'var(--accent-amber)',
+                    }}
+                  >
+                    Trial ends
+                  </p>
+                )
               )}
             </button>
 

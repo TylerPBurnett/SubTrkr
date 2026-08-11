@@ -10,45 +10,67 @@ deliberately not fixed. Nothing in this list blocks merge. It is recorded
 because the reasoning behind each deferral is worth more than the one-line
 symptom, and none of it lives in git history.
 
-## The standing gap
+## The verification record
 
-**No part of this calendar has ever been seen rendered.** The app sits behind a
-Supabase sign-in wall whose session lives in the Tauri webview, separate from
-any browser that could be driven, so every browser-verification step in the plan
-was skipped. Verification was: 123 passing tests, a clean typecheck, and close
-code review at every task.
+**Updated 2026-08-11.** The calendar has now been driven in a browser against
+real data. The original standing gap — that no part of it had ever been seen
+rendered — is closed. What follows is what the five ranked checks actually
+returned, kept because a prediction and its outcome are worth more together than
+either alone.
 
-The manual both-theme check was substituted with a token audit confirming all 14
-CSS custom properties used by calendar code resolve in both the light and
-`.dark` blocks of `src/index.css`. That is a proxy, not a substitute.
+Route that worked: `bun run dev` and drive `http://localhost:1420` through the
+Browser pane. The Tauri dev build runs as a bare executable with no bundle id,
+so the screenshot compositor filters it out of every capture — computer-use
+cannot see it. Do not try; use the browser.
 
-**Check these five first when someone can finally look**, ranked by likelihood ×
-obviousness (from the final whole-branch review):
+1. **Icon stack width — no problem, and the alarm was wrong.** 22px chips, three
+   to a stack = 52px inside an 88px cell body, zero overflow across all 42
+   cells. The pre-merge panic used a 72px content width that was never real; at
+   the true width even 32px logos would have fitted. Only the `+N` pill at
+   107px would have clipped.
+2. **Paging and selection — correct.** Aug 24 → Next → Sept 24 carried the
+   selection, `→` advanced to Sept 25 with no bounce, exactly one tab stop
+   throughout.
+3. **Year lens keyboard — was broken, now fixed.** The ring and the tabindex
+   moved but DOM focus never did, so `activeElement` stayed on `BODY` and
+   assistive tech announced nothing. `YearGrid` now takes `shouldFocus` and
+   focuses its target. Labels also read `November 26, 2026` rather than
+   `Thu Nov 26 2026`.
+4. **Trial-end days — still unverified on screen, and here is why.** No item in
+   the dataset has a `trial_end_date`; the one `trial`-status item (GitHub)
+   leaves the field empty, which the form calls an "ongoing trial". The engine
+   therefore emits no `trial-end` occurrence at all, so the branch cannot be
+   exercised by looking. The `WeekGrid` half of it is fixed in code (below);
+   seeing it requires setting a trial end date on an item first.
+5. **Week lens — was broken, now fixed.** Names were being truncated to 41px in
+   117px columns, so "The Wall Street Journal" showed a few characters in the
+   one lens that exists to show names in full. The card was restructured: logo
+   and amount share the top line, the name takes full width beneath with a
+   2-line clamp. Measured 81px, nothing clipped.
 
-1. **Icon stack width.** Fixed pre-merge by dropping the day-cell logos to 22px,
-   but the arithmetic was never confirmed on screen. Open the calendar at the
-   default 1280×800 window on a month with a day holding 4+ charges. The stack
-   plus `+N` pill should fit; collapsing the rail (`⌘.`) buys ~42px per cell.
-2. **Paging and selection.** Click a day, page forward, Tab — the grid should
-   still have exactly one tab stop. Press `→` — it should not jump back a month.
-3. **Year lens keyboard.** Press `Y`, then arrows — the selected square should
-   visibly move. Tab should not trap you for hundreds of stops.
-4. **Trial-end days.** Needs an item with a `trial_end_date` in view. Expect an
-   amber edge, an hourglass marker, and no `$0` total.
-5. **Week lens at realistic widths.** ~90px per column at 1280 with the rail
-   open leaves roughly 34px for a name. The week lens exists specifically to
-   show names at full length; check that it actually does.
+The both-theme check remains a proxy: a token audit confirming all 14 CSS custom
+properties used by calendar code resolve in both the light and `.dark` blocks of
+`src/index.css`. Light mode has been seen; a systematic side-by-side has not.
+
+## Closed since
+
+- **`WeekGrid` "$0.00" on a trial-end-only day** (2026-08-11). A trial-end
+  marker carries `amount: 0`, so a day holding nothing but trial ends summed to
+  zero and rendered a confident `$0.00` — a day with no money moving, reported
+  as a day costing nothing. `WeekGrid` now gates on a charge count like
+  `DayCell` does, and shows an amber "Trial ends" instead. **Not seen on
+  screen** — see check 4 above for why.
+- **Seven-day chunking existed three times** (2026-08-11) — `MonthGrid`,
+  `YearGrid`, `CashFlowStrip` — with `WEEK_OPTIONS` twice. Both now export from
+  `calendarRange.ts`. This was the largest drift risk between the lenses: a
+  change to where a week starts had to be made in three places or they would
+  disagree. Verified after the refactor: month lens 42 cells / 7 rows /
+  1 tab stop, year lens 12 grids / 61 rows / 427 cells / 0 orphaned gridcells.
 
 ## Open follow-ups
 
 ### Worth doing
 
-- **`WeekGrid` shows "$0.00" on a trial-end-only day.** Narrower than the
-  equivalent bug fixed in `DayCell` pre-merge — `WeekGrid` builds no ARIA
-  sentence, so the accessibility harm does not recur, but the figure is
-  misleading. Separate code path: `WeekGrid.tsx` gates on
-  `occurrences.length > 0` rather than a charge count. Confirmed by two
-  independent reviews.
 - **Year-lens padding cells** render untinted with no total in their aria-label,
   yet clicking one navigates to its true month where it may have real spend.
   Standard calendar behaviour, but the cell looks empty.
@@ -63,9 +85,6 @@ obviousness (from the final whole-branch review):
 
 ### Cleanup
 
-- **Seven-day chunking exists three times** — `MonthGrid`, `YearGrid`,
-  `CashFlowStrip` — and `WEEK_OPTIONS` twice. Export both from
-  `calendarRange.ts`. This is the largest drift risk between the three lenses.
 - **The selection `boxShadow` string is duplicated** across `DayCell`,
   `WeekGrid`, and `YearGrid`. A `selectionRing()` helper would collapse it.
 - **`occurrences.ts` is ~340 lines** carrying projection, filtering, and day

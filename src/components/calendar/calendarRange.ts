@@ -24,8 +24,13 @@ export interface CalendarRange {
   gridEnd: Date;
 }
 
-/** Sunday-first, matching macOS Calendar's US default. */
-const WEEK_OPTIONS = { weekStartsOn: 0 } as const;
+/**
+ * Sunday-first, matching macOS Calendar's US default. Exported because
+ * `YearGrid` builds its own twelve month-grids and has to start its weeks on
+ * the same day this module does — a second local copy is a silent way for one
+ * lens to drift a day out of step with the others.
+ */
+export const WEEK_OPTIONS = { weekStartsOn: 0 } as const;
 
 export function getCalendarRange(lens: CalendarLens, anchor: Date): CalendarRange {
   if (lens === 'week') {
@@ -110,4 +115,27 @@ export function buildGridDays(gridStart: Date, gridEnd: Date): Date[] {
     days.push(day);
   }
   return days;
+}
+
+/**
+ * Seven-day slices of a grid-day list.
+ *
+ * Every lens needs this and each one had grown its own copy: `MonthGrid` and
+ * `YearGrid` chunk so each row can carry `role="row"` (`role="gridcell"` is
+ * invalid ARIA without it, and browsers drop the invalid role entirely rather
+ * than warning), while `CashFlowStrip` chunks to total each week. Three
+ * identical loops meant a change to week alignment had to be made in three
+ * places or the lenses would disagree about where a week starts.
+ *
+ * A trailing partial week is returned as-is rather than padded: callers either
+ * pass whole weeks already (`getCalendarRange` pads its grid bounds to week
+ * boundaries) or, in the strip's case, want the short week counted for what it
+ * holds.
+ */
+export function chunkWeeks(days: Date[]): Date[][] {
+  const rows: Date[][] = [];
+  for (let index = 0; index < days.length; index += 7) {
+    rows.push(days.slice(index, index + 7));
+  }
+  return rows;
 }

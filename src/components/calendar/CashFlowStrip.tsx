@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { formatCurrency } from '@/utils/currency';
 import { formatISODate } from '@/utils/dates';
 import { sumOccurrences, type Occurrence } from '@/utils/occurrences';
-import { formatWeekLabel } from './calendarRange';
+import { chunkWeeks, formatWeekLabel } from './calendarRange';
 
 interface CashFlowStripProps {
   gridDays: Date[];
@@ -10,24 +10,17 @@ interface CashFlowStripProps {
 }
 
 export default function CashFlowStrip({ gridDays, occurrencesByDay }: CashFlowStripProps) {
-  const weeks = useMemo(() => {
-    const result: Array<{ total: number; label: string }> = [];
-
-    for (let index = 0; index < gridDays.length; index += 7) {
-      const week = gridDays.slice(index, index + 7);
-      if (week.length === 0) continue;
-
-      result.push({
+  const weeks = useMemo(
+    () =>
+      chunkWeeks(gridDays).map((week) => ({
         total: week.reduce(
           (total, day) => total + sumOccurrences(occurrencesByDay.get(formatISODate(day)) ?? []),
           0,
         ),
         label: formatWeekLabel(week[0], week[week.length - 1]),
-      });
-    }
-
-    return result;
-  }, [gridDays, occurrencesByDay]);
+      })),
+    [gridDays, occurrencesByDay],
+  );
 
   const peak = Math.max(0, ...weeks.map((week) => week.total));
   if (peak === 0) return null;
