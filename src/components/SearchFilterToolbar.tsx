@@ -6,7 +6,6 @@ import {
   List,
   ArrowDown,
   ArrowUp,
-  Check,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -15,11 +14,31 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  FILTER_POPOVER_CLASS,
+  FILTER_POPOVER_SURFACE,
+  FilterActionRow,
   FilterCheckRow,
   FilterCountBadge,
+  FilterRadioRow,
+  FilterScrollArea,
+  FilterSection,
 } from "@/components/ui/FilterMenu";
+import SegmentedControl from "@/components/ui/SegmentedControl";
 import { UNCATEGORIZED_FILTER_ID } from "@/utils/categories";
+import {
+  allCategoriesState,
+  everySelectableCategoryId,
+  isCategorySelected,
+  onlyCategory,
+  toggleAllCategories,
+  toggleCategory,
+} from "@/utils/categorySelection";
 import type { Category } from "@/types";
+
+const SORT_DIRECTION_TABS: Array<{ id: "asc" | "desc"; label: string }> = [
+  { id: "asc", label: "Ascending" },
+  { id: "desc", label: "Descending" },
+];
 
 interface SearchFilterToolbarProps {
   // Search
@@ -95,26 +114,12 @@ export default function SearchFilterToolbar({
   const selectedSortLabel =
     sortOptions.find((option) => option.value === sortBy)?.label || "Default";
 
-  const everyCategoryId = [
-    ...categories.map((category) => category.id),
-    UNCATEGORIZED_FILTER_ID,
-  ];
-
-  const isCategoryChecked = (id: string) =>
-    !selectedCategoryIds || selectedCategoryIds.includes(id);
-
-  // Collapses back to null once everything is selected, so "all selected" and
-  // "no filter" are the same state rather than two that behave differently.
-  const toggleCategory = (id: string) => {
-    const current = selectedCategoryIds ?? everyCategoryId;
-    const next = current.includes(id)
-      ? current.filter((value) => value !== id)
-      : [...current, id];
-
-    onCategoryIdsChange(
-      next.length === everyCategoryId.length ? null : next,
-    );
-  };
+  // Selection semantics live in `utils/categorySelection` so this toolbar and
+  // the calendar's filter cannot drift apart on what "all", "none", and
+  // "only" mean — they were written twice before, and the collapse-to-null
+  // rule is subtle enough that two copies is two chances to get it wrong.
+  const everyCategoryId = everySelectableCategoryId(categories);
+  const allState = allCategoriesState(selectedCategoryIds, everyCategoryId);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -208,139 +213,96 @@ export default function SearchFilterToolbar({
 
           <PopoverContent
             align="center"
-            className="w-[280px] p-0 overflow-hidden"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-strong)",
-              boxShadow:
-                "0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong)",
-              borderRadius: "12px",
-            }}
+            className={FILTER_POPOVER_CLASS}
+            style={FILTER_POPOVER_SURFACE}
           >
-            {/* Header */}
-            <div
-              className="px-4 pt-3.5 pb-3"
-              style={{
-                borderBottom: "1px solid var(--border-default)",
-              }}
-            >
-              <h3
-                className="text-[13px] font-semibold tracking-tight"
-                style={{
-                  color: "var(--text-primary)",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {`Filter ${filterLabel}`}
-              </h3>
-            </div>
-
-            <div className="p-3.5 space-y-4">
-              {/* Categories */}
-              <div>
-                <label
-                  className="block text-[11px] font-medium mb-1.5"
-                  style={{
-                    color: "var(--text-muted)",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  Categories
-                </label>
-                <div
-                  className="-mx-1.5 overflow-y-auto"
-                  style={{ maxHeight: 176 }}
-                >
-                  {categories.map((cat) => (
-                    <FilterCheckRow
-                      key={cat.id}
-                      label={cat.name}
-                      swatch={cat.color}
-                      checked={isCategoryChecked(cat.id)}
-                      onToggle={() => toggleCategory(cat.id)}
-                    />
-                  ))}
-                  <FilterCheckRow
-                    label="Uncategorized"
-                    checked={isCategoryChecked(UNCATEGORIZED_FILTER_ID)}
-                    onToggle={() => toggleCategory(UNCATEGORIZED_FILTER_ID)}
-                  />
-                </div>
-              </div>
-
-              {/* Subtle Divider */}
-              <div
-                style={{
-                  height: "1px",
-                  background: "var(--border-default)",
-                  margin: "12px 0",
-                }}
+            {/*
+              No title bar and no section labels. The trigger is a filter icon,
+              so a heading reading "Filter subscriptions" tells you only what
+              you just clicked, and a group that leads with its own "All …"
+              row already names itself. Hairlines carry the structure — the
+              same chrome the calendar's filter uses, so the two read as one
+              control that appears in two places rather than two controls.
+            */}
+            <FilterSection label="Categories" divider={false}>
+              <FilterCheckRow
+                label="All Categories"
+                checked={allState === "all"}
+                indeterminate={allState === "partial"}
+                onToggle={() =>
+                  onCategoryIdsChange(
+                    toggleAllCategories(selectedCategoryIds, everyCategoryId),
+                  )
+                }
               />
+              <FilterScrollArea>
+                {categories.map((cat) => (
+                  <FilterCheckRow
+                    key={cat.id}
+                    label={cat.name}
+                    swatch={cat.color}
+                    checked={isCategorySelected(selectedCategoryIds, cat.id)}
+                    onToggle={() =>
+                      onCategoryIdsChange(
+                        toggleCategory(selectedCategoryIds, cat.id, everyCategoryId),
+                      )
+                    }
+                    onOnly={() =>
+                      onCategoryIdsChange(onlyCategory(cat.id, everyCategoryId))
+                    }
+                  />
+                ))}
+                <FilterCheckRow
+                  label="Uncategorized"
+                  checked={isCategorySelected(
+                    selectedCategoryIds,
+                    UNCATEGORIZED_FILTER_ID,
+                  )}
+                  onToggle={() =>
+                    onCategoryIdsChange(
+                      toggleCategory(
+                        selectedCategoryIds,
+                        UNCATEGORIZED_FILTER_ID,
+                        everyCategoryId,
+                      ),
+                    )
+                  }
+                  onOnly={() =>
+                    onCategoryIdsChange(
+                      onlyCategory(UNCATEGORIZED_FILTER_ID, everyCategoryId),
+                    )
+                  }
+                />
+              </FilterScrollArea>
+            </FilterSection>
 
-              {/* Status rows */}
-              <div>
-                <label
-                  className="block text-[11px] font-medium mb-1.5"
-                  style={{
-                    color: "var(--text-muted)",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  Visibility
-                </label>
-                <div className="-mx-1.5">
-                  <FilterCheckRow
-                    label="Show actives"
-                    checked={showActives}
-                    onToggle={() => onShowActivesChange(!showActives)}
-                  />
-                  <FilterCheckRow
-                    label="Show trials"
-                    checked={showTrials}
-                    onToggle={() => onShowTrialsChange(!showTrials)}
-                  />
-                  <FilterCheckRow
-                    label="Show paused"
-                    checked={showPaused}
-                    onToggle={() => onShowPausedChange(!showPaused)}
-                  />
-                  <FilterCheckRow
-                    label="Show cancelled"
-                    checked={showCancelled}
-                    onToggle={() => onShowCancelledChange(!showCancelled)}
-                  />
-                </div>
-              </div>
-            </div>
+            <FilterSection label="Visibility">
+              <FilterCheckRow
+                label="Show actives"
+                checked={showActives}
+                onToggle={() => onShowActivesChange(!showActives)}
+              />
+              <FilterCheckRow
+                label="Show trials"
+                checked={showTrials}
+                onToggle={() => onShowTrialsChange(!showTrials)}
+              />
+              <FilterCheckRow
+                label="Show paused"
+                checked={showPaused}
+                onToggle={() => onShowPausedChange(!showPaused)}
+              />
+              <FilterCheckRow
+                label="Show cancelled"
+                checked={showCancelled}
+                onToggle={() => onShowCancelledChange(!showCancelled)}
+              />
+            </FilterSection>
 
-            {/* Clear Filters Footer */}
             {activeFilterCount > 0 && (
-              <div
-                className="px-3 pb-3 pt-2"
-                style={{
-                  borderTop: "1px solid var(--border-default)",
-                }}
-              >
-                <button
-                  onClick={onClearFilters}
-                  className="w-full h-8 rounded-md text-[12px] font-semibold transition-all"
-                  style={{
-                    backgroundColor: "transparent",
-                    color: "var(--text-secondary)",
-                    letterSpacing: "0.005em",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-                    e.currentTarget.style.color = "var(--text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = "var(--text-secondary)";
-                  }}
-                >
-                  Clear filters
-                </button>
-              </div>
+              <FilterSection>
+                <FilterActionRow label="Clear filters" onClick={onClearFilters} />
+              </FilterSection>
             )}
           </PopoverContent>
         </Popover>
@@ -391,148 +353,38 @@ export default function SearchFilterToolbar({
 
           <PopoverContent
             align="center"
-            className="w-[280px] p-0 overflow-hidden"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-strong)",
-              boxShadow:
-                "0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong)",
-              borderRadius: "12px",
-            }}
+            className={FILTER_POPOVER_CLASS}
+            style={FILTER_POPOVER_SURFACE}
           >
-            <div
-              className="px-4 pt-3.5 pb-3"
-              style={{
-                borderBottom: "1px solid var(--border-default)",
-              }}
-            >
-              <h3
-                className="text-[13px] font-semibold tracking-tight"
-                style={{
-                  color: "var(--text-primary)",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Sort {filterLabel}
-              </h3>
-            </div>
+            {/*
+              These rows used to be filled green pills with a TRAILING check,
+              one divider away from leading-gutter check rows in the filter
+              popover — two check positions and two green families
+              (`--accent-green` here, `--brand-text` there) in one toolbar.
+              Same row shape now: picking one unpicks the rest, which the marks
+              already show, so nothing needs a fill to say it is selected.
+            */}
+            <FilterSection label="Sort by" divider={false}>
+              {sortOptions.map((option) => (
+                <FilterRadioRow
+                  key={option.value}
+                  label={option.label}
+                  checked={sortBy === option.value}
+                  onSelect={() => onSortByChange(option.value)}
+                />
+              ))}
+            </FilterSection>
 
-            <div className="p-3.5 space-y-4">
-              <div className="space-y-2">
-                <label
-                  className="block text-[11px] font-medium"
-                  style={{
-                    color: "var(--text-muted)",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  Sort by
-                </label>
-                <div className="space-y-1">
-                  {sortOptions.map((option) => {
-                    const isSelected = sortBy === option.value;
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => onSortByChange(option.value)}
-                        className="w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors"
-                        style={{
-                          backgroundColor: isSelected
-                            ? "var(--accent-green-muted)"
-                            : "transparent",
-                          color: isSelected
-                            ? "var(--accent-green)"
-                            : "var(--text-secondary)",
-                          letterSpacing: "-0.005em",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor =
-                              "var(--bg-hover)";
-                            e.currentTarget.style.color =
-                              "var(--text-primary)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor =
-                              "transparent";
-                            e.currentTarget.style.color =
-                              "var(--text-secondary)";
-                          }
-                        }}
-                      >
-                        <span>{option.label}</span>
-                        {isSelected ? (
-                          <Check className="size-3.5 opacity-80" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Two mutually exclusive options is a segmented control, not a list. */}
+            <FilterSection label="Direction">
+              <div className="px-2 py-1">
+                <SegmentedControl
+                  tabs={SORT_DIRECTION_TABS}
+                  activeTab={sortDirection}
+                  onTabChange={onSortDirectionChange}
+                />
               </div>
-
-              <div
-                style={{
-                  height: "1px",
-                  background: "var(--border-default)",
-                }}
-              />
-
-              <div className="space-y-2">
-                <label
-                  className="block text-[11px] font-medium"
-                  style={{
-                    color: "var(--text-muted)",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  Direction
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onSortDirectionChange("asc")}
-                    className="h-8 rounded-md text-[12px] font-semibold transition-colors"
-                    style={{
-                      backgroundColor:
-                        sortDirection === "asc"
-                          ? "var(--accent-green-muted)"
-                          : "var(--bg-input)",
-                      color:
-                        sortDirection === "asc"
-                          ? "var(--accent-green)"
-                          : "var(--text-secondary)",
-                      border: "1px solid var(--border-default)",
-                      letterSpacing: "0.005em",
-                    }}
-                  >
-                    Ascending
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onSortDirectionChange("desc")}
-                    className="h-8 rounded-md text-[12px] font-semibold transition-colors"
-                    style={{
-                      backgroundColor:
-                        sortDirection === "desc"
-                          ? "var(--accent-green-muted)"
-                          : "var(--bg-input)",
-                      color:
-                        sortDirection === "desc"
-                          ? "var(--accent-green)"
-                          : "var(--text-secondary)",
-                      border: "1px solid var(--border-default)",
-                      letterSpacing: "0.005em",
-                    }}
-                  >
-                    Descending
-                  </button>
-                </div>
-              </div>
-            </div>
+            </FilterSection>
           </PopoverContent>
         </Popover>
 

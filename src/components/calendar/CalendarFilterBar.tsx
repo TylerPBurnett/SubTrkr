@@ -1,9 +1,12 @@
 import { Filter } from 'lucide-react';
 import {
+  FILTER_POPOVER_CLASS,
   FILTER_POPOVER_SURFACE,
   FilterActionRow,
   FilterCheckRow,
   FilterCountBadge,
+  FilterScrollArea,
+  FilterSection,
 } from '@/components/ui/FilterMenu';
 import {
   Popover,
@@ -12,6 +15,15 @@ import {
 } from '@/components/ui/popover';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemType } from '@/types';
+import {
+  allCategoriesState,
+  describeCategorySelection,
+  everySelectableCategoryId,
+  isCategorySelected,
+  onlyCategory,
+  toggleAllCategories,
+  toggleCategory,
+} from '@/utils/categorySelection';
 import { UNCATEGORIZED_FILTER_ID, type OccurrenceFilters } from '@/utils/occurrences';
 
 interface CalendarFilterBarProps {
@@ -48,11 +60,11 @@ export function describeCalendarFilters(
     parts.push(TYPE_LABELS[filters.itemType] ?? filters.itemType);
   }
 
-  if (filters.categoryIds) {
-    const total = categories.length + 1; // + uncategorized
-    const count = filters.categoryIds.length;
-    parts.push(count === 1 ? '1 category' : `${count} of ${total} categories`);
-  }
+  const categoryPart = describeCategorySelection(
+    filters.categoryIds ?? null,
+    everySelectableCategoryId(categories),
+  );
+  if (categoryPart) parts.push(categoryPart);
 
   if (filters.includePaused === false) parts.push('no paused');
   if (filters.includeCancelled === false) parts.push('no cancelled');
@@ -66,28 +78,15 @@ export default function CalendarFilterBar({
   filters,
   onChange,
 }: CalendarFilterBarProps) {
-  const selected = filters.categoryIds;
+  const selected = filters.categoryIds ?? null;
   const summary = describeCalendarFilters(filters, categories);
   const isFiltered = summary.length > 0;
 
-  const everyCategoryId = [
-    ...categories.map((category) => category.id),
-    UNCATEGORIZED_FILTER_ID,
-  ];
+  const everyId = everySelectableCategoryId(categories);
+  const allState = allCategoriesState(selected, everyId);
 
-  const toggleCategory = (id: string) => {
-    const current = selected ?? everyCategoryId;
-    const next = current.includes(id)
-      ? current.filter((value) => value !== id)
-      : [...current, id];
-
-    onChange({
-      ...filters,
-      categoryIds: next.length === everyCategoryId.length ? null : next,
-    });
-  };
-
-  const isCategoryChecked = (id: string) => !selected || selected.includes(id);
+  const setCategories = (categoryIds: string[] | null) =>
+    onChange({ ...filters, categoryIds });
 
   return (
     <Popover>
@@ -109,38 +108,51 @@ export default function CalendarFilterBar({
 
       <PopoverContent
         align="end"
-        className="w-56 p-0 overflow-hidden"
+        className={FILTER_POPOVER_CLASS}
         style={FILTER_POPOVER_SURFACE}
       >
-        <div className="p-2">
-          <SegmentedControl
-            tabs={TYPE_TABS}
-            activeTab={(filters.itemType ?? 'all') as TypeTab}
-            onTabChange={(id) => onChange({ ...filters, itemType: id })}
-          />
-        </div>
-
-        <div
-          className="py-1 overflow-y-auto"
-          style={{ borderTop: '1px solid var(--border-default)', maxHeight: 176 }}
-        >
-          {categories.map((category) => (
-            <FilterCheckRow
-              key={category.id}
-              label={category.name}
-              swatch={category.color}
-              checked={isCategoryChecked(category.id)}
-              onToggle={() => toggleCategory(category.id)}
+        <FilterSection label="Type" divider={false}>
+          <div className="px-2 py-1">
+            <SegmentedControl
+              tabs={TYPE_TABS}
+              activeTab={(filters.itemType ?? 'all') as TypeTab}
+              onTabChange={(id) => onChange({ ...filters, itemType: id })}
             />
-          ))}
-          <FilterCheckRow
-            label="Uncategorized"
-            checked={isCategoryChecked(UNCATEGORIZED_FILTER_ID)}
-            onToggle={() => toggleCategory(UNCATEGORIZED_FILTER_ID)}
-          />
-        </div>
+          </div>
+        </FilterSection>
 
-        <div className="py-1" style={{ borderTop: '1px solid var(--border-default)' }}>
+        <FilterSection label="Categories">
+          <FilterCheckRow
+            label="All Categories"
+            checked={allState === 'all'}
+            indeterminate={allState === 'partial'}
+            onToggle={() => setCategories(toggleAllCategories(selected, everyId))}
+          />
+          <FilterScrollArea>
+            {categories.map((category) => (
+              <FilterCheckRow
+                key={category.id}
+                label={category.name}
+                swatch={category.color}
+                checked={isCategorySelected(selected, category.id)}
+                onToggle={() =>
+                  setCategories(toggleCategory(selected, category.id, everyId))
+                }
+                onOnly={() => setCategories(onlyCategory(category.id, everyId))}
+              />
+            ))}
+            <FilterCheckRow
+              label="Uncategorized"
+              checked={isCategorySelected(selected, UNCATEGORIZED_FILTER_ID)}
+              onToggle={() =>
+                setCategories(toggleCategory(selected, UNCATEGORIZED_FILTER_ID, everyId))
+              }
+              onOnly={() => setCategories(onlyCategory(UNCATEGORIZED_FILTER_ID, everyId))}
+            />
+          </FilterScrollArea>
+        </FilterSection>
+
+        <FilterSection label="Lifecycle">
           <FilterCheckRow
             label="Paused"
             checked={filters.includePaused !== false}
@@ -165,12 +177,12 @@ export default function CalendarFilterBar({
               onChange({ ...filters, includeArchived: filters.includeArchived !== true })
             }
           />
-        </div>
+        </FilterSection>
 
         {isFiltered && (
-          <div className="py-1" style={{ borderTop: '1px solid var(--border-default)' }}>
+          <FilterSection>
             <FilterActionRow label="Clear filters" onClick={() => onChange({})} />
-          </div>
+          </FilterSection>
         )}
       </PopoverContent>
     </Popover>

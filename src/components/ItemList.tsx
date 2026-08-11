@@ -389,11 +389,30 @@ function ItemList({
         </div>
       ) : sortedItems.length === 0 ? (
         <div className="card">
-          <EmptyState
-            icon={Search}
-            title="No matches found"
-            description="Try adjusting your search or filter criteria."
-          />
+          {/*
+            Unchecking every category is a legitimate way to build a selection
+            up from nothing, but it is also the one empty result the generic
+            copy gets wrong: "no matches found" describes the data when the
+            real cause is a control the user set two clicks ago and cannot see
+            from here. Name the cause, and offer the undo.
+          */}
+          {selectedCategoryIds?.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="No categories selected"
+              description="Nothing can match while every category is unchecked."
+              action={{
+                label: 'Select all categories',
+                onClick: () => setSelectedCategoryIds(null),
+              }}
+            />
+          ) : (
+            <EmptyState
+              icon={Search}
+              title="No matches found"
+              description="Try adjusting your search or filter criteria."
+            />
+          )}
         </div>
       ) : (
         <AnimatePresence mode="wait">

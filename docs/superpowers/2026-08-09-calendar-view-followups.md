@@ -54,6 +54,24 @@ properties used by calendar code resolve in both the light and `.dark` blocks of
 
 ## Closed since
 
+- **The two filter popovers only shared their rows, not their chrome**
+  (2026-08-11). The calendar's was 224px with hairline groups and a menu-row
+  Clear; the subscriptions/bills one was 280px with a title bar, visible
+  section labels, and a footer button — and the Sort popover beside it used a
+  filled pill with a TRAILING check, a third idiom two dividers away, drawing
+  on `--accent-green` where the filter trigger drew on `--brand-text`. All
+  three now share `FILTER_POPOVER_SURFACE`, `FILTER_POPOVER_CLASS` (256px) and
+  one row shape. Selection semantics moved to `utils/categorySelection.ts`
+  under test, because "all", "none", and "only" had been written twice.
+- **Rows claimed `role="menuitemcheckbox"` outside any menu** (2026-08-11).
+  Invalid — that role needs a `menu`/`menubar` ancestor, and these live in a
+  Radix Popover. Exactly the `gridcell`-without-`row` failure this branch
+  shipped three times: the browser drops the role and the control announces as
+  nothing. They are `aria-pressed` toggle buttons now. Adding `role="menu"` to
+  the popover was rejected as the fix — that role promises arrow-key roving
+  and type-ahead which Radix Popover does not implement, trading a quiet
+  failure for a loud lie.
+
 - **`WeekGrid` "$0.00" on a trial-end-only day** (2026-08-11). A trial-end
   marker carries `amount: 0`, so a day holding nothing but trial ends summed to
   zero and rendered a confident `$0.00` — a day with no money moving, reported

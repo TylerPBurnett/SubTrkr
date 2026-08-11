@@ -368,7 +368,15 @@ export default function CalendarView({
 
       {rangeOccurrences.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center' }}>
-          Nothing due in this period.
+          {/*
+            An empty calendar caused by unchecking every category is not the
+            same fact as an empty calendar caused by nothing being due, and
+            saying the second when the first is true sends the user looking
+            for missing items instead of at the filter.
+          */}
+          {filters.categoryIds?.length === 0
+            ? 'No categories selected.'
+            : 'Nothing due in this period.'}
         </p>
       )}
     </div>
