@@ -85,6 +85,19 @@ properties used by calendar code resolve in both the light and `.dark` blocks of
   disagree. Verified after the refactor: month lens 42 cells / 7 rows /
   1 tab stop, year lens 12 grids / 61 rows / 427 cells / 0 orphaned gridcells.
 
+## Where this is tracked
+
+This doc is the detail; **[docs/TASKS.md](../TASKS.md) is the queue.** It was
+orphaned from that ledger until 2026-08-11, which meant everything below was
+recorded but not actually scheduled anywhere. It now has rows:
+
+- **TASK-022** — the `--text-muted` contrast failure (app-wide, not calendar-only)
+- **TASK-023** — everything under "Open follow-ups" below
+- **TASK-024** — popover viewport overflow at short window heights
+
+Add new findings to both: the row in `TASKS.md` so it gets scheduled, the
+reasoning here so it is worth picking up.
+
 ## Open follow-ups
 
 ### Worth doing

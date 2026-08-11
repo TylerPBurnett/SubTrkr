@@ -1,6 +1,6 @@
 # SubTrkr Desktop Task Index
 
-> Last updated: 2026-06-19
+> Last updated: 2026-08-11
 > Purpose: Track actionable work. `docs/ROADMAP.md` sets priorities, `docs/plans/` holds execution context, and this file is the concrete queue.
 
 ## Rules
@@ -41,6 +41,9 @@
 | TASK-013 | P3 | Desktop / Updater | Show download size before install | [CHANGELOG.md](../CHANGELOG.md) | Display content length on the CTA button (e.g. "Download & install v1.2.2 (14 MB)") so users on slow connections can decide |
 | TASK-014 | P3 | Desktop / Updater | Update panel visual polish pass | [CHANGELOG.md](../CHANGELOG.md) | Revisit expanded panel styling — user noted it may need further design refinement beyond the functional redesign |
 | TASK-016 | P2 | Desktop / Analytics | Billing-date-accurate monthly trend model | [docs/completed-plans/PRODUCTION_HARDENING_PLAN.md](completed-plans/PRODUCTION_HARDENING_PLAN.md) | Follow-up after the hardening sweep to replace the current “active at any point in month” approximation with billing-occurrence-aware monthly trend logic |
+| TASK-022 | P2 | Desktop / Accessibility | `--text-muted` fails contrast in both themes | [docs/superpowers/2026-08-09-calendar-view-followups.md](superpowers/2026-08-09-calendar-view-followups.md) | Measured live: 2.18:1 light (#a3a3a3), 2.36:1 dark (#525252) at 11px, where AA needs 4.5:1 — neither theme clears even the 3:1 large-text floor. The token inverts across themes so it lands mid-grey against the wrong background both ways. ~145 usages; also feeds `--segmented-inactive-text` and `--settings-tab-inactive-text`. Token-level fix plus a regression sweep, not per-component. Related: overdue calendar day totals are 3.76:1 in light (`--accent-red` on white at 11px) |
+| TASK-023 | P3 | Desktop / Calendar | Calendar view deferred follow-ups | [docs/superpowers/2026-08-09-calendar-view-followups.md](superpowers/2026-08-09-calendar-view-followups.md) | The triaged list left open after the calendar shipped: year-lens padding cells look empty but navigate to their real month, lens colour semantics disagree (week cards use brand green where month cells use the category colour for the same charge), `railFits` keys off `window.innerWidth` rather than main-panel width, duplicated selection `boxShadow`, unreachable `default` branches suppressing exhaustiveness checks, and the ⌘1–⌘6 renumbering having no automated test |
+| TASK-024 | P3 | Desktop / UI | Popover overflows the viewport at short window heights | [src/components/ui/popover.tsx](../src/components/ui/popover.tsx) | At 800px viewport height the item form's trial-end DatePicker calendar extends 124px past the bottom and its lower rows become unreachable; collision avoidance neither flips it to `side="top"` nor shifts it. Fits at 1000px. Found while fixing the `pointer-events` bug in the same component — separate cause, separate fix |
 
 ## Active
 
