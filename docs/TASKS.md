@@ -49,7 +49,7 @@
 
 | ID | Pri | Area | Task | Source | Note |
 |---|---|---|---|---|---|
-| TASK-020 | P0 | Desktop / Release | Prepare and ship v1.3.0 | [docs/plans/2026-06-19-v1.3.0-release-preparation.md](plans/2026-06-19-v1.3.0-release-preparation.md) | Release preparation is merged and pushed; publication is waiting at the explicit tag-confirmation gate |
+| TASK-020 | P0 | Desktop / Release | Prepare and ship v1.3.0 | [docs/plans/2026-06-19-v1.3.0-release-preparation.md](plans/2026-06-19-v1.3.0-release-preparation.md) | Release preparation is merged and pushed; publication is waiting at the explicit tag-confirmation gate. **Scope grew 2026-08-11:** the calendar workspace (TASK-009), the shared filter rework, and three item-form bug fixes merged into `main` after the release plan was written, so v1.3.0 now carries them. The item-form fixes are the ones worth calling out in release notes — every DatePicker in that form was inert, so no date could be set on any field in the shipped app |
 
 ## Blocked
 
