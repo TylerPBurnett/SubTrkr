@@ -70,6 +70,22 @@ Two gotchas found by measurement, not by eye:
   darkening both — otherwise icons and bars darken with the text. See
   `barColor`/`textColor` in the password meters and `accentColor`/`textColor`
   in `StatusChangeDialog`.
+- The `-muted` tints are **translucent in dark** (`rgba(…, 0.2)`) but opaque in
+  light, so a tinted pill's real background depends on the panel under it. The
+  channel-test banner measured 4.75:1 over `--bg-card` but only 4.39:1 over a
+  `--bg-hover` panel. When a tint sits on something other than the card, mix an
+  opaque tint into `--bg-card` instead so the result is panel-independent.
+
+## Never Concatenate Alpha Onto a var()
+
+`'var(--accent-red)15'` is not a colour. Eight-digit hex alpha only works on a
+literal hex (`'#0088cc15'` is fine), so `var()` + suffix produces an invalid
+declaration and the background silently drops to transparent. Use
+`color-mix(in srgb, var(--token) N%, transparent)`, an existing `-muted` token,
+or mix into `--bg-card` for an opaque result. Category and slice colours may
+themselves be `var()` (`OTHER_CATEGORY_COLOR`, `UNCATEGORIZED_SLICE_COLOR`), so
+template literals like `` `${item.color}20` `` are only safe where the value is
+guaranteed to be raw hex.
 
 ## Form Styling (ItemForm)
 

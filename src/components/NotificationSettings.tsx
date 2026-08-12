@@ -76,7 +76,7 @@ export default function NotificationSettings() {
         {error && (
           <div
             className="mb-4 p-3 rounded-lg text-sm flex items-center justify-between"
-            style={{ backgroundColor: 'var(--accent-red)15', color: 'var(--accent-red-text)' }}
+            style={{ backgroundColor: 'var(--accent-red-muted)', color: 'var(--accent-red-text)' }}
           >
             <span>{error}</span>
             <button onClick={() => setError(null)} aria-label="Dismiss error">
@@ -93,7 +93,7 @@ export default function NotificationSettings() {
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center"
                   style={{
-                    backgroundColor: 'var(--brand-primary)20',
+                    backgroundColor: 'var(--brand-primary-light)',
                     color: 'var(--brand-text)',
                   }}
                 >
@@ -107,7 +107,7 @@ export default function NotificationSettings() {
                     <span
                       className="text-xs px-2 py-0.5 rounded-full font-medium"
                       style={{
-                        backgroundColor: 'var(--accent-green)20',
+                        backgroundColor: 'var(--accent-green-muted)',
                         color: 'var(--brand-text)',
                       }}
                     >
