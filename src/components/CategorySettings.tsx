@@ -131,7 +131,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                 className="text-xs px-2 py-0.5 rounded-full font-medium"
                 style={{
                   backgroundColor: 'var(--brand-primary-light)',
-                  color: 'var(--brand-primary)',
+                  color: 'var(--brand-text)',
                 }}
               >
                 {getCreateType() === 'subscription' ? 'Subscription' : 'Bill'}
@@ -159,11 +159,11 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                 className="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: 'var(--brand-primary)',
-                  color: 'var(--text-inverse)',
+                  color: 'var(--brand-on-primary)',
                 }}
               >
                 {isCreating ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Check className="w-5 h-5" />
                 )}
@@ -228,7 +228,7 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
               <button
                 onClick={handleUpdateCategory}
                 className="p-2 rounded-lg transition-colors"
-                style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-inverse)' }}
+                style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--brand-on-primary)' }}
               >
                 <Check className="w-5 h-5" />
               </button>
