@@ -90,7 +90,7 @@ export function NotificationChannelCard({
                   className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
                     backgroundColor: 'var(--accent-green)20',
-                    color: 'var(--accent-green)',
+                    color: 'var(--brand-text)',
                   }}
                 >
                   Connected

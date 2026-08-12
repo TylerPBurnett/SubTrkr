@@ -188,9 +188,9 @@ function getPanelStyles(status: UpdaterState['status']) {
         background:
           'linear-gradient(180deg, color-mix(in srgb, var(--accent-emerald-muted) 58%, var(--bg-card)), color-mix(in srgb, var(--bg-card) 96%, var(--bg-surface)))',
         iconBg: 'var(--accent-emerald-muted)',
-        iconColor: 'var(--accent-emerald)',
+        iconColor: 'var(--brand-text)',
         badgeBg: 'color-mix(in srgb, var(--accent-emerald) 18%, var(--bg-card))',
-        badgeColor: 'var(--accent-emerald)',
+        badgeColor: 'var(--brand-text)',
         progressStart: 'var(--accent-emerald)',
         progressEnd: 'var(--accent-green)',
       };
@@ -244,7 +244,7 @@ function CompactUpdateRow() {
         {isUpToDate ? (
           <CheckCircle2
             className="w-4 h-4 shrink-0"
-            style={{ color: 'var(--accent-emerald)' }}
+            style={{ color: 'var(--brand-text)' }}
           />
         ) : updaterState.status === 'error' ? (
           <AlertCircle

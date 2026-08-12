@@ -261,7 +261,7 @@ function TrendDelta({
             ? 'var(--text-muted)'
             : isUp
             ? 'var(--accent-red-text)'
-            : 'var(--accent-emerald)',
+            : 'var(--brand-text)',
       }}
     >
       <Icon className="h-4 w-4" />
@@ -677,7 +677,7 @@ function Analytics({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          accentColor="var(--brand-primary)"
+          accentColor="var(--brand-text)"
           accentMuted="var(--brand-muted)"
           detail={
             <>
@@ -714,7 +714,7 @@ function Analytics({
         />
 
         <MetricCard
-          accentColor="var(--accent-emerald)"
+          accentColor="var(--brand-text)"
           accentMuted="var(--accent-emerald-muted)"
           detail={
             <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
@@ -724,7 +724,7 @@ function Analytics({
           icon={<PiggyBank className="h-5 w-5" />}
           label="Saved"
           value={formatCurrency(monthlySavings, { display: 'summary' })}
-          valueColor="var(--accent-emerald)"
+          valueColor="var(--brand-text)"
         />
 
         <MetricCard
@@ -1152,10 +1152,10 @@ function Analytics({
             <>
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--accent-green-muted)' }}>
-                  <p className="label-wide" style={{ color: 'var(--accent-green)' }}>
+                  <p className="label-wide" style={{ color: 'var(--brand-text)' }}>
                     RECOVERED / MONTH
                   </p>
-                  <p className="mt-2 text-2xl font-bold font-mono" style={{ color: 'var(--accent-green)' }}>
+                  <p className="mt-2 text-2xl font-bold font-mono" style={{ color: 'var(--brand-text)' }}>
                     {formatCurrency(cancellationInsights.totalSavings, { display: 'summary' })}
                   </p>
                 </div>
@@ -1209,7 +1209,7 @@ function Analytics({
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold font-mono" style={{ color: 'var(--accent-green)' }}>
+                        <p className="text-sm font-semibold font-mono" style={{ color: 'var(--brand-text)' }}>
                           +{formatCurrency(item.monthlyAmount, { display: 'precise' })}/mo
                         </p>
                         <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>

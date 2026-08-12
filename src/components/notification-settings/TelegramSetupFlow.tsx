@@ -91,7 +91,7 @@ export function TelegramSetupFlow({
             className="flex items-center gap-2 p-2 rounded-lg"
             style={{
               backgroundColor: 'var(--accent-green)15',
-              color: 'var(--accent-green)',
+              color: 'var(--brand-text)',
             }}
           >
             <Check className="w-4 h-4" />

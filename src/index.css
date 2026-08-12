@@ -808,7 +808,7 @@ body.sidebar-resizing * {
 }
 
 .interactive-hover-success {
-  color: var(--accent-green);
+  color: var(--brand-text);
   transition: background-color 0.2s var(--ease-out-expo);
 }
 
@@ -828,7 +828,7 @@ body.sidebar-resizing * {
 }
 
 .menu-item-success {
-  color: var(--accent-green);
+  color: var(--brand-text);
   transition: all 0.2s var(--ease-out-expo);
 }
 

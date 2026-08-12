@@ -53,6 +53,14 @@ Dark lightens each accent enough to pass, so the `-text` tokens match their
 fills there; the split only bites in light. Measured worst cases with the text
 tokens: 4.66:1 light, 4.75:1 dark, across every surface each one lands on.
 
+**Green is the exception: it fails the 3:1 icon floor too**, so green icons
+migrate as well as green words. Measured in light — emerald icon on a card
+2.54:1, on `--accent-emerald-muted` 2.24:1, `--brand-primary` on its own 14%
+tint 2.02:1. Red and amber icons are fine and keep their fill token; for
+comparison the other accent icons clear the floor on their own muted pills
+(blue 3.01:1, purple 3.57:1). Blue's margin is thin — re-measure if
+`--accent-blue-muted` ever lightens.
+
 Two gotchas found by measurement, not by eye:
 
 - Tinting a background with an accent (`color-mix(… var(--accent-red) 18%,
