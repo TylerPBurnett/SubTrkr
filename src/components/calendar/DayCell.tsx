@@ -91,7 +91,7 @@ function DayCell({
             style={
               isToday
                 ? {
-                    color: 'var(--text-inverse)',
+                    color: 'var(--brand-on-primary)',
                     background: 'var(--brand-primary)',
                     borderRadius: '999px',
                     padding: '1px 6px',

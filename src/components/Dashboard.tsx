@@ -452,7 +452,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                 <button
                   onClick={onViewAll}
                   className="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-sm font-medium transition-colors interactive-hover-bg"
-                  style={{ color: 'var(--brand-primary)' }}
+                  style={{ color: 'var(--brand-text)' }}
                 >
                   View all {upcomingItems.length} upcoming
                   <ChevronRight className="w-4 h-4" />

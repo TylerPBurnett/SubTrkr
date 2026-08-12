@@ -94,7 +94,7 @@ export default function NotificationSettings() {
                   className="w-9 h-9 rounded-lg flex items-center justify-center"
                   style={{
                     backgroundColor: 'var(--brand-primary)20',
-                    color: 'var(--brand-primary)',
+                    color: 'var(--brand-text)',
                   }}
                 >
                   <Bell className="w-5 h-5" />

@@ -114,7 +114,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                   backgroundColor: 'var(--brand-muted)',
                 }}
               >
-                <Lock className="w-6 h-6" style={{ color: 'var(--brand-primary)' }} />
+                <Lock className="w-6 h-6" style={{ color: 'var(--brand-text)' }} />
               </div>
             </div>
 
@@ -282,7 +282,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                 className="w-full px-4 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: canSubmit ? 'var(--brand-primary)' : 'var(--bg-muted)',
-                  color: canSubmit ? 'var(--text-inverse)' : 'var(--text-muted)',
+                  color: canSubmit ? 'var(--brand-on-primary)' : 'var(--text-muted)',
                 }}
               >
                 {isSubmitting ? 'Updating Password...' : 'Set New Password'}

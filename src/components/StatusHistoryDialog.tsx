@@ -167,7 +167,7 @@ export default function StatusHistoryDialog({
                   className="w-14 h-14 rounded-2xl flex items-center justify-center"
                   style={{
                     background: 'var(--bg-hover)',
-                    color: 'var(--brand-primary)',
+                    color: 'var(--brand-text)',
                   }}
                 >
                   <History className="w-7 h-7" />

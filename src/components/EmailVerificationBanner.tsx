@@ -36,8 +36,8 @@ export default function EmailVerificationBanner({ email, onDismiss }: EmailVerif
         }}
       >
         <div className="flex items-center gap-2.5">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--brand-primary)' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
+          <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--brand-text)' }} />
+          <span className="text-sm font-medium" style={{ color: 'var(--brand-text)' }}>
             Verification email sent! Check your inbox.
           </span>
         </div>
@@ -46,7 +46,7 @@ export default function EmailVerificationBanner({ email, onDismiss }: EmailVerif
             onClick={onDismiss}
             aria-label="Dismiss notification"
             className="p-1 rounded-md transition-colors duration-200"
-            style={{ color: 'var(--brand-primary)' }}
+            style={{ color: 'var(--brand-text)' }}
           >
             <X className="w-4 h-4" />
           </button>

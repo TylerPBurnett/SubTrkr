@@ -43,11 +43,20 @@
   --border-strong: #d4d4d4;
 
   /* Brand */
+  /* --brand-primary is a fill/border/chart colour first: as text on a light
+     surface it only reaches 2.28:1 on white, and it misses even the 3:1
+     non-text floor. Use --brand-text wherever green carries words or icons
+     rather than shape — it clears 4.5:1 on every light background (7.13:1 on
+     --bg-card, 5.14:1 on the darkest, --bg-active). */
   --brand-primary: #22c55e;
   --brand-primary-hover: #16a34a;
   --brand-primary-light: rgba(34, 197, 94, 0.15);
   --brand-muted: #f0fdf4;
   --brand-text: #166534;
+  /* Ink for text/icons sitting ON a --brand-primary fill. White fails there in
+     both themes (2.28:1), so the green keeps its dark label in light and dark
+     alike: 7.87:1 at rest, 5.44:1 on the light hover (#16a34a). */
+  --brand-on-primary: #171717;
 
   /* Accent colors for categories/stats */
   --accent-blue: #3b82f6;
@@ -187,6 +196,8 @@
   --brand-primary-light: rgba(34, 197, 94, 0.15);
   --brand-muted: rgba(34, 197, 94, 0.15);
   --brand-text: #4ade80;
+  /* Same dark ink as light — 7.87:1 at rest, 10.29:1 on the dark hover. */
+  --brand-on-primary: #171717;
 
   /* Accent colors (slightly adjusted for dark bg) */
   --accent-blue: #60a5fa;
@@ -682,7 +693,7 @@ body.sidebar-resizing * {
 /* Buttons */
 .btn-primary {
   background-color: var(--brand-primary);
-  color: var(--text-inverse);
+  color: var(--brand-on-primary);
   box-shadow: var(--shadow-brand);
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -820,7 +831,7 @@ body.sidebar-resizing * {
 
 .filter-tab-active {
   background-color: var(--brand-primary);
-  color: var(--text-inverse);
+  color: var(--brand-on-primary);
 }
 
 /* Dropdown menus */

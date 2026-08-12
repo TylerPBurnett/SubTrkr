@@ -43,7 +43,7 @@ export function ItemListStatusPill({ item }: ItemListStatusPillProps) {
           label: 'Active',
           date: null,
           background: 'var(--brand-primary-light)',
-          color: 'var(--brand-primary)',
+          color: 'var(--brand-text)',
         };
     }
   })();

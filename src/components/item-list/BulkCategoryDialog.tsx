@@ -230,11 +230,12 @@ export function BulkCategoryDialog({
                   onClick={handleConfirm}
                   disabled={isSubmitting || selectedId === undefined}
                   aria-busy={isSubmitting}
-                  className={`flex-1 px-4 py-2.5 text-white rounded-xl font-medium shadow-lg transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:hover:opacity-100 disabled:opacity-50 ${
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium shadow-lg transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:hover:opacity-100 disabled:opacity-50 ${
                     isSubmitting ? 'animate-pulse' : ''
                   }`}
                   style={{
                     backgroundColor: 'var(--brand-primary)',
+                    color: 'var(--brand-on-primary)',
                     opacity: isSubmitting ? 0.7 : undefined,
                   }}
                 >

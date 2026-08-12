@@ -101,7 +101,7 @@ export default function ItemForm({
                         boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--brand-primary) 24%, transparent)',
                         borderRadius: '14px',
                         padding: '14px',
-                        color: 'var(--brand-primary)',
+                        color: 'var(--brand-text)',
                       }}
                     >
                       {isBill ? (
