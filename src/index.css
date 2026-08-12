@@ -52,12 +52,26 @@
   /* Accent colors for categories/stats */
   --accent-blue: #3b82f6;
   --accent-blue-muted: #dbeafe;
+  /* Text-safe blue, same split as --accent-red-text. --accent-blue reaches only
+     3.68:1 as text on --bg-card. Use this for words, --accent-blue for fills. */
+  --accent-blue-text: #1d4ed8;
   --accent-purple: #8b5cf6;
   --accent-purple-muted: #ede9fe;
+  /* Text-safe purple, same split as --accent-red-text. Use for words,
+     --accent-purple for fills, borders, and icon strokes. */
+  --accent-purple-text: #6d28d9;
   --accent-amber: #f59e0b;
   --accent-amber-muted: #fef3c7;
+  /* Text-safe amber, same split as --accent-red-text. --accent-amber is a fill
+     colour: as text it manages only 2.15:1 on white and 1.55:1 on --bg-active.
+     Use this for words, --accent-amber for fills, borders, and icon strokes. */
+  --accent-amber-text: #92400e;
   --accent-red: #ef4444;
   --accent-red-muted: #fee2e2;
+  /* Text-safe red. --accent-red is a fill colour: it only reaches 3.76:1 on
+     white and 2.71:1 on --bg-active, so it fails WCAG AA 4.5:1 as body text.
+     Use this for words, --accent-red for fills, borders, and icon strokes. */
+  --accent-red-text: #b91c1c;
   --accent-emerald: #10b981;
   --accent-emerald-muted: #d1fae5;
   --accent-green: #10b981;
@@ -191,12 +205,26 @@
   /* Accent colors (slightly adjusted for dark bg) */
   --accent-blue: #60a5fa;
   --accent-blue-muted: rgba(59, 130, 246, 0.2);
+  /* Dark lightens the fill enough to clear 4.5:1 as text, so the text-safe blue
+     matches --accent-blue here. Kept as its own token for theme-agnostic use. */
+  --accent-blue-text: #60a5fa;
   --accent-purple: #a78bfa;
   --accent-purple-muted: rgba(139, 92, 246, 0.2);
+  /* Dark lightens the fill enough to clear 4.5:1 as text, so the text-safe
+     purple matches --accent-purple here. */
+  --accent-purple-text: #a78bfa;
   --accent-amber: #fbbf24;
   --accent-amber-muted: rgba(245, 158, 11, 0.2);
+  /* Dark lightens the fill enough to clear 4.5:1 as text, so the text-safe
+     amber matches --accent-amber here. Kept as its own token so call sites
+     stay theme-agnostic. */
+  --accent-amber-text: #fbbf24;
   --accent-red: #f87171;
   --accent-red-muted: rgba(239, 68, 68, 0.2);
+  /* Dark already lightens the fill enough to clear 4.5:1 as text, so the
+     text-safe red matches --accent-red here. Kept as its own token so call
+     sites stay theme-agnostic. */
+  --accent-red-text: #f87171;
   --accent-emerald: #34d399;
   --accent-emerald-muted: rgba(16, 185, 129, 0.2);
   --accent-green: #34d399;
@@ -760,7 +788,7 @@ body.sidebar-resizing * {
 }
 
 .interactive-hover-danger {
-  color: var(--accent-red);
+  color: var(--accent-red-text);
   transition: background-color 0.2s var(--ease-out-expo);
 }
 
@@ -798,7 +826,7 @@ body.sidebar-resizing * {
 }
 
 .menu-item-danger {
-  color: var(--accent-red);
+  color: var(--accent-red-text);
   transition: all 0.2s var(--ease-out-expo);
 }
 

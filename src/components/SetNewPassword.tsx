@@ -11,7 +11,10 @@ interface SetNewPasswordProps {
 interface PasswordStrength {
   score: number;
   label: string;
+  /** Meter bar fill. */
   color: string;
+  /** Label text — diverges from `color` where the fill fails AA as text. */
+  textColor: string;
 }
 
 function getPasswordStrength(password: string): PasswordStrength {
@@ -23,10 +26,35 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (/[0-9]/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-  if (score <= 2) return { score, label: 'Weak', color: 'var(--accent-red)' };
-  if (score <= 4) return { score, label: 'Fair', color: 'var(--accent-orange)' };
-  if (score <= 5) return { score, label: 'Good', color: 'var(--accent-blue)' };
-  return { score, label: 'Strong', color: 'var(--accent-green)' };
+  // `color` fills the meter bar, `textColor` prints the label. They differ for
+  // Weak because the red that reads correctly as a bar fails AA as text.
+  if (score <= 2)
+    return {
+      score,
+      label: 'Weak',
+      color: 'var(--accent-red)',
+      textColor: 'var(--accent-red-text)',
+    };
+  if (score <= 4)
+    return {
+      score,
+      label: 'Fair',
+      color: 'var(--accent-amber)',
+      textColor: 'var(--accent-amber-text)',
+    };
+  if (score <= 5)
+    return {
+      score,
+      label: 'Good',
+      color: 'var(--accent-blue)',
+      textColor: 'var(--accent-blue-text)',
+    };
+  return {
+    score,
+    label: 'Strong',
+    color: 'var(--accent-green)',
+    textColor: 'var(--brand-text)',
+  };
 }
 
 export default function SetNewPassword({ onComplete, onDismiss }: SetNewPasswordProps) {
@@ -141,7 +169,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                 }}
               >
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--accent-red)' }} />
-                <span style={{ color: 'var(--accent-red)' }}>{error}</span>
+                <span style={{ color: 'var(--accent-red-text)' }}>{error}</span>
               </div>
             )}
 
@@ -194,7 +222,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                       </span>
                       <span
                         className="text-sm font-medium"
-                        style={{ color: passwordStrength.color }}
+                        style={{ color: passwordStrength.textColor }}
                       >
                         {passwordStrength.label}
                       </span>
@@ -269,7 +297,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                   </button>
                 </div>
                 {confirmPassword && !passwordsMatch && (
-                  <p className="mt-2 text-sm" style={{ color: 'var(--accent-red)' }}>
+                  <p className="mt-2 text-sm" style={{ color: 'var(--accent-red-text)' }}>
                     Passwords do not match
                   </p>
                 )}

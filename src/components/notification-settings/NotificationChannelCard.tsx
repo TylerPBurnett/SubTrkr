@@ -160,7 +160,7 @@ export function NotificationChannelCard({
               : 'var(--accent-red)15',
             color: testResult.success
               ? 'var(--accent-green)'
-              : 'var(--accent-red)',
+              : 'var(--accent-red-text)',
           }}
         >
           {testResult.success ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}

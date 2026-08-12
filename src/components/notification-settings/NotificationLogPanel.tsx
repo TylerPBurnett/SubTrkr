@@ -81,7 +81,7 @@ export function NotificationLogPanel({
                           entry.status === 'sent'
                             ? 'var(--accent-green)'
                             : entry.status === 'failed'
-                              ? 'var(--accent-red)'
+                              ? 'var(--accent-red-text)'
                               : 'var(--text-muted)',
                       }}
                     >

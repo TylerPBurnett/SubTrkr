@@ -112,7 +112,7 @@ export default function DeleteAccountDialog({
                   'All notification channels and preferences',
                 ].map((entry) => (
                   <li key={entry} className="flex items-start gap-2">
-                    <span className="shrink-0 select-none" style={{ color: 'var(--accent-red)' }}>
+                    <span className="shrink-0 select-none" style={{ color: 'var(--accent-red-text)' }}>
                       {'•'}
                     </span>
                     <span>{entry}</span>
@@ -126,7 +126,7 @@ export default function DeleteAccountDialog({
                 className="block text-sm font-medium mb-2"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Type <span style={{ color: 'var(--accent-red)', fontWeight: 600 }}>{CONFIRM_PHRASE}</span> to confirm
+                Type <span style={{ color: 'var(--accent-red-text)', fontWeight: 600 }}>{CONFIRM_PHRASE}</span> to confirm
               </label>
               <input
                 id="delete-account-confirm"

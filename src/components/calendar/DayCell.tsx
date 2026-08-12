@@ -148,7 +148,7 @@ function DayCell({
             className="calendar-day-total"
             style={{
               color: summary.hasOverdue
-                ? 'var(--accent-red)'
+                ? 'var(--accent-red-text)'
                 : isSelected
                   ? 'var(--text-primary)'
                   : undefined,

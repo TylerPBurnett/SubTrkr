@@ -19,17 +19,17 @@ interface StatusHistoryDialogProps {
 const statusStyles: Record<ItemStatus, { bg: string; text: string; border: string }> = {
   active: {
     bg: 'var(--accent-green-muted)',
-    text: 'var(--accent-green)',
+    text: 'var(--brand-text)',
     border: 'var(--accent-green)',
   },
   paused: {
     bg: 'var(--accent-amber-muted)',
-    text: 'var(--accent-amber)',
+    text: 'var(--accent-amber-text)',
     border: 'var(--accent-amber)',
   },
   cancelled: {
     bg: 'var(--accent-red-muted)',
-    text: 'var(--accent-red)',
+    text: 'var(--accent-red-text)',
     border: 'var(--accent-red)',
   },
   archived: {
@@ -39,7 +39,7 @@ const statusStyles: Record<ItemStatus, { bg: string; text: string; border: strin
   },
   trial: {
     bg: 'var(--accent-purple-muted)',
-    text: 'var(--accent-purple)',
+    text: 'var(--accent-purple-text)',
     border: 'var(--accent-purple)',
   },
 };
@@ -199,7 +199,7 @@ export default function StatusHistoryDialog({
                   className="rounded-2xl p-4"
                   style={{
                     backgroundColor: 'var(--accent-red-muted)',
-                    color: 'var(--accent-red)',
+                    color: 'var(--accent-red-text)',
                   }}
                 >
                   {error}

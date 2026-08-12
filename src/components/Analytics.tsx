@@ -260,7 +260,7 @@ function TrendDelta({
           summary.direction === 'flat'
             ? 'var(--text-muted)'
             : isUp
-            ? 'var(--accent-red)'
+            ? 'var(--accent-red-text)'
             : 'var(--accent-emerald)',
       }}
     >

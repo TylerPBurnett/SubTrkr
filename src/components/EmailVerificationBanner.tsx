@@ -68,7 +68,7 @@ export default function EmailVerificationBanner({ email, onDismiss }: EmailVerif
         <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
           Please verify your email address.
           {error && (
-            <span style={{ color: 'var(--accent-red)' }}> {error}</span>
+            <span style={{ color: 'var(--accent-red-text)' }}> {error}</span>
           )}
         </span>
       </div>
@@ -78,7 +78,7 @@ export default function EmailVerificationBanner({ email, onDismiss }: EmailVerif
           disabled={isResending}
           className="text-sm font-semibold transition-colors duration-200 flex items-center gap-1.5 px-3 py-1.5 rounded-md"
           style={{
-            color: 'var(--accent-amber)',
+            color: 'var(--accent-amber-text)',
             backgroundColor: 'rgba(245, 158, 11, 0.1)'
           }}
         >

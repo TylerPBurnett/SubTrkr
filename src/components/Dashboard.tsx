@@ -137,7 +137,7 @@ function TrendBadge({
   return (
     <span
       className="inline-flex items-center gap-1 text-xs font-mono font-medium"
-      style={{ color: isUp ? 'var(--accent-red)' : 'var(--brand-primary)' }}
+      style={{ color: isUp ? 'var(--accent-red-text)' : 'var(--brand-primary)' }}
     >
       {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
       {isUp ? '+' : ''}{pct}%
@@ -435,7 +435,7 @@ function Dashboard({ items, categories, onEdit, onViewAll, onAddNew }: Dashboard
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold font-mono" style={{
-                        color: daysUntil <= 1 ? 'var(--accent-red)' : daysUntil <= 3 ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                        color: daysUntil <= 1 ? 'var(--accent-red-text)' : daysUntil <= 3 ? 'var(--accent-amber-text)' : 'var(--text-secondary)',
                         fontWeight: 700
                       }}>
                         {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}

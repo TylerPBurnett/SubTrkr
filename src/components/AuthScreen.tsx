@@ -131,8 +131,12 @@ export default function AuthScreen() {
   const emailSuggestion = email && email.includes('@') ? getEmailSuggestion(email) : null;
 
   // Password strength calculator
-  const getPasswordStrength = (pwd: string): { score: number; label: string; color: string } => {
-    if (!pwd) return { score: 0, label: '', color: '' };
+  // `color` fills the meter bar, `textColor` prints the label. They differ for
+  // Weak because the red that reads correctly as a bar fails AA as text.
+  const getPasswordStrength = (
+    pwd: string
+  ): { score: number; label: string; color: string; textColor: string } => {
+    if (!pwd) return { score: 0, label: '', color: '', textColor: '' };
 
     let score = 0;
 
@@ -146,9 +150,26 @@ export default function AuthScreen() {
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[^a-zA-Z0-9]/.test(pwd)) score += 1;
 
-    if (score <= 2) return { score, label: 'Weak', color: 'var(--accent-red)' };
-    if (score <= 4) return { score, label: 'Medium', color: 'var(--accent-amber)' };
-    return { score, label: 'Strong', color: 'var(--brand-primary)' };
+    if (score <= 2)
+      return {
+        score,
+        label: 'Weak',
+        color: 'var(--accent-red)',
+        textColor: 'var(--accent-red-text)',
+      };
+    if (score <= 4)
+      return {
+        score,
+        label: 'Medium',
+        color: 'var(--accent-amber)',
+        textColor: 'var(--accent-amber-text)',
+      };
+    return {
+      score,
+      label: 'Strong',
+      color: 'var(--brand-primary)',
+      textColor: 'var(--brand-text)',
+    };
   };
 
   const passwordStrength = mode === 'signup' ? getPasswordStrength(password) : null;
@@ -299,7 +320,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -390,7 +411,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -497,7 +518,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -628,7 +649,7 @@ export default function AuthScreen() {
               <span style={{ color: 'var(--text-muted)' }}>Password strength</span>
               <span
                 className="font-bold tracking-tight"
-                style={{ color: passwordStrength.color }}
+                style={{ color: passwordStrength.textColor }}
               >
                 {passwordStrength.label}
               </span>
@@ -733,7 +754,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >

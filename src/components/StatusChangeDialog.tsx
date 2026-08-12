@@ -132,53 +132,63 @@ export default function StatusChangeDialog({
 
   if (!isOpen) return null;
 
+  // `accentColor` paints the header icon and its background tint; `textColor`
+  // prints the words. They diverge wherever the accent is a fill colour that
+  // fails AA as text — otherwise the icon would darken along with the label.
   const config = {
     pause: {
       icon: Pause,
       verb: 'Pause',
       title: 'Pause Subscription',
-      textColor: 'var(--accent-amber)',
+      accentColor: 'var(--accent-amber)',
+      textColor: 'var(--accent-amber-text)',
       message: 'Pause takes effect immediately. You can optionally set when recurring tracking should resume.',
     },
     cancel: {
       icon: XCircle,
       verb: 'Cancel',
       title: 'Cancel Subscription',
-      textColor: 'var(--accent-red)',
+      accentColor: 'var(--accent-red)',
+      textColor: 'var(--accent-red-text)',
       message: 'Subscription cancelled. Historical data preserved for accurate analytics.',
     },
     edit_cancellation: {
       icon: Calendar,
       verb: 'Edit',
       title: 'Edit Cancellation Date',
-      textColor: 'var(--accent-blue)',
+      accentColor: 'var(--accent-blue)',
+      textColor: 'var(--accent-blue-text)',
       message: 'Update the effective cancellation date without fabricating a new cancellation event.',
     },
     resume: {
       icon: Play,
       verb: 'Resume',
       title: 'Resume Subscription',
-      textColor: 'var(--accent-blue)',
+      accentColor: 'var(--accent-blue)',
+      textColor: 'var(--accent-blue-text)',
       message: 'Billing resumes while keeping the existing billing cadence whenever possible.',
     },
     reactivate: {
       icon: RotateCcw,
       verb: 'Reactivate',
       title: 'Reactivate Subscription',
-      textColor: 'var(--brand-primary)',
+      accentColor: 'var(--brand-primary)',
+      textColor: 'var(--brand-text)',
       message: 'Subscription reactivated. Billing cycle reinitiated from your specified date.',
     },
     convert: {
       icon: Check,
       verb: 'Convert',
       title: 'Convert Trial to Paid',
-      textColor: 'var(--brand-primary)',
+      accentColor: 'var(--brand-primary)',
+      textColor: 'var(--brand-text)',
       message: 'Trial converted to paid subscription. Billing starts from your specified date.',
     },
     archive: {
       icon: Archive,
       verb: 'Archive',
       title: 'Archive Item',
+      accentColor: 'var(--text-secondary)',
       textColor: 'var(--text-secondary)',
       message: 'Archive the item while preserving its full status history and notes.',
     },
@@ -186,7 +196,8 @@ export default function StatusChangeDialog({
       icon: Clock3,
       verb: 'Start Trial',
       title: 'Start Trial',
-      textColor: 'var(--accent-purple)',
+      accentColor: 'var(--accent-purple)',
+      textColor: 'var(--accent-purple-text)',
       message: 'Move the item into trial status and set when the trial should end.',
     },
   };
@@ -447,11 +458,11 @@ export default function StatusChangeDialog({
                   <div className="flex items-center gap-4">
                     <div
                       style={{
-                        background: `color-mix(in srgb, ${currentConfig.textColor} 14%, transparent)`,
-                        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${currentConfig.textColor} 24%, transparent)`,
+                        background: `color-mix(in srgb, ${currentConfig.accentColor} 14%, transparent)`,
+                        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${currentConfig.accentColor} 24%, transparent)`,
                         borderRadius: '14px',
                         padding: '14px',
-                        color: currentConfig.textColor,
+                        color: currentConfig.accentColor,
                       }}
                     >
                       <Icon className="w-7 h-7" style={{ strokeWidth: 2 }} />

@@ -76,7 +76,7 @@ export default function NotificationSettings() {
         {error && (
           <div
             className="mb-4 p-3 rounded-lg text-sm flex items-center justify-between"
-            style={{ backgroundColor: 'var(--accent-red)15', color: 'var(--accent-red)' }}
+            style={{ backgroundColor: 'var(--accent-red)15', color: 'var(--accent-red-text)' }}
           >
             <span>{error}</span>
             <button onClick={() => setError(null)} aria-label="Dismiss error">

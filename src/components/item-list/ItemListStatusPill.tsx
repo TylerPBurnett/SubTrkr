@@ -13,14 +13,14 @@ export function ItemListStatusPill({ item }: ItemListStatusPillProps) {
           label: 'Trial',
           date: null,
           background: 'var(--accent-blue-muted)',
-          color: 'var(--accent-blue)',
+          color: 'var(--accent-blue-text)',
         };
       case 'paused':
         return {
           label: 'Paused',
           date: item.paused_until ? formatShortDate(item.paused_until) : null,
           background: 'var(--accent-amber-muted)',
-          color: 'var(--accent-amber)',
+          color: 'var(--accent-amber-text)',
         };
       case 'cancelled':
         return {
@@ -29,7 +29,7 @@ export function ItemListStatusPill({ item }: ItemListStatusPillProps) {
             ? formatShortDate(item.cancellation_date)
             : null,
           background: 'var(--accent-red-muted)',
-          color: 'var(--accent-red)',
+          color: 'var(--accent-red-text)',
         };
       case 'archived':
         return {
@@ -43,7 +43,7 @@ export function ItemListStatusPill({ item }: ItemListStatusPillProps) {
           label: 'Active',
           date: null,
           background: 'var(--brand-primary-light)',
-          color: 'var(--brand-primary)',
+          color: 'var(--brand-text)',
         };
     }
   })();
