@@ -4,15 +4,31 @@
     {
       "name": "Vite Dev Server",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 1420,
       "autoPort": true
     },
     {
       "name": "Tauri Dev (native window)",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "tauri", "dev"],
+      "runtimeArgs": [
+        "run",
+        "tauri",
+        "dev"
+      ],
       "port": 1420
+    },
+    {
+      "name": "Vite Dev Server (verification)",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "dev:verify"
+      ],
+      "port": 1430
     }
   ]
 }

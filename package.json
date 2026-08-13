@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:verify": "PORT=1430 vite",
     "dev:reset": "bash ./scripts/dev-reset.sh",
     "build": "tsc && vite build",
     "test": "bun test",
