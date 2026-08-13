@@ -8,6 +8,22 @@ import { readFileSync } from "node:fs";
 export default defineConfig(({ mode }) => {
   // @ts-expect-error process is a nodejs global
   const host = process.env.TAURI_DEV_HOST;
+
+  /*
+    Tauri needs a fixed port, so this stays 1420 and `strictPort` stays on.
+    But this repo is worked in git worktrees, and only one of them can hold
+    1420 — a second worktree's dev server dies on startup with nothing to do
+    about it. `PORT` lets that worktree move without touching the config.
+
+    Unset (the Tauri path, and every normal `bun run dev`) it is exactly 1420,
+    so this changes nothing for the default case. The HMR socket follows the
+    same +1 offset the 1420/1421 pair already uses, and the dev CSP below is
+    built from that value rather than a literal — otherwise a moved server
+    would load fine and then have its HMR connection silently refused.
+  */
+  // @ts-expect-error process is a nodejs global
+  const devPort = Number(process.env.PORT) || 1420;
+  const hmrPort = devPort + 1;
   const packageJson = JSON.parse(
     readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
   ) as { version?: string };
@@ -49,7 +65,7 @@ export default defineConfig(({ mode }) => {
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://api.telegram.org",
-    host ? `ws://${host}:1421` : "ws://localhost:1421",
+    host ? `ws://${host}:${hmrPort}` : `ws://localhost:${hmrPort}`,
   ]) + "; script-src 'self' 'unsafe-inline'";
 
   return {
@@ -93,7 +109,7 @@ export default defineConfig(({ mode }) => {
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 1420,
+    port: devPort,
     strictPort: true,
     host: host || false,
     headers: {
@@ -103,7 +119,7 @@ export default defineConfig(({ mode }) => {
       ? {
           protocol: "ws",
           host,
-          port: 1421,
+          port: hmrPort,
         }
       : undefined,
     watch: {

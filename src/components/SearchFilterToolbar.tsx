@@ -145,7 +145,6 @@ export default function SearchFilterToolbar({
           style={{
             fontWeight: 500,
             color: "var(--text-primary)",
-            boxShadow: "none",
           }}
         />
 
@@ -154,7 +153,7 @@ export default function SearchFilterToolbar({
           <button
             onClick={() => onSearchChange("")}
             className="flex items-center justify-center px-2 h-full transition-colors focus:outline-none focus-visible:outline-none"
-            style={{ color: "var(--text-muted)", boxShadow: "none" }}
+            style={{ color: "var(--text-muted)" }}
             onMouseEnter={(e) =>
               (e.currentTarget.style.color = "var(--text-secondary)")
             }
@@ -193,7 +192,6 @@ export default function SearchFilterToolbar({
                   activeFilterCount > 0
                     ? "var(--brand-primary-light)"
                     : "transparent",
-                boxShadow: "none",
               }}
               onMouseEnter={(e) => {
                 if (activeFilterCount === 0) {
@@ -321,7 +319,6 @@ export default function SearchFilterToolbar({
               style={{
                 color: "var(--text-secondary)",
                 backgroundColor: "transparent",
-                boxShadow: "none",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = "var(--text-primary)";
