@@ -18,6 +18,18 @@ interface DatePickerProps {
   error?: boolean
   placeholder?: string
   id?: string
+  /**
+   * Names the field for assistive tech. The trigger is a button, so its
+   * accessible name comes from its own text — which is the chosen date, or the
+   * placeholder. Either way it says what the value is and never what the field
+   * is, and the visible `<label>` beside it carries no `htmlFor` to close that
+   * gap. Callers should pass something like "Start Date (required)":
+   * `aria-required` is not valid on a button, so a required date field has to
+   * say so in its name.
+   */
+  ariaLabel?: string
+  /** Id of an error node, so the reason reaches the same announcement. */
+  ariaDescribedBy?: string
 }
 
 export function DatePicker({
@@ -27,6 +39,8 @@ export function DatePicker({
   error,
   placeholder = "Pick a date",
   id,
+  ariaLabel,
+  ariaDescribedBy,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -54,6 +68,9 @@ export function DatePicker({
         <button
           id={id}
           type="button"
+          aria-label={ariaLabel}
+          aria-invalid={error || undefined}
+          aria-describedby={ariaDescribedBy}
           className="item-form-input w-full px-4 py-3.5 rounded-xl flex items-center gap-3 text-left"
           style={{
             border: `2px solid ${error ? '#ef4444' : 'var(--border-default)'}`,

@@ -139,6 +139,13 @@ export default function SearchFilterToolbar({
         <input
           type="text"
           placeholder={searchPlaceholder}
+          /*
+            The placeholder was the only thing naming this field, and a
+            placeholder is not a label: it is announced inconsistently and it
+            disappears on the first keystroke, so tabbing back to a half-typed
+            query used to land on a field with no name at all.
+          */
+          aria-label={`Search ${filterLabel}`}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="flex-1 h-full px-2.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none"

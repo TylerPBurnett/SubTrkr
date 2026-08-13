@@ -90,6 +90,7 @@ export function ItemFormPrimaryFields({
           showClear={formData.name.length > 0}
           placeholder={labels.namePlaceholder}
           error={errors.name}
+          required
           autoFocus={!isEditing}
         />
       </div>
@@ -147,7 +148,14 @@ export function ItemFormPrimaryFields({
             step="0.01"
             min={formData.status === 'trial' ? '0' : '0.01'}
             aria-label="Amount"
+            aria-required="true"
             aria-invalid={Boolean(errors.amount)}
+            /*
+              Name already pointed at its error node; this one did not, so a
+              screen reader announced "Amount, invalid" and never said why —
+              the message was on screen, associated with nothing.
+            */
+            aria-describedby={errors.amount ? 'item-amount-error' : undefined}
             className="item-form-input flex-1 min-w-0 px-4 py-3.5 text-right focus:outline-none"
             style={{
               border: 'none',
@@ -159,7 +167,11 @@ export function ItemFormPrimaryFields({
           />
         </div>
         {errors.amount && (
-          <p className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+          <p
+            id="item-amount-error"
+            className="item-form-mono mt-2"
+            style={{ color: 'var(--accent-red-text)', fontSize: '0.75rem' }}
+          >
             {errors.amount}
           </p>
         )}
@@ -287,9 +299,11 @@ export function ItemFormPrimaryFields({
             onChange={onStartDateChange}
             error={Boolean(errors.start_date)}
             placeholder="Select start date"
+            ariaLabel="Start Date (required)"
+            ariaDescribedBy={errors.start_date ? 'start-date-error' : undefined}
           />
           {errors.start_date && (
-            <p id="start-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+            <p id="start-date-error" className="item-form-mono mt-2" style={{ color: 'var(--accent-red-text)', fontSize: '0.75rem' }}>
               {errors.start_date}
             </p>
           )}
@@ -310,9 +324,13 @@ export function ItemFormPrimaryFields({
             onChange={onNextBillingDateChange}
             error={Boolean(errors.next_billing_date)}
             placeholder="Select billing date"
+            ariaLabel="Next Billing (required)"
+            ariaDescribedBy={
+              errors.next_billing_date ? 'next-billing-date-error' : undefined
+            }
           />
           {errors.next_billing_date && (
-            <p id="next-billing-date-error" className="item-form-mono mt-2" style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+            <p id="next-billing-date-error" className="item-form-mono mt-2" style={{ color: 'var(--accent-red-text)', fontSize: '0.75rem' }}>
               {errors.next_billing_date}
             </p>
           )}

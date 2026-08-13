@@ -15,6 +15,8 @@ interface ServiceAutocompleteProps {
   placeholder?: string;
   error?: string;
   autoFocus?: boolean;
+  /** Marks the field required for assistive tech; the `*` is visual only. */
+  required?: boolean;
 }
 
 export default function ServiceAutocomplete({
@@ -28,6 +30,7 @@ export default function ServiceAutocomplete({
   placeholder,
   error,
   autoFocus,
+  required,
 }: ServiceAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<KnownService[]>([]);
@@ -180,6 +183,7 @@ export default function ServiceAutocomplete({
           placeholder={placeholder}
           autoFocus={autoFocus}
           autoComplete="off"
+          aria-required={required || undefined}
           aria-invalid={Boolean(error)}
           aria-describedby={error && id ? `${id}-error` : undefined}
           className="item-form-input w-full px-4 py-3.5 rounded-xl transition-all duration-200"
