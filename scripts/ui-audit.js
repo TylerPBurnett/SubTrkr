@@ -75,11 +75,37 @@
       unnamed.map((e) => e.placeholder || e.id || e.tagName)));
 
     // ── Items 2 + 7: hit targets meet the WCAG 2.2 minimum of 24x24 ───────
+    /*
+      Measure the box the browser HIT-TESTS, not the box it paints. Several
+      controls here keep a small visual and carry an absolutely-positioned
+      `::after` skirt that enlarges the target — a 16px checkbox is 24px to a
+      pointer. Reading only getBoundingClientRect reports every one of those as
+      broken, which an earlier version of this file did.
+    */
+    const targetBox = (el) => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el, '::after');
+      if (cs.content === 'none' || cs.position !== 'absolute') return { w: r.width, h: r.height };
+      const t = parseFloat(cs.top) || 0, b = parseFloat(cs.bottom) || 0;
+      const l = parseFloat(cs.left) || 0, rt = parseFloat(cs.right) || 0;
+      return { w: r.width - l - rt, h: r.height - t - b };
+    };
+    /*
+      WCAG 2.5.8 excuses a small target sitting inside a sentence, where making
+      it bigger would break the line. "Sign up" in "Don't have an account? Sign
+      up" is exempt; a link alone on its own line is not.
+    */
+    const inSentence = (el) =>
+      !!el.parentElement &&
+      [...el.parentElement.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+
     const small = [...document.querySelectorAll('button,a[href],input,select,[role="button"]')]
       .filter(visible)
-      .filter((el) => { const r = el.getBoundingClientRect(); return r.width < 24 || r.height < 24; });
-    results.push(row('2+7', 'hit targets >= 24x24', small.length === 0,
-      small.map((e) => `${name(e).slice(0, 24) || e.className} ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`)));
+      .filter((el) => { const b = targetBox(el); return b.w < 24 || b.h < 24; })
+      .filter((el) => !inSentence(el));
+    results.push(row('2+7', 'hit targets >= 24x24 (skirts counted, inline exempt)', small.length === 0,
+      small.map((e) => { const b = targetBox(e);
+        return `${name(e).slice(0, 24) || e.className} ${Math.round(b.w)}x${Math.round(b.h)}`; })));
 
     // ── Item 5: anything marked invalid also says why ─────────────────────
     const invalid = [...document.querySelectorAll('[aria-invalid="true"]')].filter(visible);

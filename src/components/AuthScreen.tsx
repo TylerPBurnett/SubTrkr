@@ -264,6 +264,7 @@ export default function AuthScreen() {
         <div className="relative group">
           <input
             type="email"
+            aria-label="Email address"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -448,6 +449,7 @@ export default function AuthScreen() {
         </label>
         <input
           type="email"
+          aria-label="Email address"
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -551,6 +553,7 @@ export default function AuthScreen() {
         </label>
         <input
           type="email"
+          aria-label="Email address"
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -595,6 +598,7 @@ export default function AuthScreen() {
         <div className="relative">
           <input
             type={showPassword ? 'text' : 'password'}
+            aria-label="Password"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
@@ -615,7 +619,7 @@ export default function AuthScreen() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200"
+            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200 after:absolute after:-inset-1 after:content-['']"
             style={{ color: 'var(--text-muted)' }}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
@@ -674,7 +678,14 @@ export default function AuthScreen() {
           <button
             type="button"
             onClick={() => setMode('reset-password')}
-            className="text-sm font-semibold tracking-tight transition-colors duration-200"
+            /*
+              20px tall on its own line. WCAG 2.5.8 excuses a small target when
+              it sits inside a sentence — which is why "Sign up" next to "Don't
+              have an account?" is left alone — but this one is alone in its
+              parent, so the exception does not cover it. The skirt buys the
+              height without moving the link.
+            */
+            className="relative text-sm font-semibold tracking-tight transition-colors duration-200 after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']"
             style={{ color: 'var(--brand-text)' }}
           >
             Forgot password?
