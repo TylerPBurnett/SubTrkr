@@ -188,9 +188,9 @@ function getPanelStyles(status: UpdaterState['status']) {
         background:
           'linear-gradient(180deg, color-mix(in srgb, var(--accent-emerald-muted) 58%, var(--bg-card)), color-mix(in srgb, var(--bg-card) 96%, var(--bg-surface)))',
         iconBg: 'var(--accent-emerald-muted)',
-        iconColor: 'var(--accent-emerald)',
+        iconColor: 'var(--brand-text)',
         badgeBg: 'color-mix(in srgb, var(--accent-emerald) 18%, var(--bg-card))',
-        badgeColor: 'var(--accent-emerald)',
+        badgeColor: 'var(--brand-text)',
         progressStart: 'var(--accent-emerald)',
         progressEnd: 'var(--accent-green)',
       };
@@ -201,8 +201,11 @@ function getPanelStyles(status: UpdaterState['status']) {
           'linear-gradient(180deg, color-mix(in srgb, var(--accent-red-muted) 46%, var(--bg-card)), color-mix(in srgb, var(--bg-card) 96%, var(--bg-surface)))',
         iconBg: 'var(--accent-red-muted)',
         iconColor: 'var(--accent-red)',
-        badgeBg: 'color-mix(in srgb, var(--accent-red) 18%, var(--bg-card))',
-        badgeColor: 'var(--accent-red)',
+        // 14%, not the 18% its siblings use: in dark --accent-red is a light
+        // #f87171, so tinting *raises* the badge's luminance and squeezes the
+        // text below AA. 18% measured 4.47:1; 14% clears at 4.79:1.
+        badgeBg: 'color-mix(in srgb, var(--accent-red) 14%, var(--bg-card))',
+        badgeColor: 'var(--accent-red-text)',
         progressStart: 'var(--accent-red)',
         progressEnd: 'var(--accent-red)',
       };
@@ -241,7 +244,7 @@ function CompactUpdateRow() {
         {isUpToDate ? (
           <CheckCircle2
             className="w-4 h-4 shrink-0"
-            style={{ color: 'var(--accent-emerald)' }}
+            style={{ color: 'var(--brand-text)' }}
           />
         ) : updaterState.status === 'error' ? (
           <AlertCircle
@@ -621,7 +624,7 @@ export default function AccountSettings() {
         <button
           onClick={handleSignOut}
           className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors"
-          style={{ color: 'var(--accent-red)' }}
+          style={{ color: 'var(--accent-red-text)' }}
         >
           <LogOut className="w-4 h-4" />
           Sign Out
@@ -629,7 +632,7 @@ export default function AccountSettings() {
 
         <div className="my-6" style={{ borderTop: '1px solid var(--border-default)' }} />
 
-        <div className="label mb-3" style={{ color: 'var(--accent-red)' }}>
+        <div className="label mb-3" style={{ color: 'var(--accent-red-text)' }}>
           Danger Zone
         </div>
         <div

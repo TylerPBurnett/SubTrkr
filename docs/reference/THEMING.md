@@ -79,7 +79,11 @@ All tokens are defined in `src/index.css`. Here's what each one controls:
 | `--text-primary` | Main text color | Headings, body text |
 | `--text-secondary` | De-emphasized text | Descriptions, labels |
 | `--text-muted` | Very subtle text | Placeholders, disabled |
-| `--text-inverse` | Text on brand colors | Button text on green bg |
+| `--text-inverse` | Text on an inverted neutral surface | Tooltip on a dark chip |
+
+> `--text-inverse` flips per theme, so it is **not** the token for text on a
+> green fill — in light it resolves to white and measures 2.28:1 on
+> `--brand-primary`. Use `--brand-on-primary` there.
 
 ### Borders
 
@@ -93,10 +97,34 @@ All tokens are defined in `src/index.css`. Here's what each one controls:
 
 | Token | Purpose | Example Usage |
 |-------|---------|---------------|
-| `--brand-primary` | Main brand color (green) | Primary buttons, links |
+| `--brand-primary` | Main brand color (green) — **fills, borders, chart marks only** | Button background, switch track, meter bar |
 | `--brand-primary-hover` | Brand hover state | Button hover |
 | `--brand-muted` | Subtle brand background | Active nav item bg |
-| `--brand-text` | Brand-colored text | Logo, active nav text |
+| `--brand-text` | Brand green when it carries **words or icons** | Links, active nav text, badge labels |
+| `--brand-on-primary` | Ink for text/icons sitting **on** a `--brand-primary` fill | `.btn-primary` label, today's date pill |
+
+#### Green never carries text as `--brand-primary`
+
+`#22c55e` is a fill colour. As text on a light surface it measures **2.28:1 on
+`--bg-card`** — it misses the 4.5:1 text floor and even the 3:1 non-text floor
+for icons. Two tokens cover the cases where green has to be legible:
+
+- **Green on a neutral background → `--brand-text`.** `#166534` in light clears
+  4.5:1 on every light background in the palette (7.13:1 on `--bg-card`, 5.14:1
+  on the darkest, `--bg-active`). Dark's `#4ade80` clears 7.60:1 at worst.
+  Note `#15803d` (green-700) is *not* sufficient — it drops to 4.33:1 on
+  `--bg-surface` and 3.62:1 on `--bg-active`.
+- **Anything on a green fill → `--brand-on-primary`.** White fails on `#22c55e`
+  in *both* themes (2.28:1), so the fill keeps a dark label in both: 7.87:1 at
+  rest, 5.44:1 on the light hover (`#16a34a`), 10.29:1 on the dark hover
+  (`#4ade80`). Do not reach for `--text-inverse` here — it flips per theme and
+  so lands on white in light.
+
+The one exception is the **wordmark** in `App.tsx`, which stays raw
+`--brand-primary`: WCAG exempts logotypes from the contrast floor.
+
+This mirrors the `--accent-red` / red-text split: the saturated token stays the
+fill, and a darker sibling carries the words.
 
 ### Accent Colors (for categories/status)
 
@@ -326,8 +354,10 @@ If you want a theme selector instead of a toggle, update the sidebar button in `
 
 ## Brand Color Usage
 
-- **Brand primary**: `#22c55e` (light) / `#22c55e` (dark, same)
+- **Brand primary**: `#22c55e` (light) / `#22c55e` (dark, same) — fill only
 - **Brand hover**: `#16a34a` (light) / `#4ade80` (dark, lighter for visibility)
+- **Brand text**: `#166534` (light) / `#4ade80` (dark) — green that carries words or icons
+- **Brand on-primary**: `#171717` (both themes) — ink on a green fill
 - **ItemForm**: Both bill and subscription forms use the green gradient — `linear-gradient(135deg, #22c55e 0%, #16a34a 100%)`
 - Never use orange/amber as a form accent; that was removed in favor of consistent brand green
 

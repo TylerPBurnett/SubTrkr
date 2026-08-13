@@ -23,7 +23,7 @@ export const CURRENCIES = [
 
 export const ITEM_FORM_VISUAL_CONFIG: ItemFormVisualConfig = {
   textColor: 'var(--brand-text)',
-  contrastText: 'white',
+  contrastText: 'var(--brand-on-primary)',
 };
 
 export const ITEM_FORM_STYLES = `

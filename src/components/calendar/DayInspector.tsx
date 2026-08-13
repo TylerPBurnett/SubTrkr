@@ -47,7 +47,7 @@ function OccurrenceRow({
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
-            color: occurrence.isOverdue ? 'var(--accent-red)' : 'var(--text-primary)',
+            color: occurrence.isOverdue ? 'var(--accent-red-text)' : 'var(--text-primary)',
           }}
         >
           {formatCurrency(occurrence.amount, { currency: occurrence.item.currency })}

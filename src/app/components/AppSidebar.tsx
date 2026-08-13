@@ -151,10 +151,7 @@ export function AppSidebar({
                     updaterState.status === 'ready-to-restart'
                       ? 'var(--accent-emerald-muted)'
                       : 'var(--brand-primary-light)',
-                  color:
-                    updaterState.status === 'ready-to-restart'
-                      ? 'var(--accent-emerald)'
-                      : 'var(--brand-text)',
+                  color: 'var(--brand-text)',
                 }}
               >
                 {updaterState.status === 'ready-to-restart' ? 'Restart' : 'Update'}

@@ -131,8 +131,10 @@ export default function AuthScreen() {
   const emailSuggestion = email && email.includes('@') ? getEmailSuggestion(email) : null;
 
   // Password strength calculator
-  const getPasswordStrength = (pwd: string): { score: number; label: string; color: string } => {
-    if (!pwd) return { score: 0, label: '', color: '' };
+  const getPasswordStrength = (
+    pwd: string,
+  ): { score: number; label: string; barColor: string; textColor: string } => {
+    if (!pwd) return { score: 0, label: '', barColor: '', textColor: '' };
 
     let score = 0;
 
@@ -146,9 +148,13 @@ export default function AuthScreen() {
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[^a-zA-Z0-9]/.test(pwd)) score += 1;
 
-    if (score <= 2) return { score, label: 'Weak', color: 'var(--accent-red)' };
-    if (score <= 4) return { score, label: 'Medium', color: 'var(--accent-amber)' };
-    return { score, label: 'Strong', color: 'var(--brand-primary)' };
+    // barColor fills the meter, textColor sets the label: the same hue cannot
+    // do both, since a bar only needs 3:1 but the label needs 4.5:1.
+    if (score <= 2)
+      return { score, label: 'Weak', barColor: 'var(--accent-red)', textColor: 'var(--accent-red-text)' };
+    if (score <= 4)
+      return { score, label: 'Medium', barColor: 'var(--accent-amber)', textColor: 'var(--accent-amber-text)' };
+    return { score, label: 'Strong', barColor: 'var(--brand-primary)', textColor: 'var(--brand-text)' };
   };
 
   const passwordStrength = mode === 'signup' ? getPasswordStrength(password) : null;
@@ -252,7 +258,7 @@ export default function AuthScreen() {
     <form onSubmit={handleSendOtp} className="space-y-5">
       <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
         <label className="label mb-2 flex items-center gap-2">
-          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-text)' }} />
           Email Address
         </label>
         <div className="relative group">
@@ -285,7 +291,7 @@ export default function AuthScreen() {
               type="button"
               onClick={() => setEmail(emailSuggestion)}
               className="font-semibold transition-colors duration-200"
-              style={{ color: 'var(--brand-primary)' }}
+              style={{ color: 'var(--brand-text)' }}
             >
               {emailSuggestion}
             </button>
@@ -299,7 +305,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -346,7 +352,7 @@ export default function AuthScreen() {
           style={{
             animationDelay: '0.05s',
             backgroundColor: 'var(--brand-muted)',
-            color: 'var(--brand-primary)',
+            color: 'var(--brand-text)',
             border: '1px solid var(--brand-primary)'
           }}
         >
@@ -357,7 +363,7 @@ export default function AuthScreen() {
 
       <div className="stagger-item" style={{ animationDelay: '0.1s' }}>
         <label className="label mb-3 flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-text)' }} />
           Verification Code
         </label>
         <input
@@ -390,7 +396,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -437,7 +443,7 @@ export default function AuthScreen() {
     <form onSubmit={handleResetPassword} className="space-y-5">
       <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
         <label className="label mb-2 flex items-center gap-2">
-          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-text)' }} />
           Email Address
         </label>
         <input
@@ -469,7 +475,7 @@ export default function AuthScreen() {
               type="button"
               onClick={() => setEmail(emailSuggestion)}
               className="font-semibold transition-colors duration-200"
-              style={{ color: 'var(--brand-primary)' }}
+              style={{ color: 'var(--brand-text)' }}
             >
               {emailSuggestion}
             </button>
@@ -483,7 +489,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2.5 animate-in"
           style={{
             backgroundColor: 'var(--brand-muted)',
-            color: 'var(--brand-primary)',
+            color: 'var(--brand-text)',
             border: '1px solid var(--brand-primary)'
           }}
         >
@@ -497,7 +503,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -540,7 +546,7 @@ export default function AuthScreen() {
     <form onSubmit={handleEmailPassword} className="space-y-5">
       <div className="stagger-item" style={{ animationDelay: '0.05s' }}>
         <label className="label mb-2 flex items-center gap-2">
-          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          <Mail className="w-3.5 h-3.5" style={{ color: 'var(--brand-text)' }} />
           Email Address
         </label>
         <input
@@ -572,7 +578,7 @@ export default function AuthScreen() {
               type="button"
               onClick={() => setEmail(emailSuggestion)}
               className="font-semibold transition-colors duration-200"
-              style={{ color: 'var(--brand-primary)' }}
+              style={{ color: 'var(--brand-text)' }}
             >
               {emailSuggestion}
             </button>
@@ -583,7 +589,7 @@ export default function AuthScreen() {
 
       <div className="stagger-item" style={{ animationDelay: '0.1s' }}>
         <label className="label mb-2 flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-primary)' }} />
+          <Lock className="w-3.5 h-3.5" style={{ color: 'var(--brand-text)' }} />
           Password
         </label>
         <div className="relative">
@@ -628,7 +634,7 @@ export default function AuthScreen() {
               <span style={{ color: 'var(--text-muted)' }}>Password strength</span>
               <span
                 className="font-bold tracking-tight"
-                style={{ color: passwordStrength.color }}
+                style={{ color: passwordStrength.textColor }}
               >
                 {passwordStrength.label}
               </span>
@@ -640,7 +646,7 @@ export default function AuthScreen() {
               <div
                 className="h-full transition-all duration-300"
                 style={{
-                  backgroundColor: passwordStrength.color,
+                  backgroundColor: passwordStrength.barColor,
                   width: `${(passwordStrength.score / 6) * 100}%`
                 }}
               />
@@ -669,7 +675,7 @@ export default function AuthScreen() {
             type="button"
             onClick={() => setMode('reset-password')}
             className="text-sm font-semibold tracking-tight transition-colors duration-200"
-            style={{ color: 'var(--brand-primary)' }}
+            style={{ color: 'var(--brand-text)' }}
           >
             Forgot password?
           </button>
@@ -696,7 +702,7 @@ export default function AuthScreen() {
                 href="#"
                 onClick={(e) => e.preventDefault()}
                 className="font-semibold transition-colors duration-200"
-                style={{ color: 'var(--brand-primary)' }}
+                style={{ color: 'var(--brand-text)' }}
               >
                 Terms of Service
               </a>
@@ -705,7 +711,7 @@ export default function AuthScreen() {
                 href="#"
                 onClick={(e) => e.preventDefault()}
                 className="font-semibold transition-colors duration-200"
-                style={{ color: 'var(--brand-primary)' }}
+                style={{ color: 'var(--brand-text)' }}
               >
                 Privacy Policy
               </a>
@@ -719,7 +725,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2.5 animate-in"
           style={{
             backgroundColor: 'var(--brand-muted)',
-            color: 'var(--brand-primary)',
+            color: 'var(--brand-text)',
             border: '1px solid var(--brand-primary)'
           }}
         >
@@ -733,7 +739,7 @@ export default function AuthScreen() {
           className="p-3.5 rounded-lg text-sm flex items-center gap-2 animate-shake"
           style={{
             backgroundColor: 'var(--accent-red-muted)',
-            color: 'var(--accent-red)',
+            color: 'var(--accent-red-text)',
             border: '1px solid var(--accent-red)'
           }}
         >
@@ -831,7 +837,7 @@ export default function AuthScreen() {
               type="button"
               onClick={() => setMode('signup')}
               className="font-bold tracking-tight transition-colors duration-200"
-              style={{ color: 'var(--brand-primary)' }}
+              style={{ color: 'var(--brand-text)' }}
             >
               Sign up
             </button>
@@ -843,7 +849,7 @@ export default function AuthScreen() {
               type="button"
               onClick={() => setMode('signin')}
               className="font-bold tracking-tight transition-colors duration-200"
-              style={{ color: 'var(--brand-primary)' }}
+              style={{ color: 'var(--brand-text)' }}
             >
               Sign in
             </button>
@@ -958,7 +964,7 @@ export default function AuthScreen() {
               <div className="flex items-center justify-center gap-2">
                 <Loader2
                   className="w-5 h-5 animate-spin"
-                  style={{ color: 'var(--brand-primary)' }}
+                  style={{ color: 'var(--brand-text)' }}
                 />
                 <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Authenticating...

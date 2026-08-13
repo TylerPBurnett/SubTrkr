@@ -89,8 +89,8 @@ export function NotificationChannelCard({
                 <span
                   className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
-                    backgroundColor: 'var(--accent-green)20',
-                    color: 'var(--accent-green)',
+                    backgroundColor: 'var(--accent-green-muted)',
+                    color: 'var(--brand-text)',
                   }}
                 >
                   Connected
@@ -155,12 +155,16 @@ export function NotificationChannelCard({
         <div
           className="mt-3 p-2 rounded-lg text-sm flex items-center gap-2"
           style={{
+            // Opaque tints, not the -muted tokens: those are translucent in
+            // dark, and this banner sits on a --bg-hover panel, which lifted
+            // the red composite to 4.39:1. Mixing into --bg-card makes the
+            // result independent of whatever is underneath (4.79:1).
             backgroundColor: testResult.success
-              ? 'var(--accent-green)15'
-              : 'var(--accent-red)15',
+              ? 'color-mix(in srgb, var(--accent-green) 14%, var(--bg-card))'
+              : 'color-mix(in srgb, var(--accent-red) 14%, var(--bg-card))',
             color: testResult.success
               ? 'var(--accent-green)'
-              : 'var(--accent-red)',
+              : 'var(--accent-red-text)',
           }}
         >
           {testResult.success ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}

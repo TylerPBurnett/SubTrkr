@@ -43,21 +43,44 @@
   --border-strong: #d4d4d4;
 
   /* Brand */
+  /* --brand-primary is a fill/border/chart colour first: as text on a light
+     surface it only reaches 2.28:1 on white, and it misses even the 3:1
+     non-text floor. Use --brand-text wherever green carries words or icons
+     rather than shape — it clears 4.5:1 on every light background (7.13:1 on
+     --bg-card, 5.14:1 on the darkest, --bg-active). */
   --brand-primary: #22c55e;
   --brand-primary-hover: #16a34a;
   --brand-primary-light: rgba(34, 197, 94, 0.15);
   --brand-muted: #f0fdf4;
   --brand-text: #166534;
+  /* Ink for text/icons sitting ON a --brand-primary fill. White fails there in
+     both themes (2.28:1), so the green keeps its dark label in light and dark
+     alike: 7.87:1 at rest, 5.44:1 on the light hover (#16a34a). */
+  --brand-on-primary: #171717;
 
   /* Accent colors for categories/stats */
   --accent-blue: #3b82f6;
   --accent-blue-muted: #dbeafe;
+  /* Text-safe blue, same split as --accent-red-text. --accent-blue reaches only
+     3.68:1 as text on --bg-card. Use this for words, --accent-blue for fills. */
+  --accent-blue-text: #1d4ed8;
   --accent-purple: #8b5cf6;
   --accent-purple-muted: #ede9fe;
+  /* Text-safe purple, same split as --accent-red-text. Use for words,
+     --accent-purple for fills, borders, and icon strokes. */
+  --accent-purple-text: #6d28d9;
   --accent-amber: #f59e0b;
   --accent-amber-muted: #fef3c7;
+  /* Text-safe amber, same split as --accent-red-text. --accent-amber is a fill
+     colour: as text it manages only 2.15:1 on white and 1.55:1 on --bg-active.
+     Use this for words, --accent-amber for fills, borders, and icon strokes. */
+  --accent-amber-text: #92400e;
   --accent-red: #ef4444;
   --accent-red-muted: #fee2e2;
+  /* Text-safe red. --accent-red is a fill colour: it only reaches 3.76:1 on
+     white and 2.71:1 on --bg-active, so it fails WCAG AA 4.5:1 as body text.
+     Use this for words, --accent-red for fills, borders, and icon strokes. */
+  --accent-red-text: #b91c1c;
   --accent-emerald: #10b981;
   --accent-emerald-muted: #d1fae5;
   --accent-green: #10b981;
@@ -187,16 +210,32 @@
   --brand-primary-light: rgba(34, 197, 94, 0.15);
   --brand-muted: rgba(34, 197, 94, 0.15);
   --brand-text: #4ade80;
+  /* Same dark ink as light — 7.87:1 at rest, 10.29:1 on the dark hover. */
+  --brand-on-primary: #171717;
 
   /* Accent colors (slightly adjusted for dark bg) */
   --accent-blue: #60a5fa;
   --accent-blue-muted: rgba(59, 130, 246, 0.2);
+  /* Dark lightens the fill enough to clear 4.5:1 as text, so the text-safe blue
+     matches --accent-blue here. Kept as its own token for theme-agnostic use. */
+  --accent-blue-text: #60a5fa;
   --accent-purple: #a78bfa;
   --accent-purple-muted: rgba(139, 92, 246, 0.2);
+  /* Dark lightens the fill enough to clear 4.5:1 as text, so the text-safe
+     purple matches --accent-purple here. */
+  --accent-purple-text: #a78bfa;
   --accent-amber: #fbbf24;
   --accent-amber-muted: rgba(245, 158, 11, 0.2);
+  /* Dark lightens the fill enough to clear 4.5:1 as text, so the text-safe
+     amber matches --accent-amber here. Kept as its own token so call sites
+     stay theme-agnostic. */
+  --accent-amber-text: #fbbf24;
   --accent-red: #f87171;
   --accent-red-muted: rgba(239, 68, 68, 0.2);
+  /* Dark already lightens the fill enough to clear 4.5:1 as text, so the
+     text-safe red matches --accent-red here. Kept as its own token so call
+     sites stay theme-agnostic. */
+  --accent-red-text: #f87171;
   --accent-emerald: #34d399;
   --accent-emerald-muted: rgba(16, 185, 129, 0.2);
   --accent-green: #34d399;
@@ -694,7 +733,7 @@ body.sidebar-resizing * {
 /* Buttons */
 .btn-primary {
   background-color: var(--brand-primary);
-  color: var(--text-inverse);
+  color: var(--brand-on-primary);
   box-shadow: var(--shadow-brand);
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -772,7 +811,7 @@ body.sidebar-resizing * {
 }
 
 .interactive-hover-danger {
-  color: var(--accent-red);
+  color: var(--accent-red-text);
   transition: background-color 0.2s var(--ease-out-expo);
 }
 
@@ -781,7 +820,7 @@ body.sidebar-resizing * {
 }
 
 .interactive-hover-success {
-  color: var(--accent-green);
+  color: var(--brand-text);
   transition: background-color 0.2s var(--ease-out-expo);
 }
 
@@ -801,7 +840,7 @@ body.sidebar-resizing * {
 }
 
 .menu-item-success {
-  color: var(--accent-green);
+  color: var(--brand-text);
   transition: all 0.2s var(--ease-out-expo);
 }
 
@@ -810,7 +849,7 @@ body.sidebar-resizing * {
 }
 
 .menu-item-danger {
-  color: var(--accent-red);
+  color: var(--accent-red-text);
   transition: all 0.2s var(--ease-out-expo);
 }
 
@@ -832,7 +871,7 @@ body.sidebar-resizing * {
 
 .filter-tab-active {
   background-color: var(--brand-primary);
-  color: var(--text-inverse);
+  color: var(--brand-on-primary);
 }
 
 /* Dropdown menus */

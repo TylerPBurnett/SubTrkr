@@ -52,6 +52,9 @@ function LoadingScreen() {
             color: 'var(--text-primary)',
           }}
         >
+          {/* Wordmark, so this one stays raw --brand-primary: WCAG exempts
+              logotypes from the contrast floor. Everywhere else green words
+              use --brand-text. */}
           Sub<span style={{ color: 'var(--brand-primary)' }}>Trkr</span>
         </span>
         <div

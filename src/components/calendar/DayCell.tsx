@@ -91,7 +91,7 @@ function DayCell({
             style={
               isToday
                 ? {
-                    color: 'var(--text-inverse)',
+                    color: 'var(--brand-on-primary)',
                     background: 'var(--brand-primary)',
                     borderRadius: '999px',
                     padding: '1px 6px',
@@ -148,7 +148,7 @@ function DayCell({
             className="calendar-day-total"
             style={{
               color: summary.hasOverdue
-                ? 'var(--accent-red)'
+                ? 'var(--accent-red-text)'
                 : isSelected
                   ? 'var(--text-primary)'
                   : undefined,

@@ -11,7 +11,10 @@ interface SetNewPasswordProps {
 interface PasswordStrength {
   score: number;
   label: string;
-  color: string;
+  /** Meter bar fill. */
+  barColor: string;
+  /** Label text — diverges from `barColor` where the fill fails AA as text. */
+  textColor: string;
 }
 
 function getPasswordStrength(password: string): PasswordStrength {
@@ -23,10 +26,35 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (/[0-9]/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-  if (score <= 2) return { score, label: 'Weak', color: 'var(--accent-red)' };
-  if (score <= 4) return { score, label: 'Fair', color: 'var(--accent-orange)' };
-  if (score <= 5) return { score, label: 'Good', color: 'var(--accent-blue)' };
-  return { score, label: 'Strong', color: 'var(--accent-green)' };
+  // barColor fills the meter, textColor sets the label: the same hue cannot do
+  // both, since a bar only needs 3:1 but the label needs 4.5:1.
+  if (score <= 2)
+    return {
+      score,
+      label: 'Weak',
+      barColor: 'var(--accent-red)',
+      textColor: 'var(--accent-red-text)',
+    };
+  if (score <= 4)
+    return {
+      score,
+      label: 'Fair',
+      barColor: 'var(--accent-amber)',
+      textColor: 'var(--accent-amber-text)',
+    };
+  if (score <= 5)
+    return {
+      score,
+      label: 'Good',
+      barColor: 'var(--accent-blue)',
+      textColor: 'var(--accent-blue-text)',
+    };
+  return {
+    score,
+    label: 'Strong',
+    barColor: 'var(--accent-green)',
+    textColor: 'var(--brand-text)',
+  };
 }
 
 export default function SetNewPassword({ onComplete, onDismiss }: SetNewPasswordProps) {
@@ -114,7 +142,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                   backgroundColor: 'var(--brand-muted)',
                 }}
               >
-                <Lock className="w-6 h-6" style={{ color: 'var(--brand-primary)' }} />
+                <Lock className="w-6 h-6" style={{ color: 'var(--brand-text)' }} />
               </div>
             </div>
 
@@ -141,7 +169,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                 }}
               >
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--accent-red)' }} />
-                <span style={{ color: 'var(--accent-red)' }}>{error}</span>
+                <span style={{ color: 'var(--accent-red-text)' }}>{error}</span>
               </div>
             )}
 
@@ -194,7 +222,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                       </span>
                       <span
                         className="text-sm font-medium"
-                        style={{ color: passwordStrength.color }}
+                        style={{ color: passwordStrength.textColor }}
                       >
                         {passwordStrength.label}
                       </span>
@@ -206,7 +234,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                       <div
                         className="h-full transition-all duration-300"
                         style={{
-                          backgroundColor: passwordStrength.color,
+                          backgroundColor: passwordStrength.barColor,
                           width: `${(passwordStrength.score / 6) * 100}%`
                         }}
                       />
@@ -269,7 +297,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                   </button>
                 </div>
                 {confirmPassword && !passwordsMatch && (
-                  <p className="mt-2 text-sm" style={{ color: 'var(--accent-red)' }}>
+                  <p className="mt-2 text-sm" style={{ color: 'var(--accent-red-text)' }}>
                     Passwords do not match
                   </p>
                 )}
@@ -282,7 +310,7 @@ export default function SetNewPassword({ onComplete, onDismiss }: SetNewPassword
                 className="w-full px-4 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: canSubmit ? 'var(--brand-primary)' : 'var(--bg-muted)',
-                  color: canSubmit ? 'var(--text-inverse)' : 'var(--text-muted)',
+                  color: canSubmit ? 'var(--brand-on-primary)' : 'var(--text-muted)',
                 }}
               >
                 {isSubmitting ? 'Updating Password...' : 'Set New Password'}

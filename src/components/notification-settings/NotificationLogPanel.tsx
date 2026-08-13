@@ -73,15 +73,15 @@ export function NotificationLogPanel({
                       style={{
                         backgroundColor:
                           entry.status === 'sent'
-                            ? 'var(--accent-green)20'
+                            ? 'var(--accent-green-muted)'
                             : entry.status === 'failed'
-                              ? 'var(--accent-red)20'
+                              ? 'var(--accent-red-muted)'
                               : 'var(--bg-active)',
                         color:
                           entry.status === 'sent'
                             ? 'var(--accent-green)'
                             : entry.status === 'failed'
-                              ? 'var(--accent-red)'
+                              ? 'var(--accent-red-text)'
                               : 'var(--text-muted)',
                       }}
                     >

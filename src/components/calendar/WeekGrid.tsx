@@ -91,7 +91,7 @@ export default function WeekGrid({
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: 11,
-                      color: 'var(--accent-amber)',
+                      color: 'var(--accent-amber-text)',
                     }}
                   >
                     Trial ends
@@ -137,7 +137,7 @@ export default function WeekGrid({
                         fontFamily: 'var(--font-mono)',
                         fontSize: 11,
                         color: occurrence.isOverdue
-                          ? 'var(--accent-red)'
+                          ? 'var(--accent-red-text)'
                           : 'var(--text-secondary)',
                       }}
                     >
