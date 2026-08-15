@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import type { ItemWithCategory } from '@/types';
 import { formatCurrency } from '@/utils/currency';
-import { sumOccurrences, type Occurrence } from '@/utils/occurrences';
+import { describeTrialKeepCost, sumOccurrences, type Occurrence } from '@/utils/occurrences';
 
 interface DayInspectorProps {
   selectedDate: Date;
@@ -36,7 +36,7 @@ function OccurrenceRow({
         </p>
         <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
           {occurrence.kind === 'trial-end'
-            ? 'Trial ends'
+            ? describeTrialKeepCost(occurrence.item)
             : showDate
               ? format(occurrence.date, 'MMM d')
               : occurrence.item.billing_cycle}

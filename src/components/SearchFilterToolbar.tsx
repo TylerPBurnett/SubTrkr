@@ -125,19 +125,21 @@ export default function SearchFilterToolbar({
     <div className="flex flex-wrap items-center gap-2">
       {/* Unified Search + Filter + View Toggle Container */}
       <div
-        className="search-shell flex flex-1 min-w-0 items-center h-9 rounded-lg border-2 overflow-hidden transition-all duration-200"
+        className="search-shell flex flex-1 min-w-[min(100%,20rem)] items-center h-9 rounded-lg border-2 overflow-hidden transition-all duration-200"
         style={{
           backgroundColor: "var(--bg-input)",
         }}
       >
         {/* Search Icon */}
-        <div className="flex items-center justify-center pl-3">
+        <div className="flex shrink-0 items-center justify-center pl-3">
           <Search className="size-4" style={{ color: "var(--text-muted)" }} />
         </div>
 
         {/* Search Input */}
         <input
           type="text"
+          name="item-search"
+          autoComplete="off"
           placeholder={searchPlaceholder}
           /*
             The placeholder was the only thing naming this field, and a
@@ -148,7 +150,7 @@ export default function SearchFilterToolbar({
           aria-label={`Search ${filterLabel}`}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="flex-1 h-full px-2.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none"
+          className="min-w-0 flex-1 h-full px-2.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none"
           style={{
             fontWeight: 500,
             color: "var(--text-primary)",
@@ -158,8 +160,16 @@ export default function SearchFilterToolbar({
         {/* Clear Search Button */}
         {searchQuery && (
           <button
+            type="button"
+            aria-label="Clear search"
             onClick={() => onSearchChange("")}
-            className="flex items-center justify-center px-2 h-full transition-colors focus:outline-none focus-visible:outline-none"
+            /*
+              Both sides of this merge: `shrink-0` from the layout work, and NO
+              inline `boxShadow` — that declaration is what cancelled the focus
+              ring the stylesheet defines for this shell. Reinstating it would
+              silently un-fix keyboard focus here, and nothing tests it.
+            */
+            className="flex shrink-0 items-center justify-center px-2 h-full transition-colors focus:outline-none focus-visible:outline-none"
             style={{ color: "var(--text-muted)" }}
             onMouseEnter={(e) =>
               (e.currentTarget.style.color = "var(--text-secondary)")
@@ -179,6 +189,7 @@ export default function SearchFilterToolbar({
         />
 
         {/* Filter Trigger Button */}
+        <div className="flex h-full shrink-0 items-center">
         <Popover>
           <PopoverTrigger asChild>
             <button
@@ -187,7 +198,7 @@ export default function SearchFilterToolbar({
                   ? `Filter ${filterLabel} — ${activeFilterCount} active`
                   : `Filter ${filterLabel}`
               }
-              className="flex items-center justify-center gap-1 px-3 h-full transition-colors focus:outline-none focus-visible:outline-none"
+              className="flex shrink-0 items-center justify-center gap-1 px-3 h-full transition-colors focus:outline-none focus-visible:outline-none"
               style={{
                 // An active filter has to be visible from outside the
                 // popover, or narrowed results read as missing data.
@@ -311,6 +322,7 @@ export default function SearchFilterToolbar({
             )}
           </PopoverContent>
         </Popover>
+        </div>
 
         {/* Vertical Divider */}
         <div
@@ -319,10 +331,11 @@ export default function SearchFilterToolbar({
         />
 
         {/* Sort Trigger Button */}
+        <div className="flex h-full shrink-0 items-center">
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className="flex items-center gap-1.5 px-2.5 h-full transition-colors focus:outline-none focus-visible:outline-none"
+              className="flex shrink-0 items-center gap-1.5 px-2.5 h-full transition-colors focus:outline-none focus-visible:outline-none"
               style={{
                 color: "var(--text-secondary)",
                 backgroundColor: "transparent",
@@ -391,6 +404,7 @@ export default function SearchFilterToolbar({
             </FilterSection>
           </PopoverContent>
         </Popover>
+        </div>
 
         {/* Vertical Divider - Separates Search/Filter from View Controls */}
         <div
@@ -400,7 +414,7 @@ export default function SearchFilterToolbar({
 
         {/* View Mode Segmented Toggle */}
         <div
-          className="relative flex items-center h-7 p-0.5 rounded-md overflow-hidden"
+          className="relative flex shrink-0 items-center h-7 p-0.5 rounded-md overflow-hidden"
           style={{
             backgroundColor: "var(--bg-input)",
           }}

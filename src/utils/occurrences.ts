@@ -12,7 +12,8 @@ import {
   UNCATEGORIZED_FILTER_ID,
   resolveItemCategoryDisplay,
 } from './categories';
-import { formatISODate, getToday, parseLocalDate } from './dates';
+import { formatCurrency } from './currency';
+import { formatISODate, getToday, normalizeToStartOfDay, parseDateValue } from './dates';
 
 /**
  * Runaway guard. A weekly item over a full year needs ~53 indices, so any
@@ -101,7 +102,7 @@ export interface Occurrence {
   kind: OccurrenceKind;
   /** date is strictly before today */
   isPast: boolean;
-  /** a charge that should have landed and was never superseded */
+  /** this occurrence is the item's next_billing_date and that date is already past */
   isOverdue: boolean;
 }
 
@@ -121,6 +122,19 @@ export interface ItemSchedule {
 
 export { UNCATEGORIZED_FILTER_ID } from './categories';
 
+const CYCLE_NOUN: Record<BillingCycle, string> = {
+  weekly: 'week',
+  monthly: 'month',
+  quarterly: 'quarter',
+  yearly: 'year',
+};
+
+/** Copy for a live trial: the price if they convert, not a scheduled charge. */
+export function describeTrialKeepCost(item: ItemWithCategory): string {
+  const amount = formatCurrency(item.amount, { currency: item.currency });
+  return `If you keep this, ${amount} / ${CYCLE_NOUN[item.billing_cycle]}`;
+}
+
 export interface OccurrenceFilters {
   itemType?: ItemType | 'all';
   /**
@@ -137,10 +151,9 @@ export interface OccurrenceFilters {
   includeArchived?: boolean;
 }
 
-function parseOrNull(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const parsed = parseLocalDate(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+function parseScheduleDay(value: string | null | undefined): Date | null {
+  const parsed = parseDateValue(value);
+  return parsed ? normalizeToStartOfDay(parsed) : null;
 }
 
 const laterOf = (a: Date, b: Date) => (a.getTime() >= b.getTime() ? a : b);
@@ -151,19 +164,19 @@ const earlierOf = (a: Date, b: Date) => (a.getTime() <= b.getTime() ? a : b);
  * occupy. Returns null when the item carries no usable anchor.
  */
 export function getItemSchedule(item: ItemWithCategory): ItemSchedule | null {
-  const anchor = parseOrNull(item.next_billing_date);
+  const anchor = parseScheduleDay(item.next_billing_date);
   if (!anchor) return null;
 
-  const trialEnd = parseOrNull(item.trial_end_date);
-  let earliest = parseOrNull(item.start_date) ?? anchor;
+  const trialEnd = parseScheduleDay(item.trial_end_date);
+  let earliest = parseScheduleDay(item.start_date) ?? anchor;
 
   // A trial's first charge cannot land before the trial lapses.
   if (item.status === 'trial' && trialEnd) {
     earliest = laterOf(earliest, trialEnd);
   }
 
-  const cancelled = parseOrNull(item.cancellation_date) ?? parseOrNull(item.cancelled_at);
-  const archived = parseOrNull(item.archived_at);
+  const cancelled = parseScheduleDay(item.cancellation_date) ?? parseScheduleDay(item.cancelled_at);
+  const archived = parseScheduleDay(item.archived_at);
   let latest: Date | null = cancelled;
   if (archived) latest = latest ? earlierOf(latest, archived) : archived;
 
@@ -174,8 +187,8 @@ export function getItemSchedule(item: ItemWithCategory): ItemSchedule | null {
     latest,
     // paused_at can be stale on a resumed item, so it only gates while the
     // item is actually paused.
-    pausedFrom: item.status === 'paused' ? parseOrNull(item.paused_at) : null,
-    pausedUntil: item.status === 'paused' ? parseOrNull(item.paused_until) : null,
+    pausedFrom: item.status === 'paused' ? parseScheduleDay(item.paused_at) : null,
+    pausedUntil: item.status === 'paused' ? parseScheduleDay(item.paused_until) : null,
     trialEnd,
   };
 }
@@ -218,6 +231,7 @@ function buildOccurrence(
   date: Date,
   kind: OccurrenceKind,
   today: Date,
+  nextBillingIso: string,
 ): Occurrence {
   const isoDate = formatISODate(date);
   const isPast = date.getTime() < today.getTime();
@@ -230,7 +244,11 @@ function buildOccurrence(
     amount: kind === 'charge' ? item.amount : 0,
     kind,
     isPast,
-    isOverdue: kind === 'charge' && isPast && item.status === 'active',
+    isOverdue:
+      kind === 'charge' &&
+      isPast &&
+      item.status === 'active' &&
+      isoDate === nextBillingIso,
   };
 }
 
@@ -244,8 +262,9 @@ export function projectOccurrences(
   rangeStart: Date,
   rangeEnd: Date,
   filters: OccurrenceFilters = {},
+  today: Date = getToday(),
 ): Occurrence[] {
-  const today = getToday();
+  const todayStart = normalizeToStartOfDay(today);
   const result: Occurrence[] = [];
 
   for (const item of items) {
@@ -254,12 +273,16 @@ export function projectOccurrences(
     const schedule = getItemSchedule(item);
     if (!schedule) continue;
 
-    if (
-      item.status === 'trial' &&
-      schedule.trialEnd &&
-      inRange(schedule.trialEnd, rangeStart, rangeEnd)
-    ) {
-      result.push(buildOccurrence(item, schedule.trialEnd, 'trial-end', today));
+    const nextBillingIso = formatISODate(schedule.anchor);
+
+    if (item.status === 'trial') {
+      // A live trial is a decision date, not a payment schedule. Charges
+      // start only after convert — projecting them here made "if you keep
+      // it" look like money that will move.
+      if (schedule.trialEnd && inRange(schedule.trialEnd, rangeStart, rangeEnd)) {
+        result.push(buildOccurrence(item, schedule.trialEnd, 'trial-end', todayStart, nextBillingIso));
+      }
+      continue;
     }
 
     const { lo, hi } = occurrenceIndexBounds(schedule.anchor, schedule.cycle, rangeStart, rangeEnd);
@@ -267,7 +290,7 @@ export function projectOccurrences(
       const date = occurrenceAt(schedule.anchor, schedule.cycle, n);
       if (!inRange(date, rangeStart, rangeEnd)) continue;
       if (!isScheduleOpen(schedule, date)) continue;
-      result.push(buildOccurrence(item, date, 'charge', today));
+      result.push(buildOccurrence(item, date, 'charge', todayStart, nextBillingIso));
     }
   }
 

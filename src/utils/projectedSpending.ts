@@ -1,9 +1,11 @@
 import type { ItemStatus, ItemWithCategory, StatusHistory } from '../types';
-import { parseLocalDate } from './dates';
+import { parseDateValue, normalizeToStartOfDay } from './dates';
 import {
   getResolvedStatusHistoryAction,
   getResolvedStatusHistoryEffectiveDate,
 } from './statusHistory';
+
+export { parseDateValue, normalizeToStartOfDay };
 
 type StatusTransition = {
   action: string | null;
@@ -11,17 +13,6 @@ type StatusTransition = {
   recordedAt: Date | null;
   status: ItemStatus;
 };
-
-export function parseDateValue(value: string | null | undefined): Date | null {
-  if (!value) return null;
-
-  const parsed = value.includes('T') ? new Date(value) : parseLocalDate(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-export function normalizeToStartOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
 
 function isOnOrBeforeDay(date: Date, comparedTo: Date): boolean {
   return normalizeToStartOfDay(date).getTime() <= normalizeToStartOfDay(comparedTo).getTime();

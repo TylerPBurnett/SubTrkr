@@ -1,5 +1,5 @@
 import * as React from "react"
-import { format, parse } from "date-fns"
+import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
 import { Calendar } from "@/components/ui/calendar"
@@ -8,6 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { parseLocalDate } from "@/utils/dates"
 
 interface DatePickerProps {
   /** ISO date string (YYYY-MM-DD) */
@@ -18,6 +19,12 @@ interface DatePickerProps {
   error?: boolean
   placeholder?: string
   id?: string
+  name?: string
+  /**
+   * Preferred side. Collision still flips if there is no room.
+   * Use `"top"` for fields that sit at the bottom of a tall dialog.
+   */
+  side?: "top" | "bottom"
   /**
    * Names the field for assistive tech. The trigger is a button, so its
    * accessible name comes from its own text — which is the chosen date, or the
@@ -39,34 +46,35 @@ export function DatePicker({
   error,
   placeholder = "Pick a date",
   id,
+  name,
+  side = "bottom",
   ariaLabel,
   ariaDescribedBy,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Convert ISO string to Date for the calendar
   const selected = React.useMemo(() => {
     if (!value) return undefined
-    return parse(value, "yyyy-MM-dd", new Date())
+    return parseLocalDate(value)
   }, [value])
 
   const minDate = React.useMemo(() => {
     if (!min) return undefined
-    return parse(min, "yyyy-MM-dd", new Date())
+    return parseLocalDate(min)
   }, [min])
 
   const handleSelect = (date: Date | undefined) => {
-    if (date) {
-      onChange(format(date, "yyyy-MM-dd"))
-    }
+    if (!date) return
+    onChange(format(date, "yyyy-MM-dd"))
     setOpen(false)
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           id={id}
+          name={name}
           type="button"
           aria-label={ariaLabel}
           aria-invalid={error || undefined}
@@ -91,19 +99,29 @@ export function DatePicker({
       <PopoverContent
         className="w-auto p-0"
         align="start"
+        side={side}
+        sideOffset={6}
+        collisionPadding={16}
+        sticky="always"
         style={{
           backgroundColor: 'var(--bg-surface)',
           border: '1px solid var(--border-default)',
           borderRadius: '16px',
           boxShadow: '0 16px 48px -12px rgba(0, 0, 0, 0.3)',
+          // Reserve the month grid's height up front. An empty first layout
+          // fits under the trigger, then the calendar mounts and overflows
+          // the window — which is why Trial Ends at the bottom of ItemForm
+          // could open but never be clicked at 800px tall.
+          minHeight: 288,
         }}
       >
         <Calendar
           mode="single"
+          required
           selected={selected}
           onSelect={handleSelect}
           disabled={minDate ? { before: minDate } : undefined}
-          defaultMonth={selected || new Date()}
+          defaultMonth={selected || minDate || new Date()}
           autoFocus
         />
       </PopoverContent>

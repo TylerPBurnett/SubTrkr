@@ -142,14 +142,14 @@ Applied per item before projecting:
 | Status | Rule |
 |---|---|
 | `active` | Project across the range. |
-| `trial` | No charges before `trial_end_date`. Emit one `trial-end` occurrence **on** `trial_end_date`. First charge lands on or after it. |
+| `trial` | Emit one `trial-end` occurrence **on** `trial_end_date`. A live trial does not project paid charges — those start only after convert. A trial with no end date emits nothing. |
 | `paused` | Suppress occurrences inside `[paused_at, paused_until)`. A null `paused_until` means indefinite — nothing after `paused_at`. |
 | `cancelled` | Nothing after `cancellation_date ?? cancelled_at`. Occurrences before it are historical fact and still render. |
 | `archived` | Excluded unless `includeArchived`. |
 
 **Backward projection floors at `start_date`** — no phantom charges before the item existed.
 
-`isOverdue` is `date < today && !isPast-cancelled && status is active` — a charge that should have landed and was never superseded by a lifecycle change.
+`isOverdue` is true only for the charge whose date equals `next_billing_date`, when that date is before today and the item is still `active`. Historical projections of an active item are scheduled/past charges, not overdue.
 
 ---
 

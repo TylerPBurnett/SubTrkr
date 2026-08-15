@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { isSameDay, isToday } from 'date-fns';
+import { isSameDay } from 'date-fns';
 import type { Category } from '@/types';
 import { formatISODate } from '@/utils/dates';
 import { summariseDay, type DaySummary, type Occurrence } from '@/utils/occurrences';
@@ -28,6 +28,7 @@ interface MonthGridProps {
   rangeEnd: Date;
   selectedDate: Date;
   focusedDate: Date;
+  today: Date;
   onSelect: (date: Date) => void;
   /** Only move real DOM focus once the user has deliberately navigated. */
   shouldFocus: boolean;
@@ -41,6 +42,7 @@ export default function MonthGrid({
   rangeEnd,
   selectedDate,
   focusedDate,
+  today,
   onSelect,
   shouldFocus,
 }: MonthGridProps) {
@@ -126,7 +128,7 @@ export default function MonthGrid({
                   date={day}
                   occurrences={occurrences}
                   summary={summary}
-                  isToday={isToday(day)}
+                  isToday={isSameDay(day, today)}
                   isSelected={isSameDay(day, selectedDate)}
                   isFocused={isSameDay(day, effectiveFocusedDate)}
                   isOutsideRange={day < rangeStart || day > rangeEnd}

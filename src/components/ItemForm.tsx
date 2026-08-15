@@ -31,6 +31,7 @@ export default function ItemForm({
     handleServiceSelect,
     handleStartDateChange,
     handleSubmit,
+    handleTrialEndDateChange,
     hasServiceSelection,
     isBill,
     isEditing,
@@ -88,6 +89,18 @@ export default function ItemForm({
                 // The name field owns initial focus for new items; keep that
                 // behaviour instead of pulling focus to the close button.
                 if (contentRef.current?.contains(document.activeElement)) {
+                  event.preventDefault();
+                }
+              }}
+              onInteractOutside={(event) => {
+                // DatePicker portals to <body>. A day click is outside this
+                // Content node, and the default dismiss would close the form
+                // before onSelect can write the date.
+                const target = event.target;
+                if (
+                  target instanceof Element &&
+                  target.closest('[data-slot="popover-content"]')
+                ) {
                   event.preventDefault();
                 }
               }}
@@ -227,11 +240,10 @@ export default function ItemForm({
                             : previous.amount,
                       }))
                     }
-                    onTrialEndDateChange={(date) =>
-                      setFormData((previous) => ({ ...previous, trial_end_date: date }))
-                    }
+                    onTrialEndDateChange={handleTrialEndDateChange}
                     showMore={showMore}
                     today={today}
+                    trialEndError={errors.trial_end_date}
                     urlError={errors.url}
                   />
                 </div>

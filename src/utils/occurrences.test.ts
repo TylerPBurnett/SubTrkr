@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { addMonths, subMonths } from 'date-fns';
+import { subMonths } from 'date-fns';
 import type { Category, ItemWithCategory } from '@/types';
 import { formatISODate, getToday, parseLocalDate } from './dates';
 import {
   UNCATEGORIZED_FILTER_ID,
+  describeTrialKeepCost,
+  getItemSchedule,
   groupByDay,
   occurrenceAt,
   occurrenceIndexBounds,
@@ -225,7 +227,7 @@ describe('projectOccurrences', () => {
     assert.deepEqual(dates(result), ['2026-01-13', '2026-02-13', '2026-03-13', '2026-04-13']);
   });
 
-  test('a trial emits a trial-end marker and no charge before it', () => {
+  test('a trial emits only a trial-end marker — no paid charges until convert', () => {
     const result = projectOccurrences(
       [item({ status: 'trial', trial_end_date: '2026-03-13', start_date: '2026-01-13' })],
       H1, H2,
@@ -236,8 +238,22 @@ describe('projectOccurrences', () => {
     assert.equal(marker[0].amount, 0);
 
     const charges = result.filter((o) => o.kind === 'charge');
-    assert.ok(!dates(charges).includes('2026-02-13'));
-    assert.ok(dates(charges).includes('2026-04-13'));
+    assert.deepEqual(dates(charges), []);
+  });
+
+  test('describeTrialKeepCost names the future price without calling it due', () => {
+    assert.equal(
+      describeTrialKeepCost(item({ amount: 4, billing_cycle: 'monthly' })),
+      'If you keep this, $4.00 / month',
+    );
+  });
+
+  test('a trial with no end date emits nothing', () => {
+    const result = projectOccurrences(
+      [item({ status: 'trial', trial_end_date: null, start_date: '2026-01-13' })],
+      H1, H2,
+    );
+    assert.deepEqual(result, []);
   });
 
   test('an item with no next_billing_date is skipped rather than throwing', () => {
@@ -254,52 +270,108 @@ describe('projectOccurrences', () => {
     assert.deepEqual(dates(result), ['2026-08-13', '2026-08-20']);
   });
 
-  test('isPast reflects whether occurrence date is before today', () => {
-    const today = getToday();
-    const pastDate = subMonths(today, 3);
-    const futureDate = addMonths(today, 3);
+  test('isPast reflects whether occurrence date is before the supplied today', () => {
+    const today = parseLocalDate('2026-08-12');
+    const pastDate = parseLocalDate('2026-05-12');
+    const futureDate = parseLocalDate('2026-11-12');
 
     const pastResult = projectOccurrences(
-      [item({ next_billing_date: formatISODate(pastDate) })],
-      subMonths(today, 4),
+      [item({ next_billing_date: '2026-05-12' })],
+      parseLocalDate('2026-04-01'),
+      today,
+      {},
       today,
     );
     const futureResult = projectOccurrences(
-      [item({ next_billing_date: formatISODate(futureDate) })],
+      [item({ next_billing_date: '2026-11-12' })],
       today,
-      addMonths(today, 4),
+      parseLocalDate('2026-12-31'),
+      {},
+      today,
     );
 
-    assert.ok(pastResult.length > 0, 'should find past occurrence');
-    assert.ok(pastResult[0].isPast, 'past occurrence should have isPast=true');
+    const pastOccurrence = pastResult.find((entry) => entry.isoDate === formatISODate(pastDate));
+    const futureOccurrence = futureResult.find((entry) => entry.isoDate === formatISODate(futureDate));
 
-    assert.ok(futureResult.length > 0, 'should find future occurrence');
-    assert.ok(!futureResult[0].isPast, 'future occurrence should have isPast=false');
+    assert.ok(pastOccurrence, 'should find past occurrence');
+    assert.equal(pastOccurrence.isPast, true);
+
+    assert.ok(futureOccurrence, 'should find future occurrence');
+    assert.equal(futureOccurrence.isPast, false);
   });
 
-  test('isOverdue is true for past active charges, false for cancelled/past', () => {
-    const today = getToday();
-    const pastDate = subMonths(today, 2);
-
-    const activeResult = projectOccurrences(
-      [item({ status: 'active', next_billing_date: formatISODate(pastDate) })],
-      subMonths(today, 3),
+  test('isOverdue is only the past next_billing_date, not every historical projection', () => {
+    const today = parseLocalDate('2026-08-12');
+    const result = projectOccurrences(
+      [item({ status: 'active', next_billing_date: '2026-07-13', start_date: '2026-01-13' })],
+      parseLocalDate('2026-06-01'),
+      parseLocalDate('2026-08-31'),
+      {},
       today,
     );
-    const cancelledResult = projectOccurrences(
-      [item({ status: 'cancelled', next_billing_date: formatISODate(pastDate), cancellation_date: formatISODate(pastDate) })],
-      subMonths(today, 3),
+    const byDate = Object.fromEntries(result.map((occurrence) => [occurrence.isoDate, occurrence]));
+
+    assert.equal(byDate['2026-06-13']?.isPast, true);
+    assert.equal(byDate['2026-06-13']?.isOverdue, false, 'earlier projection is scheduled history, not overdue');
+    assert.equal(byDate['2026-07-13']?.isOverdue, true, 'the unpaid next_billing_date is overdue');
+    assert.equal(byDate['2026-08-13']?.isPast, false);
+    assert.equal(byDate['2026-08-13']?.isOverdue, false, 'future projection of an overdue item is not itself overdue');
+  });
+
+  test('a cancelled item is never overdue even on its next_billing_date', () => {
+    const today = parseLocalDate('2026-08-12');
+    const result = projectOccurrences(
+      [item({
+        status: 'cancelled',
+        next_billing_date: '2026-07-13',
+        cancellation_date: '2026-07-13',
+      })],
+      parseLocalDate('2026-06-01'),
+      today,
+      {},
       today,
     );
 
-    const activeCharges = activeResult.filter((o) => o.kind === 'charge');
-    const cancelledCharges = cancelledResult.filter((o) => o.kind === 'charge');
+    assert.ok(result.some((occurrence) => occurrence.isoDate === '2026-07-13'));
+    assert.ok(result.every((occurrence) => !occurrence.isOverdue));
+  });
 
-    assert.ok(activeCharges.length > 0, 'should find active charge');
-    assert.ok(activeCharges[0].isOverdue, 'past active charge should be overdue');
+  test('projectOccurrences uses the supplied today, not the wall clock', () => {
+    const frozen = parseLocalDate('2026-08-10');
+    const result = projectOccurrences(
+      [item({ next_billing_date: '2026-08-11', start_date: '2026-01-11' })],
+      parseLocalDate('2026-08-01'),
+      parseLocalDate('2026-08-31'),
+      {},
+      frozen,
+    );
+    const occurrence = result.find((entry) => entry.isoDate === '2026-08-11');
 
-    assert.ok(cancelledCharges.length > 0, 'should find cancelled charge');
-    assert.ok(!cancelledCharges[0].isOverdue, 'past cancelled charge should not be overdue');
+    assert.ok(occurrence, 'should find the Aug 11 charge');
+    assert.equal(occurrence.isPast, false, 'Aug 11 is not past when today is frozen at Aug 10');
+    assert.equal(occurrence.isOverdue, false);
+  });
+
+  test('timestamp lifecycle fields use the local day of the instant, not the UTC date prefix', () => {
+    // 2026-03-13 00:00 in UTC+14 is 2026-03-12 10:00Z. parseLocalDate would
+    // take the "2026-03-13" prefix and land a day later in most timezones.
+    const instant = '2026-03-13T00:00:00+14:00';
+    const expectedDay = formatISODate(new Date(new Date(instant).getFullYear(), new Date(instant).getMonth(), new Date(instant).getDate()));
+    const schedule = getItemSchedule(item({
+      status: 'paused',
+      paused_at: instant,
+      paused_until: null,
+    }));
+
+    assert.ok(schedule?.pausedFrom);
+    assert.equal(formatISODate(schedule.pausedFrom), expectedDay);
+    if (expectedDay !== '2026-03-13') {
+      assert.notEqual(
+        formatISODate(schedule.pausedFrom),
+        '2026-03-13',
+        'must not treat the UTC date prefix of a timestamp as a local calendar day',
+      );
+    }
   });
 });
 

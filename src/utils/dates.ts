@@ -33,10 +33,33 @@ export function parseLocalDate(dateStr: string): Date {
 }
 
 /**
+ * Date-only strings (`YYYY-MM-DD`) are local calendar days. Timestamps
+ * (`...T...`) are real instants, then the caller decides how to fold them
+ * onto a day. Stripping the `T` and keeping the UTC date prefix is wrong
+ * for `paused_at` / `cancelled_at` / `archived_at`.
+ */
+export function parseDateValue(value: string | null | undefined): Date | null {
+  if (!value) return null;
+
+  const parsed = value.includes('T') ? new Date(value) : parseLocalDate(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function normalizeToStartOfDay(date: Date): Date {
+  return startOfDay(date);
+}
+
+/**
  * Gets today's date as a local Date object (at start of day)
  */
 export function getToday(): Date {
   return startOfDay(new Date());
+}
+
+/** Milliseconds until the next local midnight. Always at least 1ms. */
+export function msUntilNextLocalMidnight(now: Date = new Date()): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return Math.max(1, next.getTime() - now.getTime());
 }
 
 // ============ Formatting ============

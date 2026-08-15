@@ -1,14 +1,15 @@
-import { format, isSameDay, isToday } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import ServiceLogo from '@/components/ui/ServiceLogo';
 import type { ItemWithCategory } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 import { formatISODate } from '@/utils/dates';
-import { sumOccurrences, type Occurrence } from '@/utils/occurrences';
+import { describeTrialKeepCost, sumOccurrences, type Occurrence } from '@/utils/occurrences';
 
 interface WeekGridProps {
   gridDays: Date[];
   occurrencesByDay: Map<string, Occurrence[]>;
   selectedDate: Date;
+  today: Date;
   onSelect: (date: Date) => void;
   onEdit: (item: ItemWithCategory) => void;
 }
@@ -17,6 +18,7 @@ export default function WeekGrid({
   gridDays,
   occurrencesByDay,
   selectedDate,
+  today,
   onSelect,
   onEdit,
 }: WeekGridProps) {
@@ -69,8 +71,8 @@ export default function WeekGrid({
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 18,
-                  color: isToday(day) ? 'var(--brand-text)' : 'var(--text-primary)',
-                  fontWeight: isToday(day) ? 650 : 500,
+                  color: isSameDay(day, today) ? 'var(--brand-text)' : 'var(--text-primary)',
+                  fontWeight: isSameDay(day, today) ? 650 : 500,
                 }}
               >
                 {day.getDate()}
@@ -170,7 +172,7 @@ export default function WeekGrid({
                     }}
                   >
                     {occurrence.kind === 'trial-end'
-                      ? 'Trial ends'
+                      ? describeTrialKeepCost(occurrence.item)
                       : occurrence.item.billing_cycle}
                   </span>
                 </button>

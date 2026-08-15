@@ -154,6 +154,10 @@ export function useItemFormState({
       nextErrors.url = 'Enter a valid URL';
     }
 
+    if (formData.status === 'trial' && !formData.trial_end_date) {
+      nextErrors.trial_end_date = 'Trial end date is required';
+    }
+
     setErrors(nextErrors);
     return nextErrors;
   };
@@ -172,9 +176,9 @@ export function useItemFormState({
 
       const firstErrorField = Object.keys(nextErrors)[0];
       if (firstErrorField && formRef.current) {
-        const input = formRef.current.querySelector(
+        const input = formRef.current.querySelector<HTMLElement>(
           `[name="${firstErrorField}"]`,
-        ) as HTMLInputElement | null;
+        );
         input?.focus();
       }
       return;
@@ -291,6 +295,14 @@ export function useItemFormState({
     }
   };
 
+  const handleTrialEndDateChange = (date: string) => {
+    setFormData((previous) => ({ ...previous, trial_end_date: date }));
+
+    if (errors.trial_end_date) {
+      setErrors((previous) => ({ ...previous, trial_end_date: undefined }));
+    }
+  };
+
   const handleServiceSelect = (service: KnownService) => {
     const categoryMatch = filteredCategories.find(
       (category) =>
@@ -362,6 +374,7 @@ export function useItemFormState({
     handleServiceSelect,
     handleStartDateChange,
     handleSubmit,
+    handleTrialEndDateChange,
     hasServiceSelection,
     isBill: itemType === 'bill',
     isEditing,

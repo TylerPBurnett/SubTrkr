@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { addDays } from 'date-fns';
 import EmptyState from '@/components/ui/EmptyState';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import type { Category, ItemWithCategory } from '@/types';
+import { useToday } from '@/hooks/useToday';
 import { createCategoryLookup } from '@/utils/categories';
 import { formatISODate, getToday } from '@/utils/dates';
 import { groupByDay, projectOccurrences, type OccurrenceFilters } from '@/utils/occurrences';
@@ -43,6 +44,8 @@ export default function CalendarView({
   onEdit,
   isModalOpen,
 }: CalendarViewProps) {
+  const today = useToday();
+  const prefersReducedMotion = useReducedMotion();
   const [lens, setLens] = useState<CalendarLens>('month');
   const [anchor, setAnchor] = useState<Date>(() => getToday());
   const [selectedDate, setSelectedDate] = useState<Date>(() => getToday());
@@ -104,8 +107,8 @@ export default function CalendarView({
   // Projected over the GRID bounds so padded adjacent-month days render
   // their icons. Headline totals filter back to the range bounds.
   const occurrences = useMemo(
-    () => projectOccurrences(items, range.gridStart, range.gridEnd, filters),
-    [items, range.gridStart, range.gridEnd, filters],
+    () => projectOccurrences(items, range.gridStart, range.gridEnd, filters, today),
+    [items, range.gridStart, range.gridEnd, filters, today],
   );
   const occurrencesByDay = useMemo(() => groupByDay(occurrences), [occurrences]);
 
@@ -136,10 +139,17 @@ export default function CalendarView({
     [occurrencesByDay, selectedDate],
   );
 
-  const upcoming = useMemo(() => {
-    const today = getToday();
-    return projectOccurrences(items, today, addDays(today, 90), filters).slice(0, 5);
-  }, [items, filters]);
+  const upcoming = useMemo(
+    () => projectOccurrences(items, today, addDays(today, 90), filters, today).slice(0, 5),
+    [items, filters, today],
+  );
+
+  const slide = prefersReducedMotion ? 0 : 8;
+  const railSlide = prefersReducedMotion ? 0 : 12;
+  const motionTransition = {
+    duration: prefersReducedMotion ? 0 : 0.15,
+    ease: 'easeOut' as const,
+  };
 
   // Stable across renders so DayCell's React.memo actually holds — an
   // inline arrow here would hand all 42 cells a fresh prop every render.
@@ -172,7 +182,6 @@ export default function CalendarView({
     onPage: (dir) => page(dir, true),
     onToday: () => {
       setHasNavigated(true);
-      const today = getToday();
       setAnchor(today);
       setSelectedDate(today);
     },
@@ -216,6 +225,7 @@ export default function CalendarView({
           gridDays={gridDays}
           occurrencesByDay={occurrencesByDay}
           selectedDate={selectedDate}
+          today={today}
           onSelect={selectDate}
           onEdit={onEdit}
         />
@@ -232,6 +242,7 @@ export default function CalendarView({
           rangeEnd={range.rangeEnd}
           selectedDate={selectedDate}
           focusedDate={selectedDate}
+          today={today}
           onSelect={selectDate}
           shouldFocus={hasNavigated}
         />
@@ -296,7 +307,6 @@ export default function CalendarView({
             type="button"
             className="nav-item rounded-lg px-2.5 py-1.5 text-sm"
             onClick={() => {
-              const today = getToday();
               setAnchor(today);
               setSelectedDate(today);
             }}
@@ -337,10 +347,10 @@ export default function CalendarView({
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`${lens}-${formatRangeTitle(lens, anchor)}`}
-            initial={{ opacity: 0, x: direction * 8 }}
+            initial={{ opacity: 0, x: direction * slide }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction * -8 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            exit={{ opacity: 0, x: direction * -slide }}
+            transition={motionTransition}
           >
             {renderLens()}
           </motion.div>
@@ -349,10 +359,10 @@ export default function CalendarView({
         <AnimatePresence initial={false}>
           {showRail && (
             <motion.div
-              initial={{ opacity: 0, x: 12 }}
+              initial={{ opacity: 0, x: railSlide }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
+              exit={{ opacity: 0, x: railSlide }}
+              transition={motionTransition}
             >
               <DayInspector
                 selectedDate={selectedDate}

@@ -18,6 +18,7 @@ interface ItemFormSecondaryFieldsProps {
   onTrialEndDateChange: (date: string) => void;
   showMore: boolean;
   today: string;
+  trialEndError?: string;
   urlError?: string;
 }
 
@@ -31,6 +32,7 @@ export function ItemFormSecondaryFields({
   onTrialEndDateChange,
   showMore,
   today,
+  trialEndError,
   urlError,
 }: ItemFormSecondaryFieldsProps) {
   if (!showMore) {
@@ -107,27 +109,30 @@ export function ItemFormSecondaryFields({
           >
             <CalendarIcon className="w-3.5 h-3.5" />
             <span>Trial Ends</span>
-            <span
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: '0.625rem',
-                marginLeft: '4px',
-              }}
-            >
-              OPTIONAL
-            </span>
+            <span style={{ color: 'var(--brand-text)' }}>*</span>
           </label>
           <DatePicker
             id="item-trial-end-date"
+            name="trial_end_date"
             value={formData.trial_end_date || ''}
             onChange={onTrialEndDateChange}
             min={today}
+            side="top"
+            error={Boolean(trialEndError)}
             placeholder="Select trial end date"
           />
-          <p className="item-form-mono mt-2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-            {formData.trial_end_date
-              ? `Trial expires on ${formatDisplayDate(formData.trial_end_date)}`
-              : 'Leave empty for ongoing trials'}
+          <p
+            className="item-form-mono mt-2"
+            style={{
+              color: trialEndError ? '#ef4444' : 'var(--text-muted)',
+              fontSize: '0.75rem',
+            }}
+          >
+            {trialEndError
+              ? trialEndError
+              : formData.trial_end_date
+                ? `Trial expires on ${formatDisplayDate(formData.trial_end_date)}`
+                : 'Required so we can remind you before it converts.'}
           </p>
         </div>
       )}
