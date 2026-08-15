@@ -26,6 +26,13 @@
   const SETTLE_MS = 400;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /*
+    Deliberately does NOT exclude `opacity: 0`. Hover-revealed row actions are
+    transparent at rest and still in the tab order the whole time, so filtering
+    them out hides exactly the controls most likely to be unlabelled — an
+    earlier version of this file did, and missed 28 unnamed 16px buttons in
+    Settings, one of which deletes a category.
+  */
   const visible = (el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);

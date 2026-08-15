@@ -308,9 +308,18 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                     {category.category_type === 'subscription' ? 'sub' : 'bill'}
                   </span>
                 )}
+                {/*
+                  Named and skirted. These are `opacity-0` until the row is
+                  hovered, but they stay in the tab order the whole time — so a
+                  keyboard user met two unlabelled 16px buttons per category,
+                  announced as nothing but "button", and one of them deletes.
+                  Hiding a control visually does not hide it from the people
+                  most reliant on its name.
+                */}
                 <button
                   onClick={() => setEditingCategory(category)}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
+                  aria-label={`Edit ${category.name}`}
+                  className="relative opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 rounded transition-all after:absolute after:-inset-1 after:content-['']"
                   style={{ color: 'var(--text-muted)' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
                   onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
@@ -319,7 +328,8 @@ export default function CategorySettings({ categories, onCategoriesChange }: Cat
                 </button>
                 <button
                   onClick={() => handleDeleteCategory(category.id)}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
+                  aria-label={`Delete ${category.name}`}
+                  className="relative opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 rounded transition-all after:absolute after:-inset-1 after:content-['']"
                   style={{ color: 'var(--accent-red)' }}
                 >
                   <X className="w-3 h-3" />

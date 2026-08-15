@@ -1054,7 +1054,7 @@ function Analytics({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="card">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -1108,7 +1108,10 @@ function Analytics({
                       size="md"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
+                      <p
+                        className="line-clamp-2 break-words font-medium leading-snug"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         {item.name}
                       </p>
                       <p className="truncate text-sm" style={{ color: 'var(--text-secondary)' }}>
