@@ -4,6 +4,50 @@ All notable changes to SubTrkr are documented here.
 
 ---
 
+## [v1.4.0] — 2026-08-15
+
+This is the biggest release since the desktop rewrite. It adds a full calendar view for seeing what's due and when, brings multi-select and bulk actions to the item list, and unifies filtering across every view — alongside a wide accessibility pass that fixes focus rings, keyboard navigation, color contrast, and touch targets throughout the app.
+
+---
+
+### Features
+
+- **Calendar view** — a new destination with month, week, and year lenses for seeing subscriptions and bills laid out over time. Includes a per-week cash-flow strip, a collapsible day inspector rail, spend-intensity shading in the year lens, type/category/status filters, full keyboard navigation, and empty states for days with nothing due.
+- **Bulk multi-select** — select multiple items in the list or grid view (including shift-click ranges) and act on them together from a floating selection HUD: change category, change status, or delete in one batch, with a summarized result toast when some items are skipped.
+- **Unified filters** — subscriptions and bills now share one filter toolbar with multi-select categories, an "All Categories" option, per-row "Only" isolation, and a popover that reads as native macOS chrome instead of a chip row.
+
+### Accessibility
+
+- Reworked color tokens so red, amber, blue, purple, and brand green all have text-safe variants that clear contrast requirements — green in particular was being used for text and icons it couldn't legibly carry.
+- Fixed focus rings that were clipped or missing on the search toolbar, category picker, and other controls; the category picker's radiogroup now implements the full keyboard contract.
+- Brought icon and pointer targets throughout the app up to the 24px minimum floor.
+- Named and enlarged the category row actions in Settings, and marked the bulk category picker's selection with more than color alone.
+- Form fields across the app now have proper names, required-field marking, and inline explanations for invalid values.
+
+### Improvements
+
+- Notification tints render with actual color instead of silent transparency.
+- Popovers now work correctly when opened from inside modal dialogs.
+- The item form no longer suggests a name into the name field it already holds.
+- Tailwind's `dark:` variant is now correctly bound to the app's theme state.
+
+### Fixes
+
+- Date-only values (like a bill's due date) and full timestamps are now treated as distinct types instead of being silently compared as if equivalent, which had been producing off-by-one-day errors in some calendar and trial-end calculations.
+- Trial-end days in the calendar no longer report $0.00, and week chunking is now shared between lenses instead of duplicated.
+- The filter toolbar no longer counts the default (no filter) state as an "active" filter.
+- Numerous calendar-specific defects closed across several review passes: stale slide direction on keyboard paging, incorrect ARIA grid structure in the week lens, focus not following selection correctly, and year-spanning week handling.
+- Bulk action hardening: shortcuts are now gated behind open app modals, bulk delete is debounced, and the category dialog resets its state correctly when remounted.
+
+### Chores
+
+- Pinned a stable verification server so the signed-in app stays reachable during development.
+- CI now derives in-app release notes directly from the CHANGELOG instead of a separate notes field.
+
+## Migration Guide
+
+No user migration is required. Existing subscriptions, bills, categories, payment history, notification settings, and local preferences remain compatible.
+
 ## [v1.3.0] — 2026-08-02
 
 This release turns the post-v1.2 desktop work into a safer daily-use build. It closes a set of authentication and backend security gaps, makes every dialog usable from the keyboard and a screen reader, adds account deletion, and rebuilds the dashboard's category breakdown so the chart and its legend can no longer disagree — alongside production hardening, category-data correctness, and a calmer native-looking interface.
